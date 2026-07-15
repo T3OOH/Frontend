@@ -1,93 +1,166 @@
 import { useState, useEffect } from 'react';
-import { StatCard } from '@/components/StatCard';
-import { 
-    MonitorPlay, 
-    CheckCircle2, 
-    XCircle, 
-    TrendingUp,
-    BarChart3
-} from 'lucide-react';
-// Agora chamamos o Service real em vez da lista mockada!
-import { panelsService } from '@/services/panels.service';
+import { MonitorPlay, CheckCircle, XCircle, TrendingUp, BarChart2, Clock, Loader2 } from 'lucide-react';
+import { panelsService, PanelData } from '@/services/panels.service';
 
 export function Overview() {
-    const [panels, setPanels] = useState<any[]>([]);
-    
-    // Busca os dados assim que o Dashboard abre
+    const [panels, setPanels] = useState<PanelData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
-        const fetchPanels = async () => {
+        async function fetchPanels() {
             try {
-                const data = await panelsService.getAllPanels(); // Ajuste o nome da função se necessário
+                const data = await panelsService.getAllPanels();
                 setPanels(data);
             } catch (error) {
-                console.error("Erro ao carregar dados da Visão Geral:", error);
+                console.error("Erro ao buscar painéis para a visão geral:", error);
+            } finally {
+                setIsLoading(false);
             }
-        };
+        }
         fetchPanels();
     }, []);
 
+    // 🧮 Cálculos Automáticos baseados no Banco de Dados
     const totalPanels = panels.length;
-    const availablePanels = panels.filter(p => p.status?.toLowerCase() === 'disponível').length;
-    const occupiedPanels = panels.filter(p => p.status?.toLowerCase() === 'ocupado').length;
+    const availablePanels = panels.filter(p => p.status === 'AVAILABLE').length;
+    const occupiedPanels = panels.filter(p => p.status === 'OCCUPIED').length;
 
-    // Cálculo simplificado de impactos baseado nos dados reais (como exemplo)
-    const totalImpacts = panels.reduce((acc, panel) => {
-        const impactNumber = parseInt(panel.impacts.replace(/\D/g, '')) || 0;
-        return acc + impactNumber;
+    // Função para extrair números da string de impacto (Ex: "400.000/dia" vira 400000) e somar tudo
+    const totalImpacts = panels.reduce((acc, curr) => {
+        const numbersOnly = curr.impacts.replace(/\D/g, '');
+        const value = parseInt(numbersOnly, 10);
+        return acc + (isNaN(value) ? 0 : value);
     }, 0);
 
+    // Formata o número grande para algo legível (Ex: 900000 vira "900 mil")
+    const formatImpacts = (num: number) => {
+        if (num === 0) return '0';
+        if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.', ',') + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(0) + ' mil';
+        return num.toString();
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex-1 flex items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
+            </div>
+        );
+    }
+
     return (
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-brand-text tracking-tight mb-2">Visão Geral</h1>
-                <p className="text-brand-muted">Acompanhe as métricas principais do seu circuito OOH.</p>
+        <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
+            
+            {/* Cabeçalho */}
+            <div className="flex-shrink-0 mb-6">
+                <h1 className="text-2xl font-bold text-brand-text tracking-tight mb-1">Visão Geral</h1>
+                <p className="text-sm text-brand-muted">Acompanhe as métricas principais do seu circuito OOH.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Total de Painéis"
-                    value={totalPanels.toString()}
-                    icon={MonitorPlay}
-                    trend={{ value: 12, isPositive: true }}
-                />
-                <StatCard
-                    title="Painéis Disponíveis"
-                    value={availablePanels.toString()}
-                    icon={CheckCircle2}
-                    trend={{ value: 5, isPositive: true }}
-                />
-                <StatCard
-                    title="Painéis Ocupados"
-                    value={occupiedPanels.toString()}
-                    icon={XCircle}
-                />
-                <StatCard
-                    title="Impactos Diários"
-                    value={`${totalImpacts || 0} mil`}
-                    icon={TrendingUp}
-                    trend={{ value: 8, isPositive: true }}
-                />
-            </div>
-
-            {/* Espaço para futuros gráficos e tabelas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
-                <div className="lg:col-span-2 glass-panel rounded-xl p-6 flex flex-col">
-                    <h3 className="text-lg font-semibold text-brand-text mb-4 flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-brand-neon" />
-                        Desempenho Comercial
-                    </h3>
-                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-brand-border/50 rounded-lg bg-brand-surface/20">
-                        <p className="text-brand-muted text-sm">Gráfico de Vendas e Ocupação (Em Breve)</p>
+            {/* Grid Principal (Flex-1 para empurrar o layout e min-h-0 para scroll interno se necessário em telas pequenas) */}
+            <div className="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-1">
+                
+                {/* 📊 LINHA 1: Cards de Métricas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+                    
+                    {/* Card 1: Total */}
+                    <div className="glass-panel p-5 rounded-xl border border-brand-border/40 hover:border-brand-border/80 transition-colors flex flex-col justify-between h-36">
+                        <div className="flex justify-between items-start">
+                            <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Total de Painéis</span>
+                            <div className="p-1.5 border border-brand-border/40 rounded-lg bg-brand-surface/30">
+                                <MonitorPlay className="w-4 h-4 text-brand-neon" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-bold text-brand-text mb-1">{totalPanels}</h3>
+                            <div className="text-[10px] text-brand-muted flex items-center gap-1">
+                                <span className="text-green-500 font-medium">+12%</span> desde o mês passado
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Card 2: Disponíveis (Com destaque sutil no border) */}
+                    <div className="glass-panel p-5 rounded-xl border border-brand-neon/30 bg-brand-neon/5 hover:border-brand-neon/60 transition-colors flex flex-col justify-between h-36">
+                        <div className="flex justify-between items-start">
+                            <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Painéis Disponíveis</span>
+                            <div className="p-1.5 border border-brand-neon/20 rounded-lg bg-brand-neon/10">
+                                <CheckCircle className="w-4 h-4 text-brand-neon" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-bold text-brand-text mb-1">{availablePanels}</h3>
+                            <div className="text-[10px] text-brand-muted flex items-center gap-1">
+                                <span className="text-green-500 font-medium">+5%</span> desde o mês passado
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Ocupados */}
+                    <div className="glass-panel p-5 rounded-xl border border-brand-border/40 hover:border-brand-border/80 transition-colors flex flex-col justify-between h-36">
+                        <div className="flex justify-between items-start">
+                            <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Painéis Ocupados</span>
+                            <div className="p-1.5 border border-brand-border/40 rounded-lg bg-brand-surface/30">
+                                <XCircle className="w-4 h-4 text-red-400" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-bold text-brand-text mb-1">{occupiedPanels}</h3>
+                            <div className="text-[10px] text-brand-muted flex items-center gap-1">
+                                Em andamento
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 4: Impactos */}
+                    <div className="glass-panel p-5 rounded-xl border border-brand-border/40 hover:border-brand-border/80 transition-colors flex flex-col justify-between h-36">
+                        <div className="flex justify-between items-start">
+                            <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Impactos Diários</span>
+                            <div className="p-1.5 border border-brand-border/40 rounded-lg bg-brand-surface/30">
+                                <TrendingUp className="w-4 h-4 text-brand-neon" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-bold text-brand-text mb-1">{formatImpacts(totalImpacts)}</h3>
+                            <div className="text-[10px] text-brand-muted flex items-center gap-1">
+                                <span className="text-green-500 font-medium">+8%</span> de alcance estimado
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <div className="glass-panel rounded-xl p-6 flex flex-col">
-                    <h3 className="text-lg font-semibold text-brand-text mb-4">Últimas Atualizações</h3>
-                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-brand-border/50 rounded-lg bg-brand-surface/20">
-                        <p className="text-brand-muted text-sm">Feed de Atividades (Em Breve)</p>
+                {/* 📈 LINHA 2: Gráficos e Feeds (Widgets) */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[300px]">
+                    
+                    {/* Widget 1: Desempenho Comercial (Ocupa 2 colunas) */}
+                    <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-brand-border/40 flex flex-col">
+                        <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2 mb-4">
+                            <BarChart2 className="w-4 h-4 text-brand-neon" />
+                            Desempenho Comercial
+                        </h2>
+                        
+                        {/* Placeholder do Gráfico */}
+                        <div className="flex-1 border-2 border-dashed border-brand-border/40 rounded-xl flex items-center justify-center bg-brand-surface/10">
+                            <p className="text-sm text-brand-muted">Gráfico de Vendas e Ocupação (Em Breve)</p>
+                        </div>
                     </div>
+
+                    {/* Widget 2: Últimas Atualizações (Ocupa 1 coluna) */}
+                    <div className="lg:col-span-1 glass-panel p-5 rounded-xl border border-brand-border/40 flex flex-col">
+                        <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2 mb-4">
+                            <Clock className="w-4 h-4 text-brand-neon" />
+                            Últimas Atualizações
+                        </h2>
+                        
+                        {/* Placeholder do Feed */}
+                        <div className="flex-1 border-2 border-dashed border-brand-border/40 rounded-xl flex items-center justify-center bg-brand-surface/10">
+                            <p className="text-sm text-brand-muted">Feed de Atividades (Em Breve)</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
         </div>
     );
 }

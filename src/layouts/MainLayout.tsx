@@ -1,23 +1,22 @@
 import { Outlet } from 'react-router-dom';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
+import { CookieConsent } from '@/components/CookieConsent'; // 👇 Importe aqui
 
 export function MainLayout() {
     return (
-        <div className="min-h-screen flex flex-col bg-brand-black w-full">
-
-            {/* Nosso novo Header Modular */}
+        <div className="min-h-screen bg-brand-black flex flex-col">
             <Header />
-
-            {/* O Outlet é onde as páginas (Home, Contato, etc) serão injetadas */}
-            {/* pt-20 compensa a altura exata do Header fixo (h-20) */}
-            <main className="flex-1 pt-20 flex flex-col">
+            
+            {/* O conteúdo da página entra aqui */}
+            <main className="flex-1 mt-20">
                 <Outlet />
             </main>
-
-            {/* Footer Temporário */}
-            <footer className="border-t border-brand-border py-8 text-center text-brand-muted text-sm mt-auto">
-                &copy; {new Date().getFullYear()} T3 OOH. Todos os direitos reservados.
-            </footer>
+            
+            <Footer />
+            
+            {/* 👇 O componente flutuante é renderizado no final */}
+            <CookieConsent />
         </div>
     );
 }

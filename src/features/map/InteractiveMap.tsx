@@ -1,21 +1,68 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L, { LatLngBoundsExpression } from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Navigation, Maximize } from 'lucide-react';
 import { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import './map-custom.css'; // 👇 SEU NOVO ARQUIVO DE ESTILOS AQUI
+import { Activity, Maximize } from 'lucide-react';
 
-// 1. Criar o Hook de controle do mapa
-function MapController({ selectedPanelId, panels }: { selectedPanelId: string | null, panels: any[] }) {
+
+interface Panel {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+    impacts: string;
+    size: string;
+    px: string;
+    images?: string[];
+}
+
+interface InteractiveMapProps {
+    panels: Panel[];
+    selectedPanelId?: string | null;
+}
+
+const defaultCenter: [number, number] = [-16.6869, -49.2648];
+
+const worldBounds: L.LatLngBoundsLiteral = [
+    [-90, -180],
+    [90, 180]
+];
+
+// Ícone do Mapa com Glow Neon
+const customMarker = L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div style="background-color: #0f0f11; border: 2px solid #FF5E00; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 94, 0, 0.6); overflow: hidden;">
+          <img src="/t3d 2.png" alt="T3" style="width: 22px; height: 22px; object-fit: contain;" />
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18], // Metade do tamanho para centralizar a âncora do mapa
+});
+
+// Ícone do Mapa para o painel SELECIONADO (Glow Maior)
+const selectedMarker = L.divIcon({
+    className: 'custom-marker-selected',
+    html: `
+      <div style="background-color: #0f0f11; border: 3px solid #FFFFFF; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(255, 94, 0, 1); z-index: 1000;">
+          <img src="/t3d 2.png" alt="T3" style="width: 28px; height: 28px; object-fit: contain;" />
+      </div>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+});
+
+function MapController({ selectedPanelId, panels }: { selectedPanelId?: string | null, panels: Panel[] }) {
     const map = useMap();
 
     useEffect(() => {
         if (selectedPanelId) {
             const panel = panels.find(p => p.id === selectedPanelId);
-            if (panel) {
-                // Voa para o pino com um zoom mais próximo (16)
-                map.flyTo([panel.lat, panel.lng], 16, {
-                    duration: 1.5
-                });
+            if (panel && panel.lat && panel.lng) {
+                // Animação suave para o pino clicado
+                map.flyTo([panel.lat, panel.lng], 16, { duration: 1.2, easeLinearity: 0.25 });
             }
         }
     }, [selectedPanelId, panels, map]);
@@ -23,90 +70,105 @@ function MapController({ selectedPanelId, panels }: { selectedPanelId: string | 
     return null;
 }
 
-const createCustomIcon = () => {
-    return L.divIcon({
-        className: 'custom-marker',
-        html: `
-        <div style="background-color: #1C1C1E; border: 2px solid #FF5E00; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255, 94, 0, 0.4); transition: transform 0.2s;">
-            <div style="background-color: #FF5E00; width: 10px; height: 10px; border-radius: 50%;"></div>
-        </div>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14],
-    });
-};
+export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps) {
 
-const neonMarker = createCustomIcon();
+    const getStatusDisplay = (status: string) => {
+        switch (status) {
+            case 'AVAILABLE':
+                return { text: 'Disponível', dot: 'bg-[#25D366]', color: 'text-[#25D366]' };
+            case 'OCCUPIED':
+                return { text: 'Ocupado', dot: 'bg-red-500', color: 'text-red-500' };
+            case 'MAINTENANCE':
+                return { text: 'Manutenção', dot: 'bg-yellow-500', color: 'text-yellow-500' };
+            default:
+                return { text: 'Desconhecido', dot: 'bg-gray-500', color: 'text-gray-500' };
+        }
+    };
 
-interface InteractiveMapProps {
-    panels: any[];
-    selectedPanelId?: string | null; // Adicionado aqui
-}
-
-export function InteractiveMap({ panels = [], selectedPanelId }: InteractiveMapProps) {
-    const centerPosition: [number, number] = [-16.6869, -49.2648];
-
-    const worldBounds: LatLngBoundsExpression = [
-        [-90, -180],
-        [90, 180]
-    ];
+    const defaultCenter: [number, number] = [-16.6869, -49.2648];
 
     return (
-        <div className="w-full h-full bg-brand-black relative z-0">
-            <MapContainer
-                center={centerPosition}
-                zoom={13}
-                minZoom={4}
-                maxBounds={worldBounds}
-                maxBoundsViscosity={1.0}
-                scrollWheelZoom={true}
-                className="w-full h-full outline-none"
-                style={{ height: '100%', width: '100%', backgroundColor: '#000000' }}
-                zoomControl={false}
-            >
-                <TileLayer
-                    noWrap={true}
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                />
+        <MapContainer
+            center={defaultCenter}
+            zoom={13}
+            minZoom={3} // Impede o usuário de tirar o zoom excessivamente
+            maxBounds={worldBounds} // Trava a navegação nos limites do mapa
+            maxBoundsViscosity={1.0} // Cria o efeito de "parede invisível" elástica
+            className="w-full h-full outline-none z-0"
+            zoomControl={false}
+        >
+            <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
+            />
 
-                {/* 2. Adicionar o Controller aqui dentro do MapContainer */}
-                <MapController selectedPanelId={selectedPanelId || null} panels={panels} />
+            <MapController selectedPanelId={selectedPanelId} panels={panels} />
 
-                {panels.map((panel) => (
+            {panels.map((panel) => {
+                const statusInfo = getStatusDisplay(panel.status);
+                const isSelected = panel.id === selectedPanelId;
+
+                return (
                     <Marker
                         key={panel.id}
                         position={[panel.lat, panel.lng]}
-                        icon={neonMarker}
+                        // O pino muda se for o painel clicado na lista lateral!
+                        icon={isSelected ? selectedMarker : customMarker}
+                        zIndexOffset={isSelected ? 1000 : 0}
                     >
-                        <Popup className="premium-popup">
-                            <div className="p-2 min-w-[200px]">
-                                {panel.images && panel.images.length > 0 && (
-                                    <div className="w-full h-24 mb-3 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
-                                        <img src={panel.images[0]} alt={panel.name} className="w-full h-full object-cover" />
+                        <Popup className="custom-popup" closeButton={true}>
+                            <div className="flex flex-col relative w-[260px]">
+
+                                {/* Gradiente escuro sobre a foto pra não atrapalhar o X nativo */}
+                                <div className="relative h-32 w-full">
+                                    <img
+                                        src={panel.images?.[0] || '/placeholder.jpg'}
+                                        alt={panel.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11] via-transparent to-[#0f0f11]/60" />
+                                </div>
+
+                                <div className="px-5 pb-5 pt-2 flex flex-col gap-3">
+                                    {/* Título e Status */}
+                                    <div>
+                                        <h3 className="font-extrabold text-white text-base leading-tight mb-2 drop-shadow-md">
+                                            {panel.name}
+                                        </h3>
+                                        <div className="flex items-center gap-2 bg-brand-surface/50 border border-brand-border/30 px-2.5 py-1.5 rounded-lg w-fit">
+                                            <span className={`w-2 h-2 rounded-full ${statusInfo.dot} shadow-[0_0_8px_currentColor] animate-pulse`} />
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${statusInfo.color}`}>
+                                                {statusInfo.text}
+                                            </span>
+                                        </div>
                                     </div>
-                                )}
-                                <h4 className="font-bold text-gray-900 text-sm mb-2 leading-tight">{panel.name}</h4>
-                                <div className="flex flex-col gap-1.5 text-xs text-gray-600">
-                                    <span className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${panel.status?.toLowerCase() === 'disponível' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                        <span className="font-medium">{panel.status || 'Disponível'}</span>
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <Navigation className="w-3.5 h-3.5 text-brand-neon" />
-                                        Impactos: <span className="font-medium">{panel.impacts}</span>
-                                    </span>
-                                    <span className="flex items-center gap-1.5 border-t border-gray-200 pt-1.5 mt-0.5">
-                                        <Maximize className="w-3.5 h-3.5 text-gray-400" />
-                                        Tamanho: {panel.size} ({panel.px})
-                                    </span>
+
+                                    <hr className="border-brand-border/30" />
+
+                                    {/* Grid de Informações Rápidas */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                                                <Activity className="w-3 h-3 text-brand-neon" />
+                                                Impacto/dia
+                                            </span>
+                                            <span className="text-sm font-bold text-white">{panel.impacts}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                                                <Maximize className="w-3 h-3 text-brand-neon" />
+                                                Formato
+                                            </span>
+                                            <span className="text-sm font-bold text-white">{panel.size}</span>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </Popup>
                     </Marker>
-                ))}
-            </MapContainer>
-            
-        </div>
+                );
+            })}
+        </MapContainer>
     );
 }

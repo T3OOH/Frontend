@@ -6,6 +6,8 @@ import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Home } from '@/pages/Home';
 import { Contact } from '@/pages/Contact';
 import { Map } from '@/pages/Map';
+// 👇 1. Importe a nova página de Serviços aqui
+import { Services } from '@/pages/Services'; 
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Overview } from '@/pages/dashboard/Overview';
@@ -41,6 +43,8 @@ export function AppRoutes() {
                         <Route index element={<Home />} />
                         <Route path="contato" element={<Contact />} />
                         <Route path="mapa" element={<Map />} />
+                        {/* 👇 2. Adicione a rota pública apontando para o componente */}
+                        <Route path="servicos" element={<Services />} /> 
                     </Route>
 
                     <Route path="/login" element={<Login />} />
