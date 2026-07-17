@@ -3,13 +3,16 @@ import { Search, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { panelsService, PanelData } from '@/services/panels.service';
+import { CustomSelect } from '@/components/CustomSelect';
+import { useToast } from '@/contexts/ToastContext';
 
 export function Panels() {
     const [panelsList, setPanelsList] = useState<PanelData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    
+    const toast = useToast();
 
     useEffect(() => {
         async function fetchPanels() {
@@ -18,21 +21,23 @@ export function Panels() {
                 setPanelsList(data);
             } catch (error) {
                 console.error("Erro ao buscar painéis:", error);
+                toast.error("Erro ao buscar painéis do servidor.");
             } finally {
                 setIsLoading(false);
             }
         }
         fetchPanels();
-    }, []);
+    }, [toast]);
 
     const handleDelete = async (id: string) => {
         if (window.confirm('Tem certeza que deseja excluir este painel permanentemente?')) {
             try {
                 await panelsService.deletePanel(id);
                 setPanelsList(panelsList.filter(p => p.id !== id));
+                toast.success("Painel deletado com sucesso!");
             } catch (error) {
                 console.error("Erro ao deletar:", error);
-                alert("Falha ao deletar o painel.");
+                toast.error("Falha ao deletar o painel.");
             }
         }
     };
@@ -43,10 +48,16 @@ export function Panels() {
         return matchBusca && matchStatus;
     });
 
+    const statusOptions = [
+        { value: '', label: 'Todos os Status' },
+        { value: 'AVAILABLE', label: 'Disponível' },
+        { value: 'OCCUPIED', label: 'Ocupado' },
+        { value: 'MAINTENANCE', label: 'Manutenção' }
+    ];
+
     return (
-        // Wrapper ocupa 100% da altura disponível no Main
         <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
-            
+
             {/* Header (Fixo) */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0 mb-6">
                 <div>
@@ -61,42 +72,38 @@ export function Panels() {
                 </Link>
             </div>
 
-            {/* Filtros (Fixos) */}
-            <div className="glass-panel p-3 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between flex-shrink-0 mb-4 border-brand-border/40">
+            {/* Filtros (Fixos) - z-20 para garantir que o dropdown do CustomSelect fique acima da tabela */}
+            <div className="glass-panel p-3 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between flex-shrink-0 mb-4 border-brand-border/40 relative z-20">
                 <div className="w-full sm:w-[400px] relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
                     <input
                         placeholder="Buscar por avenida ou setor..."
-                        className="w-full bg-brand-black/50 border border-brand-border/60 rounded-lg pl-9 pr-4 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors"
+                        className="w-full bg-brand-black/50 border border-brand-border/60 rounded-xl pl-9 pr-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="w-full sm:w-auto">
-                    <select
-                        className="w-full sm:w-auto bg-brand-black/50 border border-brand-border/60 rounded-lg px-4 py-2 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors"
+                <div className="w-full sm:w-64 relative">
+                    <CustomSelect
+                        options={statusOptions}
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        <option value="">Todos os Status</option>
-                        <option value="AVAILABLE">Disponível</option>
-                        <option value="OCCUPIED">Ocupado</option>
-                        <option value="MAINTENANCE">Manutenção</option>
-                    </select>
+                        onChange={setStatusFilter}
+                        placeholder="Todos os Status"
+                    />
                 </div>
             </div>
 
-            {/* Tabela (Área com Scroll Interno) */}
-            <div className="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col relative border-brand-border/40">
+            {/* Tabela (Área com Scroll Interno) - z-10 para ficar abaixo do dropdown dos filtros */}
+            <div className="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col relative border-brand-border/40 z-10">
                 {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-brand-black/50 backdrop-blur-sm">
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-black/50 backdrop-blur-sm">
                         <Loader2 className="w-6 h-6 text-brand-neon animate-spin" />
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 bg-[#0d0d0f] z-10 shadow-sm">
+                        <thead className="sticky top-0 bg-[#0d0d0f] z-40 shadow-sm">
                             <tr className="border-b border-brand-border/40">
                                 <th className="px-5 py-3.5 text-[10px] font-semibold text-brand-muted uppercase tracking-widest">Localização</th>
                                 <th className="px-5 py-3.5 text-[10px] font-semibold text-brand-muted uppercase tracking-widest">Status</th>
@@ -105,7 +112,7 @@ export function Panels() {
                                 <th className="px-5 py-3.5 text-[10px] font-semibold text-brand-muted uppercase tracking-widest text-right">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-brand-border/20">
+                        <tbody className="divide-y divide-brand-border/20 relative z-0">
                             {!isLoading && filteredPanels.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-5 py-8 text-center text-sm text-brand-muted">
@@ -120,17 +127,15 @@ export function Panels() {
                                             <div className="text-[11px] text-brand-muted">{panel.city || 'Goiânia'} - {panel.state || 'GO'}</div>
                                         </td>
                                         <td className="px-5 py-3">
-                                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium border ${
-                                                panel.status === 'AVAILABLE' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium border ${panel.status === 'AVAILABLE' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                                                 panel.status === 'OCCUPIED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                            }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                                    panel.status === 'AVAILABLE' ? 'bg-green-500' :
+                                                    'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                }`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${panel.status === 'AVAILABLE' ? 'bg-green-500' :
                                                     panel.status === 'OCCUPIED' ? 'bg-red-500' : 'bg-yellow-500'
-                                                }`} />
-                                                {panel.status === 'AVAILABLE' ? 'Disponível' : 
-                                                 panel.status === 'OCCUPIED' ? 'Ocupado' : 'Manutenção'}
+                                                    }`} />
+                                                {panel.status === 'AVAILABLE' ? 'Disponível' :
+                                                    panel.status === 'OCCUPIED' ? 'Ocupado' : 'Manutenção'}
                                             </span>
                                         </td>
                                         <td className="px-5 py-3 text-sm font-medium text-brand-text">

@@ -23,7 +23,7 @@ export function Footer() {
                             />
                         </Link>
                         <p className="text-sm text-brand-muted leading-relaxed mb-6">
-                            A plataforma definitiva para gestão e locação de painéis de LED. Posicionamos sua marca com inteligência, métricas e alto impacto visual.
+                            A plataforma inteligente para gestão e locação de painéis de LED em todo o Brasil. Conectamos anunciantes aos melhores pontos de mídia OOH com tecnologia, métricas e auditoria em tempo real.
                         </p>
                         <div className="flex items-center gap-4">
                             {/* 👇 SVG do Instagram */}
@@ -36,7 +36,7 @@ export function Footer() {
                             </a>
                             
                             {/* 👇 SVG do LinkedIn */}
-                            <a href="#" className="w-10 h-10 rounded-lg bg-brand-surface border border-brand-border/50 flex items-center justify-center text-brand-muted hover:text-brand-neon hover:border-brand-neon/50 transition-all">
+                            <a href="https://www.linkedin.com/company/agencia-t3/?originalSubdomain=br" className="w-10 h-10 rounded-lg bg-brand-surface border border-brand-border/50 flex items-center justify-center text-brand-muted hover:text-brand-neon hover:border-brand-neon/50 transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                                     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
                                     <rect width="4" height="12" x="2" y="9"></rect>
@@ -79,11 +79,11 @@ export function Footer() {
                             </li>
                             <li className="flex items-center gap-3 text-sm text-brand-muted">
                                 <Phone className="w-5 h-5 text-brand-neon flex-shrink-0" />
-                                <span>(00) 00000-0000</span>
+                                <span>(62) 9320-6010</span>
                             </li>
                             <li className="flex items-center gap-3 text-sm text-brand-muted">
                                 <Mail className="w-5 h-5 text-brand-neon flex-shrink-0" />
-                                <span>contato@t3ooh.com.br</span>
+                                <span>contato@t3comunicacao.com</span>
                             </li>
                         </ul>
                     </div>
