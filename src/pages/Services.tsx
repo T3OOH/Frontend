@@ -112,7 +112,14 @@ export function Services() {
         return num.toLocaleString('pt-BR');
     };
 
+    // Função para formatar o dinheiro (R$)
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
     const totalImpacts = cart.reduce((acc, panel) => acc + parseImpacts(panel.impacts), 0);
+    // Soma o preço de todos os painéis no carrinho
+    const totalPrice = cart.reduce((acc, panel) => acc + (Number(panel.price) || 0), 0);
 
     const sendToWhatsApp = () => {
         const phone = "5562999999999"; 
@@ -120,7 +127,14 @@ export function Services() {
         cart.forEach((p, index) => {
             text += `${index + 1}. *${p.name}* (${p.city}/${p.state})\n`;
         });
-        text += `\n📊 *Impacto Total Estimado:* ${formatNumber(totalImpacts)} visualizações/dia.\n\nGostaria de negociar os valores e formatos. Podemos conversar?`;
+        
+        text += `\n📊 *Impacto Total Estimado:* ${formatNumber(totalImpacts)} visualizações/dia.`;
+        
+        if (totalPrice > 0) {
+            text += `\n💰 *Investimento Mensal Estimado:* ${formatCurrency(totalPrice)}`;
+        }
+        
+        text += `\n\nGostaria de negociar os valores e formatos. Podemos conversar?`;
         
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
@@ -410,9 +424,16 @@ export function Services() {
                                                     <h4 className="text-sm font-bold text-white leading-tight mb-1 pr-6">{p.name}</h4>
                                                     <p className="text-xs text-brand-muted mb-auto">{p.city}</p>
                                                     <div className="flex justify-between items-end mt-2">
-                                                        <span className="text-xs font-bold text-brand-neon bg-brand-neon/10 px-2 py-1 rounded">
-                                                            {p.impacts} impactos
-                                                        </span>
+                                                        <div className="flex flex-col gap-1">
+                                                            {p.price && (
+                                                                <span className="text-[10px] font-bold text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded w-fit">
+                                                                    {formatCurrency(Number(p.price))}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[10px] font-bold text-brand-neon bg-brand-neon/10 px-2 py-0.5 rounded w-fit">
+                                                                {p.impacts} impactos
+                                                            </span>
+                                                        </div>
                                                         <button onClick={() => toggleInCart(p)} className="text-[10px] text-red-500 font-bold uppercase tracking-wider hover:text-red-400 bg-red-500/10 px-2 py-1 rounded transition-colors">
                                                             Remover
                                                         </button>
@@ -425,11 +446,17 @@ export function Services() {
                             </div>
 
                             <div className="bg-brand-surface/40 p-6 border-t border-brand-border/30 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] shrink-0">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Impacto Somado</p>
-                                        <p className="text-3xl font-black text-brand-neon drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]">{formatNumber(totalImpacts)}</p>
-                                        <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia alcançadas</p>
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex flex-col gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</p>
+                                            <p className="text-3xl font-black text-brand-neon drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]">{formatNumber(totalImpacts)}</p>
+                                            <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia alcançadas</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</p>
+                                            <p className="text-xl font-black text-[#25D366] drop-shadow-[0_0_10px_rgba(37,211,102,0.3)]">{formatCurrency(totalPrice)}</p>
+                                        </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Telas</p>
