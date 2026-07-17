@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 
 export function Login() {
     const navigate = useNavigate();
-    const [apiError, setApiError] = useState('');
+
     const { signIn, isAuthenticated } = useAuth(); 
     const toast = useToast(); // ✨ Instanciando o Toast
 
@@ -27,8 +27,7 @@ export function Login() {
         resolver: zodResolver(loginSchema),
     });
 
-    const onSubmit = async (data: LoginFormData) => {
-        setApiError(''); 
+    const onSubmit = async (data: LoginFormData) => { 
         try {
             const response = await authService.login(data);
             signIn(response.token, response.user);

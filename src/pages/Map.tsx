@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
-import { MapPin, Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, Activity } from 'lucide-react';
+import { Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, Activity } from 'lucide-react';
 import { panelsService } from '@/services/panels.service';
 import { api } from '@/lib/axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,6 @@ export function Map() {
     const [panels, setPanels] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    // A barra agora começa fechada no mobile e aberta no desktop para melhor UX inicial
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
     const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
     const [cart, setCart] = useState<any[]>([]);

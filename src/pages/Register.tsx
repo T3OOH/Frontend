@@ -12,7 +12,6 @@ import { motion } from 'framer-motion';
 
 export function Register() {
     const navigate = useNavigate();
-    const [apiError, setApiError] = useState('');
     const [isSuccess, setIsSuccess] = useState(false);
     const toast = useToast(); // ✨
 
@@ -21,7 +20,6 @@ export function Register() {
     });
 
     const onSubmit = async (data: RegisterFormData) => {
-        setApiError(''); 
         try {
             await authService.register(data);
             setIsSuccess(true);

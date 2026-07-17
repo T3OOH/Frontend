@@ -23,8 +23,6 @@ interface InteractiveMapProps {
     selectedPanelId?: string | null;
 }
 
-const defaultCenter: [number, number] = [-16.6869, -49.2648];
-
 const worldBounds: L.LatLngBoundsLiteral = [
     [-90, -180],
     [90, 180]
