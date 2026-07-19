@@ -118,7 +118,6 @@ export function Services() {
     };
 
     const totalImpacts = cart.reduce((acc, panel) => acc + parseImpacts(panel.impacts), 0);
-    // Soma o preço de todos os painéis no carrinho
     const totalPrice = cart.reduce((acc, panel) => acc + (Number(panel.price) || 0), 0);
 
     const sendToWhatsApp = () => {
@@ -157,19 +156,19 @@ export function Services() {
                     
                     <button 
                         onClick={() => setIsSidebarOpen(true)}
-                        className="relative bg-brand-surface border border-brand-border/50 px-5 py-3 rounded-xl text-brand-text font-bold hover:border-brand-neon/50 hover:text-brand-neon transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,94,0,0.2)]"
+                        className="relative bg-[#111113] border border-brand-border/50 px-5 py-3 rounded-xl text-white font-bold hover:border-brand-neon hover:text-brand-neon transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,94,0,0.2)]"
                     >
                         <ShoppingCart className="w-5 h-5" />
                         Ver Pedido
                         {cart.length > 0 && (
-                            <span className="absolute -top-2 -right-2 w-6 h-6 bg-brand-neon text-brand-black text-xs font-black rounded-full flex items-center justify-center animate-bounce shadow-[0_0_10px_rgba(255,94,0,0.6)]">
+                            <span className="absolute -top-2 -right-2 w-6 h-6 bg-brand-neon text-black text-xs font-black rounded-full flex items-center justify-center animate-bounce shadow-[0_0_10px_rgba(255,94,0,0.6)]">
                                 {cart.length}
                             </span>
                         )}
                     </button>
                 </div>
 
-                <div className="glass-panel p-4 rounded-2xl mb-10 flex flex-col md:flex-row gap-4 border border-brand-border/40 shadow-lg relative z-20">
+                <div className="glass-panel p-4 rounded-2xl mb-10 flex flex-col md:flex-row gap-4 border border-brand-border/40 shadow-lg relative z-20 bg-[#111113]/80 backdrop-blur-xl">
                     <div className="flex-1 relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
                         <input 
@@ -177,7 +176,7 @@ export function Services() {
                             placeholder="Buscar por avenida, localização..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-brand-surface/30 border border-brand-border/50 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-brand-muted/70 focus:outline-none focus:border-brand-neon transition-all"
+                            className="w-full bg-[#0A0A0B] border border-brand-border/50 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-brand-muted/70 focus:outline-none focus:border-brand-neon transition-all shadow-inner"
                         />
                     </div>
                     
@@ -216,7 +215,7 @@ export function Services() {
                         <p className="text-sm text-brand-muted text-center max-w-md">Não encontramos resultados para a sua busca atual. Tente limpar os filtros ou buscar por outra avenida.</p>
                         <button 
                             onClick={() => { setSearchTerm(''); setSelectedState(''); setSelectedCity(''); }}
-                            className="mt-6 bg-brand-surface border border-brand-border/50 px-6 py-2 rounded-xl text-sm font-bold hover:border-brand-neon hover:text-brand-neon transition-all"
+                            className="mt-6 bg-[#111113] border border-brand-border/50 px-6 py-2 rounded-xl text-sm font-bold text-white hover:border-brand-neon hover:text-brand-neon transition-all"
                         >
                             Limpar Filtros
                         </button>
@@ -230,20 +229,20 @@ export function Services() {
                                 <motion.div 
                                     key={panel.id}
                                     whileHover={{ y: -5 }}
-                                    className={`glass-panel rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col group ${
-                                        inCart ? 'border-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-brand-neon/5' : 'border-brand-border/40 hover:border-brand-neon/40'
+                                    className={`bg-[#111113] rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col group ${
+                                        inCart ? 'border-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-brand-neon/5' : 'border-white/5 hover:border-[#FF5E00]/40'
                                     }`}
                                 >
-                                    <div className="relative h-48 bg-brand-black overflow-hidden">
+                                    <div className="relative h-48 bg-black overflow-hidden border-b border-white/5">
                                         <img 
                                             src={panel.images?.[0] || '/placeholder.jpg'} 
                                             alt={panel.name} 
                                             className={`w-full h-full object-cover transition-transform duration-500 ${inCart ? '' : 'group-hover:scale-110'}`}
                                         />
-                                        <div className="absolute inset-0 bg-brand-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                                             <button 
                                                 onClick={() => setSelectedPanel(panel)}
-                                                className="bg-brand-neon text-brand-black px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-transform"
+                                                className="bg-[#FF5E00] text-white px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-transform shadow-[0_0_15px_rgba(255,94,0,0.5)] border-none"
                                             >
                                                 <Eye className="w-4 h-4" /> Ver Detalhes
                                             </button>
@@ -255,36 +254,44 @@ export function Services() {
                                             <h3 className="text-base font-bold text-white leading-tight line-clamp-2">{panel.name}</h3>
                                         </div>
                                         <p className="text-xs text-brand-muted flex items-center gap-1.5 mb-4">
-                                            <MapPin className="w-3.5 h-3.5" /> {panel.city || 'Cidade'} - {panel.state || 'UF'}
+                                            <MapPin className="w-3.5 h-3.5 text-[#FF5E00]" /> {panel.city || 'Cidade'} - {panel.state || 'UF'}
                                         </p>
                                         
-                                        <div className="mt-auto grid grid-cols-2 gap-2 mb-4">
-                                            <div className="bg-brand-surface/50 rounded-lg p-2 text-center border border-brand-border/30">
+                                        <div className="mt-auto grid grid-cols-2 gap-2 mb-3">
+                                            <div className="bg-[#0A0A0B] rounded-lg p-2 text-center border border-white/5 shadow-inner">
                                                 <span className="block text-[9px] text-brand-muted uppercase tracking-wider mb-0.5">Formato</span>
                                                 <span className="text-xs font-semibold text-white">{panel.size}</span>
                                             </div>
-                                            <div className="bg-brand-surface/50 rounded-lg p-2 text-center border border-brand-border/30">
+                                            <div className="bg-[#0A0A0B] rounded-lg p-2 text-center border border-white/5 shadow-inner">
                                                 <span className="block text-[9px] text-brand-muted uppercase tracking-wider mb-0.5">Impacto/Dia</span>
                                                 <span className="text-xs font-semibold text-white flex items-center justify-center gap-1">
-                                                    <Activity className="w-3 h-3 text-brand-neon" /> {panel.impacts}
+                                                    <Activity className="w-3 h-3 text-[#FF5E00]" /> {panel.impacts}
                                                 </span>
                                             </div>
                                         </div>
 
+                                        {/* Box de Preço Adicionado no Card */}
+                                        <div className="mb-4 flex items-center justify-between bg-[#25D366]/5 border border-[#25D366]/20 rounded-lg p-2.5">
+                                            <span className="text-[10px] font-bold text-[#25D366] uppercase tracking-wider">Investimento</span>
+                                            <span className="text-sm font-black text-[#25D366]">{formatCurrency(Number(panel.price || 0))}</span>
+                                        </div>
+
                                         <button
                                             onClick={() => toggleInCart(panel)}
-                                            className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
+                                            className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
                                                 inCart
-                                                    ? 'bg-green-500/10 text-green-500 border border-green-500/30 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 group/btn'
-                                                    : 'bg-brand-surface border border-brand-border/60 text-white hover:border-brand-neon hover:text-brand-neon'
+                                                    ? 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 group/btn'
+                                                    : 'bg-[#0A0A0B] border border-white/10 text-white hover:border-[#FF5E00] hover:text-[#FF5E00] hover:bg-[#FF5E00]/5'
                                             }`}
                                         >
                                             {inCart ? (
-                                                <span className="group-hover/btn:hidden flex items-center gap-2"><Check className="w-4 h-4" /> Selecionado</span>
+                                                <>
+                                                    <span className="group-hover/btn:hidden flex items-center gap-2"><Check className="w-4 h-4" /> Selecionado</span>
+                                                    <span className="hidden group-hover/btn:flex items-center gap-2"><X className="w-4 h-4" /> Remover</span>
+                                                </>
                                             ) : (
                                                 <><ShoppingCart className="w-4 h-4" /> Adicionar</>
                                             )}
-                                            {inCart && <span className="hidden group-hover/btn:flex items-center gap-2"><X className="w-4 h-4" /> Remover</span>}
                                         </button>
                                     </div>
                                 </motion.div>
@@ -300,17 +307,17 @@ export function Services() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-6 bg-brand-black/90 backdrop-blur-md"
+                        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-6 bg-black/90 backdrop-blur-md"
                     >
                         <motion.div 
                             initial={{ scale: 0.95, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
-                            className="bg-[#0f0f11] border border-brand-border/50 rounded-3xl w-full max-w-5xl h-[85vh] md:h-[70vh] flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)] relative"
+                            className="bg-[#0f0f11] border border-white/10 rounded-3xl w-full max-w-5xl h-[85vh] md:h-[75vh] flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)] relative"
                         >
                             <button 
                                 onClick={() => setSelectedPanel(null)} 
-                                className="absolute top-4 right-4 z-10 w-10 h-10 bg-brand-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-brand-neon hover:text-black transition-colors border border-brand-border/50"
+                                className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-[#FF5E00] hover:text-white transition-colors border border-white/20"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -326,49 +333,71 @@ export function Services() {
                                     <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                                     <Marker position={[selectedPanel.lat, selectedPanel.lng]} icon={customMarker} />
                                 </MapContainer>
-                                <div className="absolute top-4 left-4 z-[400] bg-brand-black/70 backdrop-blur-md border border-brand-border px-4 py-2 rounded-xl">
-                                    <p className="text-xs font-bold text-brand-neon uppercase tracking-widest flex items-center gap-2">
+                                <div className="absolute top-4 left-4 z-[400] bg-[#111113]/80 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl">
+                                    <p className="text-xs font-bold text-[#FF5E00] uppercase tracking-widest flex items-center gap-2">
                                         <MapPin className="w-4 h-4" /> Localização Exata
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="w-full md:w-1/2 h-full flex flex-col bg-brand-surface/30">
+                            <div className="w-full md:w-1/2 h-full flex flex-col bg-[#111113]">
                                 <div className="h-[45%] w-full relative">
                                     <img 
                                         src={selectedPanel.images?.[0] || '/placeholder.jpg'} 
                                         alt={selectedPanel.name} 
                                         className="w-full h-full object-cover"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11] to-transparent" />
+                                    {/* Ajuste do gradiente para dar destaque absurdo as informações */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/80 to-transparent" />
                                 </div>
                                 
-                                <div className="flex-1 p-6 flex flex-col justify-between relative -mt-10 z-10">
+                                <div className="flex-1 p-6 flex flex-col justify-between relative -mt-16 z-10">
                                     <div>
-                                        <h2 className="text-2xl font-extrabold text-white mb-2 leading-tight">{selectedPanel.name}</h2>
+                                        <h2 className="text-3xl font-extrabold text-white mb-2 leading-tight drop-shadow-md">{selectedPanel.name}</h2>
                                         <p className="text-sm text-brand-muted mb-6 flex items-center gap-2">
-                                            {selectedPanel.city} - {selectedPanel.state}
+                                            <MapPin className="w-4 h-4 text-[#FF5E00]" /> {selectedPanel.city} - {selectedPanel.state}
                                         </p>
 
-                                        <div className="grid grid-cols-2 gap-4 mb-6">
-                                            <div className="p-4 bg-brand-black/50 border border-brand-border/40 rounded-2xl">
-                                                <p className="text-[10px] text-brand-muted uppercase tracking-widest mb-1">Formato</p>
-                                                <p className="text-lg font-bold text-white">{selectedPanel.size}</p>
-                                                <p className="text-xs text-brand-muted mt-1">Resolução: {selectedPanel.px}</p>
+                                        {/* Grid de Informações Adicionado o Box de Preço */}
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                                            <div className="p-4 bg-[#0A0A0B] border border-white/5 rounded-2xl flex flex-col justify-center">
+                                                <p className="text-[9px] text-brand-muted uppercase tracking-widest mb-1">Formato</p>
+                                                <p className="text-base font-bold text-white">{selectedPanel.size}</p>
+                                                <p className="text-[10px] text-brand-muted mt-1">{selectedPanel.px || 'Alta Resolução'}</p>
                                             </div>
-                                            <div className="p-4 bg-brand-neon/5 border border-brand-neon/20 rounded-2xl">
-                                                <p className="text-[10px] text-brand-neon uppercase tracking-widest mb-1">Impactos</p>
-                                                <p className="text-lg font-bold text-white">{selectedPanel.impacts}</p>
-                                                <p className="text-xs text-brand-muted mt-1">Estimativa diária</p>
+                                            
+                                            <div className="p-4 bg-[#FF5E00]/5 border border-[#FF5E00]/20 rounded-2xl flex flex-col justify-center">
+                                                <p className="text-[9px] text-[#FF5E00] uppercase tracking-widest mb-1">Impactos</p>
+                                                <p className="text-base font-bold text-white flex items-center gap-1">
+                                                    {selectedPanel.impacts}
+                                                </p>
+                                                <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia</p>
+                                            </div>
+
+                                            <div className="p-4 bg-[#25D366]/10 border border-[#25D366]/30 rounded-2xl flex flex-col justify-center col-span-2 md:col-span-1">
+                                                <p className="text-[9px] text-[#25D366] uppercase tracking-widest mb-1">Investimento</p>
+                                                <p className="text-lg font-black text-[#25D366] leading-tight">
+                                                    {formatCurrency(Number(selectedPanel.price || 0))}
+                                                </p>
+                                                <p className="text-[10px] text-[#25D366]/70 mt-1">Mensal</p>
                                             </div>
                                         </div>
                                     </div>
 
+                                    {/* Botão Dinâmico no Modal */}
                                     <button
                                         onClick={() => toggleInCart(selectedPanel)}
-                                        className="w-full bg-brand-neon text-black font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(255,94,0,0.3)] hover:shadow-[0_0_30px_rgba(255,94,0,0.5)] transition-all flex justify-center items-center gap-2 tracking-wide uppercase text-sm"
+                                        className={`w-full font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 tracking-wide uppercase text-sm ${
+                                            cart.some(item => item.id === selectedPanel.id)
+                                                ? 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20'
+                                                : 'bg-[#FF5E00] text-white shadow-[0_0_20px_rgba(255,94,0,0.3)] hover:shadow-[0_0_30px_rgba(255,94,0,0.5)] border border-transparent'
+                                        }`}
                                     >
-                                        <ShoppingCart className="w-5 h-5" /> Adicionar à Seleção
+                                        {cart.some(item => item.id === selectedPanel.id) ? (
+                                            <><X className="w-5 h-5" /> Remover da Seleção</>
+                                        ) : (
+                                            <><ShoppingCart className="w-5 h-5" /> Adicionar à Seleção</>
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -393,14 +422,14 @@ export function Services() {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-                            className="fixed top-20 right-0 h-[calc(100vh-80px)] w-full md:w-[450px] bg-[#0A0A0B] border-l border-brand-border/50 z-[9990] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
+                            className="fixed top-20 right-0 h-[calc(100vh-80px)] w-full md:w-[450px] bg-[#0A0A0B] border-l border-white/10 z-[9990] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
                         >
-                            <div className="p-6 border-b border-brand-border/30 flex justify-between items-center bg-brand-surface/20 shrink-0">
+                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0">
                                 <h2 className="text-xl font-bold text-white flex items-center gap-3 tracking-tight">
-                                    <ShoppingCart className="w-5 h-5 text-brand-neon" /> 
+                                    <ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> 
                                     Resumo do Pedido
                                 </h2>
-                                <button onClick={() => setIsSidebarOpen(false)} className="text-brand-muted hover:text-white transition-colors bg-brand-surface/50 p-2 rounded-full">
+                                <button onClick={() => setIsSidebarOpen(false)} className="text-brand-muted hover:text-white transition-colors bg-[#0A0A0B] border border-white/5 p-2 rounded-full">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
@@ -415,22 +444,22 @@ export function Services() {
                                 ) : (
                                     <div className="flex flex-col gap-4">
                                         {cart.map((p, index) => (
-                                            <div key={p.id} className="flex gap-4 p-4 bg-brand-surface/20 border border-brand-border/40 rounded-xl relative">
-                                                <div className="w-6 h-6 absolute -top-3 -left-3 bg-brand-neon text-black font-bold text-xs rounded-full flex items-center justify-center border-4 border-[#0A0A0B]">
+                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl relative">
+                                                <div className="w-6 h-6 absolute -top-3 -left-3 bg-[#FF5E00] text-white font-bold text-xs rounded-full flex items-center justify-center border-4 border-[#0A0A0B]">
                                                     {index + 1}
                                                 </div>
-                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-20 h-20 rounded-lg object-cover border border-brand-border/30 bg-black shrink-0" />
+                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-20 h-20 rounded-lg object-cover border border-white/5 bg-black shrink-0" />
                                                 <div className="flex-1 flex flex-col">
                                                     <h4 className="text-sm font-bold text-white leading-tight mb-1 pr-6">{p.name}</h4>
                                                     <p className="text-xs text-brand-muted mb-auto">{p.city}</p>
                                                     <div className="flex justify-between items-end mt-2">
                                                         <div className="flex flex-col gap-1">
                                                             {p.price && (
-                                                                <span className="text-[10px] font-bold text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded w-fit">
+                                                                <span className="text-[10px] font-bold text-[#25D366] bg-[#25D366]/10 border border-[#25D366]/20 px-2 py-0.5 rounded w-fit">
                                                                     {formatCurrency(Number(p.price))}
                                                                 </span>
                                                             )}
-                                                            <span className="text-[10px] font-bold text-brand-neon bg-brand-neon/10 px-2 py-0.5 rounded w-fit">
+                                                            <span className="text-[10px] font-bold text-[#FF5E00] bg-[#FF5E00]/10 border border-[#FF5E00]/20 px-2 py-0.5 rounded w-fit">
                                                                 {p.impacts} impactos
                                                             </span>
                                                         </div>
@@ -445,12 +474,12 @@ export function Services() {
                                 )}
                             </div>
 
-                            <div className="bg-brand-surface/40 p-6 border-t border-brand-border/30 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] shrink-0">
+                            <div className="bg-[#111113] p-6 border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] shrink-0">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex flex-col gap-3">
                                         <div>
-                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</p>
-                                            <p className="text-3xl font-black text-brand-neon drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]">{formatNumber(totalImpacts)}</p>
+                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Impacto Total</p>
+                                            <p className="text-3xl font-black text-[#FF5E00] drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]">{formatNumber(totalImpacts)}</p>
                                             <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia alcançadas</p>
                                         </div>
                                         <div>
@@ -467,7 +496,7 @@ export function Services() {
                                 <div className="flex flex-col gap-3">
                                     <button
                                         onClick={() => setIsSidebarOpen(false)}
-                                        className="w-full py-3.5 rounded-xl border border-brand-border/60 text-white font-bold text-xs hover:border-brand-neon hover:bg-brand-surface transition-all uppercase tracking-wide"
+                                        className="w-full py-3.5 rounded-xl border border-white/10 text-white font-bold text-xs hover:border-[#FF5E00] hover:text-[#FF5E00] hover:bg-[#FF5E00]/5 transition-all uppercase tracking-wide"
                                     >
                                         Continuar Escolhendo
                                     </button>

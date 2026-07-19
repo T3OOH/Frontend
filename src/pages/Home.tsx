@@ -63,13 +63,14 @@ export function Home() {
                     </div>
                 </div>
 
-                {/* COLUNA DIREITA - Layout de Dashboards Flutuantes */}
-                <div className="relative hidden lg:block h-[500px]">
+                {/* COLUNA DIREITA - Layout de Dashboards Flutuantes (Ajustado para Mobile) */}
+                <div className="relative flex flex-col gap-6 lg:block w-full h-auto lg:h-[500px] mt-10 lg:mt-0">
                     
-                    <div className="absolute inset-0 border-l border-brand-neon/20 ml-[40px] border-dashed pointer-events-none" />
+                    {/* Linha pontilhada escondida no mobile, visível no desktop */}
+                    <div className="hidden lg:block absolute inset-0 border-l border-brand-neon/20 ml-[40px] border-dashed pointer-events-none" />
 
                     {/* Widget 1: Painéis Ativos */}
-                    <div className="absolute top-4 left-0 w-64 glass-panel p-6 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
+                    <div className="relative lg:absolute lg:top-4 lg:left-0 w-full lg:w-64 glass-panel p-6 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2.5 bg-brand-neon/10 rounded-lg group-hover:bg-brand-neon/20 transition-colors">
                                 <MonitorPlay className="w-6 h-6 text-brand-neon" />
@@ -81,7 +82,7 @@ export function Home() {
                     </div>
 
                     {/* Widget 2: Impactos Diários */}
-                    <div className="absolute top-32 right-4 w-72 glass-panel p-6 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default z-10">
+                    <div className="relative lg:absolute lg:top-32 lg:right-4 w-full lg:w-72 glass-panel p-6 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default lg:z-10">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-2.5 bg-brand-neon/10 rounded-lg group-hover:bg-brand-neon/20 transition-colors">
                                 <BarChart3 className="w-6 h-6 text-brand-neon" />
@@ -104,9 +105,9 @@ export function Home() {
                     </div>
 
                     {/* Widget 3: Auditoria */}
-                    <div className="absolute bottom-10 left-12 w-[340px] glass-panel p-5 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
+                    <div className="relative lg:absolute lg:bottom-10 lg:left-12 w-full lg:w-[340px] glass-panel p-5 rounded-xl border border-brand-border/60 hover:border-brand-neon/50 bg-brand-surface/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-brand-neon/10 rounded-lg border border-brand-neon/20 group-hover:border-brand-neon/50 transition-colors">
+                            <div className="p-3 bg-brand-neon/10 rounded-lg border border-brand-neon/20 group-hover:border-brand-neon/50 transition-colors shrink-0">
                                 <Shield className="w-6 h-6 text-brand-neon" />
                             </div>
                             <div>
