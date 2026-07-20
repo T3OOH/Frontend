@@ -25,18 +25,39 @@ export function Overview() {
     const availablePanels = panels.filter(p => p.status === 'AVAILABLE').length;
     const occupiedPanels = panels.filter(p => p.status === 'OCCUPIED').length;
 
-    // Função para extrair números da string de impacto (Ex: "400.000/dia" vira 400000) e somar tudo
+    // 🚀 Lógica idêntica à do Mapa: processa "mil" e "mi" diretamente das strings do banco
     const totalImpacts = panels.reduce((acc, curr) => {
-        const numbersOnly = curr.impacts.replace(/\D/g, '');
-        const value = parseInt(numbersOnly, 10);
-        return acc + (isNaN(value) ? 0 : value);
+        let val = curr.impacts;
+        if (!val) return acc;
+        
+        if (typeof val === 'string') {
+            // Extrai a parte numérica
+            const numericPart = parseFloat(val.replace(/[^0-9,.]/g, '').replace(',', '.'));
+            if (isNaN(numericPart)) return acc;
+            
+            // Verifica o sufixo para multiplicar corretamente
+            if (val.toLowerCase().includes('mil')) {
+                return acc + (numericPart * 1000);
+            }
+            if (val.toLowerCase().includes('mi') && !val.toLowerCase().includes('mil')) {
+                return acc + (numericPart * 1000000);
+            }
+            
+            return acc + numericPart;
+        }
+        
+        return acc + (Number(val) || 0);
     }, 0);
 
-    // Formata o número grande para algo legível (Ex: 900000 vira "900 mil")
+    // Formata o número para o padrão visual (Ex: 1800000 -> "1,8 mi", 900000 -> "900 mil")
     const formatImpacts = (num: number) => {
         if (num === 0) return '0';
-        if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.', ',') + 'M';
-        if (num >= 1000) return (num / 1000).toFixed(0) + ' mil';
+        if (num >= 1000000) {
+            return `${(num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1).replace('.', ',')} mi`;
+        }
+        if (num >= 1000) {
+            return `${Math.floor(num / 1000)} mil`;
+        }
         return num.toString();
     };
 
@@ -79,7 +100,7 @@ export function Overview() {
                         </div>
                     </div>
 
-                    {/* Card 2: Disponíveis (Com destaque sutil no border) */}
+                    {/* Card 2: Disponíveis */}
                     <div className="glass-panel p-5 rounded-xl border border-brand-neon/30 bg-brand-neon/5 hover:border-brand-neon/60 transition-colors flex flex-col justify-between h-36">
                         <div className="flex justify-between items-start">
                             <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Painéis Disponíveis</span>

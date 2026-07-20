@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+// Importação do service para o prefetching
+import { panelsService } from '@/services/panels.service';
 
 const navLinks = [
     { name: 'Início', path: '/' },
@@ -79,6 +81,12 @@ export function Header() {
                                 <Link
                                     key={link.path}
                                     to={link.path}
+                                    // Prefetching no hover para desktop
+                                    onMouseEnter={() => {
+                                        if (link.path === '/mapa') {
+                                            panelsService.getMapMarkers().catch(() => {});
+                                        }
+                                    }}
                                     className={cn(
                                         "text-sm font-semibold transition-all duration-300 relative py-2",
                                         isActive
@@ -152,6 +160,8 @@ export function Header() {
                                 className="shadow-[0_0_15px_rgba(255,94,0,0.2)] hover:shadow-[0_0_25px_rgba(255,94,0,0.4)] transition-shadow"
                                 rightIcon={<ArrowRight className="w-4 h-4" />}
                                 onClick={() => navigate('/mapa')}
+                                // Prefetching no hover do botão desktop
+                                onMouseEnter={() => panelsService.getMapMarkers().catch(() => {})}
                             >
                                 Orçamento
                             </Button>
@@ -190,6 +200,12 @@ export function Header() {
                                             key={link.path}
                                             to={link.path}
                                             onClick={() => setIsOpen(false)}
+                                            // Prefetching no toque para mobile
+                                            onTouchStart={() => {
+                                                if (link.path === '/mapa') {
+                                                    panelsService.getMapMarkers().catch(() => {});
+                                                }
+                                            }}
                                             className={cn(
                                                 "text-2xl font-bold tracking-tight transition-colors duration-300",
                                                 isActive ? "text-brand-neon drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]" : "text-brand-text hover:text-brand-neon"
@@ -255,6 +271,8 @@ export function Header() {
                                         className="w-full justify-center shadow-[0_0_15px_rgba(255,94,0,0.2)]" 
                                         rightIcon={<ArrowRight className="w-5 h-5" />}
                                         onClick={() => { setIsOpen(false); navigate('/mapa'); }}
+                                        // Prefetching no toque do botão mobile
+                                        onTouchStart={() => panelsService.getMapMarkers().catch(() => {})}
                                     >
                                         Solicitar Orçamento
                                     </Button>

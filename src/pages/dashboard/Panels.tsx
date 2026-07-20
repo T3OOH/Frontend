@@ -93,7 +93,7 @@ export function Panels() {
                 </div>
             </div>
 
-            {/* Tabela (Área com Scroll Interno) - z-10 para ficar abaixo do dropdown dos filtros */}
+            {/* Tabela - z-10 para ficar abaixo do dropdown dos filtros */}
             <div className="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col relative border-brand-border/40 z-10">
                 {isLoading && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-black/50 backdrop-blur-sm">
@@ -101,8 +101,9 @@ export function Panels() {
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left border-collapse">
+                {/* Rolagem automática nos dois eixos (fundamental para tabelas no mobile) */}
+                <div className="flex-1 overflow-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead className="sticky top-0 bg-[#0d0d0f] z-40 shadow-sm">
                             <tr className="border-b border-brand-border/40">
                                 <th className="px-5 py-3.5 text-[10px] font-semibold text-brand-muted uppercase tracking-widest">Localização</th>
@@ -146,18 +147,19 @@ export function Panels() {
                                             <div className="text-[11px] text-brand-muted mt-0.5">{panel.px}</div>
                                         </td>
                                         <td className="px-5 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {/* opacity-100 no mobile, oculta e vira hover apenas no desktop (lg) */}
+                                            <div className="flex items-center justify-end gap-2 lg:gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Link to={`/dashboard/paineis/editar/${panel.id}`}>
-                                                    <button className="p-1.5 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded transition-colors" title="Editar">
-                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    <button className="p-2 lg:p-1.5 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded transition-colors" title="Editar">
+                                                        <Edit2 className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
                                                     </button>
                                                 </Link>
                                                 <button
-                                                    className="p-1.5 text-brand-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                                                    className="p-2 lg:p-1.5 text-brand-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
                                                     title="Excluir"
                                                     onClick={() => handleDelete(panel.id)}
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
                                                 </button>
                                             </div>
                                         </td>
