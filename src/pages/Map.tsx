@@ -20,7 +20,8 @@ export function Map() {
         const fetchPanels = async () => {
             try {
                 setIsLoading(true);
-                const data = await panelsService.getAllPanels();
+                // 🚀 Otimização: Chamando apenas os marcadores
+                const data = await panelsService.getMapMarkers();
                 setPanels(data.filter((p: any) => p.status === 'AVAILABLE'));
             } catch (error) {
                 console.error("Erro ao carregar mapa público:", error);
@@ -119,7 +120,7 @@ export function Map() {
                         <div className="p-5 md:p-6 border-b border-brand-border/30 bg-brand-surface/10 flex-shrink-0">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">Pontos Disponíveis</h2>
-                                <button 
+                                <button
                                     onClick={() => setIsSidebarOpen(false)}
                                     className="p-1.5 bg-brand-surface/50 border border-brand-border/40 hover:border-brand-neon hover:text-brand-neon rounded-lg text-brand-muted transition-all"
                                 >
@@ -147,11 +148,10 @@ export function Map() {
                                     return (
                                         <div
                                             key={panel.id}
-                                            className={`flex flex-col p-3 rounded-xl border transition-all duration-300 text-left ${
-                                                isSelected
+                                            className={`flex flex-col p-3 rounded-xl border transition-all duration-300 text-left ${isSelected
                                                     ? 'bg-brand-neon/5 border-brand-neon/40 shadow-[0_0_20px_rgba(255,94,0,0.1)]'
                                                     : 'bg-brand-surface/20 border-brand-border/30 hover:border-brand-neon/30 hover:bg-brand-surface/40'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex gap-3 md:gap-4 cursor-pointer" onClick={() => setSelectedPanelId(panel.id)}>
                                                 <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border border-brand-border/40 flex-shrink-0">
@@ -159,6 +159,8 @@ export function Map() {
                                                         src={panel.images && panel.images.length > 0 ? panel.images[0] : '/placeholder.jpg'}
                                                         alt={panel.name}
                                                         className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
                                                     />
                                                 </div>
                                                 <div className="flex flex-col justify-center flex-1">
@@ -173,11 +175,10 @@ export function Map() {
                                             {/* Botão de Adicionar ao Orçamento */}
                                             <button
                                                 onClick={() => toggleInCart(panel)}
-                                                className={`mt-3 py-2 w-full rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
-                                                    inCart
+                                                className={`mt-3 py-2 w-full rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${inCart
                                                         ? 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
                                                         : 'bg-brand-neon text-brand-black shadow-[0_0_15px_rgba(255,94,0,0.2)] hover:shadow-[0_0_25px_rgba(255,94,0,0.4)]'
-                                                }`}
+                                                    }`}
                                             >
                                                 {inCart ? <><Check className="w-3.5 h-3.5" /> Selecionado</> : 'Adicionar ao Orçamento'}
                                             </button>
@@ -226,8 +227,8 @@ export function Map() {
                             <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2 tracking-tight">
                                 <Send className="w-5 h-5 text-brand-neon" /> Finalizar Pedido
                             </h2>
-                            <button 
-                                onClick={() => setIsCheckoutOpen(false)} 
+                            <button
+                                onClick={() => setIsCheckoutOpen(false)}
                                 className="p-2 hover:bg-brand-surface/50 border border-transparent hover:border-brand-border/50 rounded-full text-brand-muted hover:text-white transition-all"
                             >
                                 <X className="w-5 h-5" />
@@ -236,7 +237,7 @@ export function Map() {
 
                         {/* Área com Scroll */}
                         <div className="flex-1 overflow-y-auto p-5 md:p-6 custom-scrollbar">
-                            
+
                             {/* Lista de Selecionados */}
                             <div className="mb-10">
                                 <h3 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-4">Painéis Selecionados ({cart.length})</h3>
@@ -244,8 +245,8 @@ export function Map() {
                                     {cart.map(p => (
                                         <li key={p.id} className="flex justify-between items-center text-sm bg-brand-surface/20 p-3.5 rounded-xl border border-brand-border/30">
                                             <span className="text-brand-text truncate font-medium pr-4">{p.name}</span>
-                                            <button 
-                                                onClick={() => toggleInCart(p)} 
+                                            <button
+                                                onClick={() => toggleInCart(p)}
                                                 className="text-red-500/80 hover:text-red-400 font-semibold text-xs tracking-wider uppercase transition-colors"
                                             >
                                                 Remover

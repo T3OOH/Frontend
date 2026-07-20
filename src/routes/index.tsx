@@ -1,64 +1,87 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { ToastProvider } from '@/contexts/ToastContext'; // ✨ Importação do Toast
+import { ToastProvider } from '@/contexts/ToastContext';
 
 import { MainLayout } from '@/layouts/MainLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { Home } from '@/pages/Home';
 import { Contact } from '@/pages/Contact';
-import { Map } from '@/pages/Map';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Overview } from '@/pages/dashboard/Overview';
 import { Panels } from '@/pages/dashboard/Panels';
-import { DashboardMap } from '@/pages/dashboard/DashboardMap';
 import { PanelForm } from '@/pages/dashboard/PanelForm';
 import { Services } from '@/pages/Services';
 
-// 🛡️ O "Segurança" Aprimorado: Verifica o Crachá (Token) e o Cargo (Role)
+// ==========================================
+// 🚀 LAZY LOADING DOS MAPAS
+// Como você usa exportação nomeada (export function Map), precisamos do ".then"
+// ==========================================
+const Map = lazy(() => import('@/pages/Map').then(module => ({ default: module.Map })));
+const DashboardMap = lazy(() => import('@/pages/dashboard/DashboardMap').then(module => ({ default: module.DashboardMap })));
+
+// Componente visual enquanto o mapa é baixado sob demanda
+const MapLoader = () => (
+    <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center bg-[#0A0A0B] gap-4">
+        <div className="w-8 h-8 border-4 border-[#FF5E00] border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-[#8F8F91] text-sm font-medium tracking-widest uppercase">Carregando Mapa...</span>
+    </div>
+);
+
+// 🛡️ O "Segurança" Aprimorado
 function PrivateRoute({ allowedRoles }: { allowedRoles?: string[] }) {
     const { isAuthenticated, user } = useAuth();
 
-    // 1. Se não tem token nenhum, manda pro Login
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
 
-    // 2. Se a rota exige um cargo específico e o usuário NÃO tem, manda pra Home
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
         return <Navigate to="/" replace />;
     }
 
-    // 3. Tudo certo! Pode entrar.
     return <Outlet />;
 }
 
 export function AppRoutes() {
     return (
-        // ✨ ToastProvider envolvendo toda a aplicação
         <ToastProvider>
             <AuthProvider>
                 <BrowserRouter>
                     <Routes>
-                        {/* ROTAS PÚBLICAS (Qualquer um acessa) */}
+                        {/* ROTAS PÚBLICAS */}
                         <Route path="/" element={<MainLayout />}>
                             <Route index element={<Home />} />
                             <Route path="contato" element={<Contact />} />
-                            <Route path="mapa" element={<Map />} />
+                            
+                            {/* ✨ Rota do Mapa envolvida no Suspense */}
+                            <Route path="mapa" element={
+                                <Suspense fallback={<MapLoader />}>
+                                    <Map />
+                                </Suspense>
+                            } />
+                            
                             <Route path="servicos" element={<Services />} />
                         </Route>
 
                         <Route path="/login" element={<Login />} />
                         <Route path="/cadastro" element={<Register />} />
 
-                        {/* ROTAS RESTRITAS DO GESTOR (Apenas ADMIN e MANAGER entram) */}
+                        {/* ROTAS RESTRITAS DO GESTOR */}
                         <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
                             <Route path="/dashboard" element={<DashboardLayout />}>
                                 <Route index element={<Overview />} />
                                 <Route path="paineis" element={<Panels />} />
                                 <Route path="paineis/novo" element={<PanelForm />} />
                                 <Route path="paineis/editar/:panelId" element={<PanelForm />} />
-                                <Route path="mapa" element={<DashboardMap />} />
+                                
+                                {/* ✨ Rota do Mapa do Dashboard envolvida no Suspense */}
+                                <Route path="mapa" element={
+                                    <Suspense fallback={<MapLoader />}>
+                                        <DashboardMap />
+                                    </Suspense>
+                                } />
                             </Route>
                         </Route>
                     </Routes>

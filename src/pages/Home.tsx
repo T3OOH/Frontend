@@ -2,6 +2,8 @@ import { ArrowRight, MapPin, BarChart3, Shield, MonitorPlay, Activity } from 'lu
 import { Button } from '@/components/Button';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+// Importação do service para o prefetching
+import { panelsService } from '@/services/panels.service';
 
 export function Home() {
     return (
@@ -54,7 +56,14 @@ export function Home() {
                                 <ArrowRight className="w-5 h-5 ml-2" />
                             </Button>
                         </Link>
-                        <Link to="/mapa" className="w-full sm:w-auto">
+                        <Link 
+                            to="/mapa" 
+                            className="w-full sm:w-auto"
+                            // Prefetching no hover para desktop
+                            onMouseEnter={() => panelsService.getMapMarkers().catch(() => {})}
+                            // Prefetching no toque para mobile
+                            onTouchStart={() => panelsService.getMapMarkers().catch(() => {})}
+                        >
                             <Button size="lg" variant="secondary" className="w-full sm:w-auto border-brand-border/60 hover:bg-brand-surface/80 transition-all">
                                 <MapPin className="w-5 h-5 mr-2" />
                                 Explorar Mapa

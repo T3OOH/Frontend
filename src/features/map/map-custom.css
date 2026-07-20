@@ -4,11 +4,14 @@
 
 /* 1. O Container Principal (A Caixa do Popup) */
 .leaflet-popup-content-wrapper {
-    background-color: #0f0f11 !important; /* Fundo dark da plataforma */
-    border: 1px solid rgba(255, 94, 0, 0.3) !important; /* Borda Neon Sutil */
+    background-color: #0f0f11 !important;
+    /* Fundo dark da plataforma */
+    border: 1px solid rgba(255, 94, 0, 0.3) !important;
+    /* Borda Neon Sutil */
     border-radius: 16px !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 94, 0, 0.1) !important;
-    padding: 0 !important; /* Tiramos o padding padrão para o React controlar tudo */
+    padding: 0 !important;
+    /* Tiramos o padding padrão para o React controlar tudo */
     overflow: hidden;
 }
 
@@ -28,12 +31,14 @@
 .leaflet-popup-content {
     margin: 0 !important;
     width: auto !important;
-    min-width: 240px !important; /* Garante que a caixa nunca fique espremida */
+    min-width: 240px !important;
+    /* Garante que a caixa nunca fique espremida */
 }
 
 /* 4. O Botão de Fechar Natinvo (X) */
 .leaflet-popup-close-button {
-    color: #86868B !important; /* brand-muted */
+    color: #86868B !important;
+    /* brand-muted */
     padding: 8px 12px 0 0 !important;
     font-size: 20px !important;
     font-weight: 300 !important;
@@ -42,7 +47,8 @@
 }
 
 .leaflet-popup-close-button:hover {
-    color: #FF5E00 !important; /* brand-neon */
+    color: #FF5E00 !important;
+    /* brand-neon */
     background: transparent !important;
     transform: scale(1.1);
 }
