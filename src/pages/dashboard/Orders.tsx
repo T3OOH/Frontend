@@ -55,20 +55,6 @@ export function Orders() {
         return matchesSearch && matchesStatus;
     });
 
-    const statusStyles = {
-        PENDING: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-        APPROVED: 'bg-brand-neon/10 text-brand-neon border-brand-neon/20',
-        COMPLETED: 'bg-green-500/10 text-green-500 border-green-500/20',
-        REJECTED: 'bg-red-500/10 text-red-500 border-red-500/20'
-    };
-
-    const statusLabels = {
-        PENDING: 'Pendente',
-        APPROVED: 'Aprovado',
-        COMPLETED: 'Concluído',
-        REJECTED: 'Rejeitado'
-    };
-
     const statusOptions = [
         { value: 'PENDING', label: 'Pendente' },
         { value: 'APPROVED', label: 'Aprovado' },
