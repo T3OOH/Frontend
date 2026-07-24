@@ -45,10 +45,9 @@ export const panelsService = {
     },
 
     // ==========================================
-    // 🚀 NOVA FUNÇÃO: Busca apenas dados vitais para o mapa
+    // NOVA FUNÇÃO: Busca apenas dados vitais para o mapa
     // ==========================================
     async getMapMarkers(): Promise<Partial<PanelData>[]> {
-        // Supondo que sua rota no backend seja /panels/markers
         const response = await api.get('/panels/markers');
         return response.data;
     },

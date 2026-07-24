@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Mail, Phone, ArrowRight } from 'lucide-react'; // 👈 Removidos Instagram e Linkedin daqui
+import { MapPin, Mail, Phone, ArrowRight, CircleUser } from 'lucide-react'; // 👈 Removidos Instagram e Linkedin daqui
 
 export function Footer() {
     const currentYear = new Date().getFullYear();
@@ -26,7 +26,7 @@ export function Footer() {
                             A plataforma inteligente para gestão e locação de painéis de LED em todo o Brasil. Conectamos anunciantes aos melhores pontos de mídia OOH com tecnologia, métricas e auditoria em tempo real.
                         </p>
                         <div className="flex items-center gap-4">
-                            {/* 👇 SVG do Instagram */}
+                            {/*  SVG do Instagram */}
                             <a href="https://www.instagram.com/t3led/" className="w-10 h-10 rounded-lg bg-brand-surface border border-brand-border/50 flex items-center justify-center text-brand-muted hover:text-brand-neon hover:border-brand-neon/50 transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                                     <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
@@ -35,7 +35,7 @@ export function Footer() {
                                 </svg>
                             </a>
                             
-                            {/* 👇 SVG do LinkedIn */}
+                            {/*  SVG do LinkedIn */}
                             <a href="https://www.linkedin.com/company/agencia-t3/?originalSubdomain=br" className="w-10 h-10 rounded-lg bg-brand-surface border border-brand-border/50 flex items-center justify-center text-brand-muted hover:text-brand-neon hover:border-brand-neon/50 transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                                     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
@@ -75,7 +75,7 @@ export function Footer() {
                         <ul className="flex flex-col gap-4">
                             <li className="flex items-start gap-3 text-sm text-brand-muted">
                                 <MapPin className="w-5 h-5 text-brand-neon flex-shrink-0" />
-                                <span>Goiânia, Goiás, Brasil<br/>Atendimento nacional.</span>
+                                <span>Goiânia, Goiás, Brasil</span>
                             </li>
                             <li className="flex items-center gap-3 text-sm text-brand-muted">
                                 <Phone className="w-5 h-5 text-brand-neon flex-shrink-0" />
@@ -84,6 +84,10 @@ export function Footer() {
                             <li className="flex items-center gap-3 text-sm text-brand-muted">
                                 <Mail className="w-5 h-5 text-brand-neon flex-shrink-0" />
                                 <span>contato@t3comunicacao.com</span>
+                            </li>
+                            <li className="flex items-center gap-3 text-sm text-brand-muted">
+                                <CircleUser className="w-5 h-5 text-brand-neon flex-shrink-0" />
+                                <span>43.773.494/0001-50</span>
                             </li>
                         </ul>
                     </div>

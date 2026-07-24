@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import './map-custom.css'; // 👇 SEU NOVO ARQUIVO DE ESTILOS AQUI
+import './map-custom.css'; 
 import { Activity, Maximize } from 'lucide-react';
+
 
 
 interface Panel {

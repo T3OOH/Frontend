@@ -127,16 +127,16 @@ export function Register() {
 
             {/* LADO DIREITO */}
             <div className="hidden lg:flex lg:w-1/2 relative z-0">
-                <img src="/Cidadet3.png" alt="Grid" className="absolute inset-0 w-full h-full object-cover grayscale-[30%]" />
-                <div className="absolute inset-0 bg-[#0A0A0B]/40 mix-blend-multiply" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] from-0% via-[#0A0A0B]/90 via-15% to-transparent w-full" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/50 to-transparent" />
+                <img src="/cidadet3 2.png" alt="Cidade" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-[#0A0A0B]/30 mix-blend-multiply" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] from-0% via-[#0A0A0B]/80 via-15% to-transparent w-full" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/40 to-transparent" />
                 <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-[#0A0A0B] to-transparent" />
                 <div className="absolute inset-0 bg-brand-neon/10 mix-blend-overlay" />
                 <div className="absolute bottom-16 left-16 right-16 z-10">
                     <div className="glass-panel p-8 rounded-2xl border-l-4 border-l-brand-neon bg-[#0A0A0B]/40">
-                        <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">Ambiente Restrito.</h3>
-                        <p className="text-brand-muted text-sm leading-relaxed">Após realizar o cadastro, aguarde a liberação do seu perfil de Gestor ou Administrador pela equipe responsável para garantir a segurança do sistema.</p>
+                        <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">Impacto visual ininterrupto.</h3>
+                        <p className="text-brand-muted text-sm leading-relaxed">Gerencie a exibição da sua marca nos pontos de maior fluxo da cidade com métricas auditáveis em tempo real. Uma plataforma completa de OOH.</p>
                     </div>
                 </div>
             </div>

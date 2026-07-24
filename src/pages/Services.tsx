@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, ShoppingCart, Check, X, Eye, Loader2, MessageCircle, Activity, LayoutGrid, Search, Filter } from 'lucide-react';
+import { MapPin, ShoppingCart, X, Eye, Loader2, MessageCircle, Activity, LayoutGrid, Search, Filter, Zap } from 'lucide-react';
+
 import { panelsService } from '@/services/panels.service';
+import { useCart, Panel } from '@/contexts/CartContext';
 import { CustomSelect } from '@/components/CustomSelect';
+import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 
 const customMarker = L.divIcon({
     className: 'custom-marker',
@@ -14,24 +18,66 @@ const customMarker = L.divIcon({
     iconAnchor: [12, 12],
 });
 
-export function Services() {
-    const [panels, setPanels] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+function MapFixer() {
+    const map = useMap();
+    useEffect(() => { setTimeout(() => map.invalidateSize(), 300); }, [map]);
+    return null;
+}
+
+const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+const formatImpacts = (rawImpacts: string | number) => {
+    if (!rawImpacts) return '0';
+    const strVal = String(rawImpacts).toLowerCase();
     
+    let n = Number(strVal.replace(/\D/g, ''));
+    
+    if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
+    else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
+    else if (strVal.includes('bi')) n *= 1000000000;
+
+    if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + ' bilhão';
+    if (n >= 2000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + ' milhões';
+    if (n >= 1000000) return '1 milhão';
+    if (n >= 1000) return (n / 1000).toFixed(0) + ' mil';
+    return n.toLocaleString('pt-BR');
+};
+
+export function Services() {
+    const { cart, toggleInCart, isInCart } = useCart();
+
+    const [panels, setPanels] = useState<Panel[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedState, setSelectedState] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
-
-    const [cart, setCart] = useState<any[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [selectedPanel, setSelectedPanel] = useState<any | null>(null);
+    const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);
 
     useEffect(() => {
         const fetchPanels = async () => {
             try {
                 setIsLoading(true);
                 const data = await panelsService.getAllPanels();
-                setPanels(data.filter((p: any) => p.status === 'AVAILABLE'));
+                const validPanels = data
+                    .filter((p: any) => p.status === 'AVAILABLE' && p.id)
+                    .map((p: any) => ({
+                        ...p,
+                        id: p.id,
+                        name: p.name || 'Sem Nome',
+                        city: p.city || 'Desconhecida',
+                        state: p.state || '',
+                        status: p.status || 'AVAILABLE',
+                        impacts: String(p.impacts || '0'),   
+                        size: String(p.size || 'Padrão'),    
+                        px: String(p.px || 'Alta Resolução'),
+                        lat: Number(p.lat) || 0, 
+                        lng: Number(p.lng) || 0,
+                        price: Number(p.price) || 0
+                    })) as Panel[];
+                
+                setPanels(validPanels);
+                
             } catch (error) {
                 console.error("Erro ao carregar serviços:", error);
             } finally {
@@ -42,124 +88,76 @@ export function Services() {
     }, []);
 
     const stateOptions = useMemo(() => {
-        const states = panels.map(p => p.state).filter(Boolean);
-        const uniqueStates = Array.from(new Set(states)).sort();
-        return [
-            { value: '', label: 'Todos os Estados' },
-            ...uniqueStates.map(st => ({ value: st as string, label: st as string }))
-        ];
+        const states = Array.from(new Set(panels.map(p => p.state).filter(Boolean))).sort();
+        return [{ value: '', label: 'Todos os Estados' }, ...states.map(st => ({ value: st as string, label: st as string }))];
     }, [panels]);
 
     const cityOptions = useMemo(() => {
         const filtered = selectedState ? panels.filter(p => p.state === selectedState) : panels;
-        const cities = filtered.map(p => p.city).filter(Boolean);
-        const uniqueCities = Array.from(new Set(cities)).sort();
-        return [
-            { value: '', label: 'Todas as Cidades' },
-            ...uniqueCities.map(city => ({ value: city as string, label: city as string }))
-        ];
+        const cities = Array.from(new Set(filtered.map(p => p.city).filter(Boolean))).sort();
+        return [{ value: '', label: 'Todas as Cidades' }, ...cities.map(city => ({ value: city as string, label: city as string }))];
     }, [panels, selectedState]);
 
     const filteredPanels = useMemo(() => {
         return panels.filter(panel => {
-            const matchesSearch = panel.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                  panel.city?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = panel.name?.toLowerCase().includes(searchTerm.toLowerCase()) || panel.city?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesState = selectedState ? panel.state === selectedState : true;
             const matchesCity = selectedCity ? panel.city === selectedCity : true;
             return matchesSearch && matchesState && matchesCity;
         });
     }, [panels, searchTerm, selectedState, selectedCity]);
 
-    const toggleInCart = (panel: any) => {
-        const exists = cart.find(item => item.id === panel.id);
-        if (exists) {
-            setCart(cart.filter(item => item.id !== panel.id));
-        } else {
-            setCart([...cart, panel]);
-            setIsSidebarOpen(true);
-            setSelectedPanel(null);
-        }
+    const handleCheckoutRedirect = () => {
+        window.location.href = '/mapa?checkout=true';
     };
 
-    const parseImpacts = (impactStr: string) => {
-        if (!impactStr) return 0;
-        const normalized = String(impactStr).toLowerCase().trim();
-        const numMatch = normalized.match(/[\d.,]+/);
-        if (!numMatch) return 0;
-        let numStr = numMatch[0];
+    // ============================================================================
+    // AGREGADORES E LÓGICA DE DESCONTO POR COMBO NO CARRINHO LATERAL
+    // ============================================================================
+    const totalCartImpacts = cart.reduce((acc, cartItem) => {
+        const livePanel = panels.find(p => p.id === cartItem.id);
+        const impactToSum = livePanel ? livePanel.impacts : cartItem.impacts;
+        
+        const strVal = String(impactToSum || '').toLowerCase();
+        let n = Number(strVal.replace(/\D/g, ''));
+        if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
+        else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
+        else if (strVal.includes('bi')) n *= 1000000000;
+        return acc + n;
+    }, 0);
 
-        if ((normalized.includes('mi') && !normalized.includes('mil')) || normalized.includes('milh') || normalized.endsWith('m') || normalized.includes('m ') || normalized.includes('m/')) {
-            numStr = numStr.replace(',', '.'); 
-            return parseFloat(numStr) * 1000000;
-        }
-        
-        if (normalized.includes('k') || normalized.includes('mil')) {
-            numStr = numStr.replace(',', '.'); 
-            return parseFloat(numStr) * 1000;
-        }
-        
-        numStr = numStr.replace(/\./g, '').replace(',', '.');
-        return parseInt(numStr, 10);
-    };
+    let totalOriginalValue = 0;
+    let totalVolumeDiscount = 0;
 
-    const formatNumber = (num: number) => {
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1).replace('.0', '').replace('.', ',') + 'M';
+    cart.forEach((cartItem, index) => {
+        const livePanel = panels.find(p => p.id === cartItem.id);
+        const price = Number(livePanel ? livePanel.price : cartItem.price) || 0;
+        totalOriginalValue += price;
+        if (index > 0) {
+            totalVolumeDiscount += price * 0.10;
         }
-        if (num >= 1000) {
-            return (num / 1000).toFixed(1).replace('.0', '').replace('.', ',') + ' mil';
-        }
-        return num.toLocaleString('pt-BR');
-    };
+    });
 
-    // Função para formatar o dinheiro (R$)
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
-
-    const totalImpacts = cart.reduce((acc, panel) => acc + parseImpacts(panel.impacts), 0);
-    const totalPrice = cart.reduce((acc, panel) => acc + (Number(panel.price) || 0), 0);
-
-    const sendToWhatsApp = () => {
-        const phone = "5562999999999"; 
-        let text = `Olá, equipe T3 OOH! 🚀\n\nTenho interesse em anunciar nos seguintes painéis:\n\n`;
-        cart.forEach((p, index) => {
-            text += `${index + 1}. *${p.name}* (${p.city}/${p.state})\n`;
-        });
-        
-        text += `\n📊 *Impacto Total Estimado:* ${formatNumber(totalImpacts)} visualizações/dia.`;
-        
-        if (totalPrice > 0) {
-            text += `\n💰 *Investimento Mensal Estimado:* ${formatCurrency(totalPrice)}`;
-        }
-        
-        text += `\n\nGostaria de negociar os valores e formatos. Podemos conversar?`;
-        
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
-    };
+    const finalCartValue = totalOriginalValue - totalVolumeDiscount;
 
     return (
         <div className="relative w-full min-h-screen bg-[#0A0A0B] pt-28 pb-16 px-6 overflow-hidden">
-            
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
             <div className="max-w-7xl mx-auto relative z-10">
-                
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                     <div>
                         <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight flex items-center gap-3">
                             <img src="t3d 2.png" alt="Logo T3 OOH" className="h-8 w-auto object-contain" /> Catálogo de Telões
                         </h1>
-                        <p className="text-brand-muted mt-2">Escolha os melhores pontos para sua campanha e solicite um orçamento direto pelo WhatsApp.</p>
+                        <p className="text-brand-muted mt-2">Escolha os melhores pontos para sua campanha e solicite um orçamento oficial.</p>
                     </div>
-                    
-                    <button 
+
+                    <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="relative bg-[#111113] border border-brand-border/50 px-5 py-3 rounded-xl text-white font-bold hover:border-brand-neon hover:text-brand-neon transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,94,0,0.2)]"
+                        className="relative bg-[#111113] border border-brand-border/50 px-5 py-3 rounded-xl text-white font-bold hover:border-brand-neon hover:text-brand-neon transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
                     >
-                        <ShoppingCart className="w-5 h-5" />
-                        Ver Pedido
+                        <ShoppingCart className="w-5 h-5" /> Ver Pedido
                         {cart.length > 0 && (
                             <span className="absolute -top-2 -right-2 w-6 h-6 bg-brand-neon text-black text-xs font-black rounded-full flex items-center justify-center animate-bounce shadow-[0_0_10px_rgba(255,94,0,0.6)]">
                                 {cart.length}
@@ -170,19 +168,19 @@ export function Services() {
 
                 <div className="glass-panel p-4 rounded-2xl mb-10 flex flex-col md:flex-row gap-4 border border-brand-border/40 shadow-lg relative z-20 bg-[#111113]/80 backdrop-blur-xl">
                     <div className="flex-1 relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por avenida, localização..." 
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
+                        <Input
+                            type="text"
+                            placeholder="Buscar por avenida, localização..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#0A0A0B] border border-brand-border/50 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-brand-muted/70 focus:outline-none focus:border-brand-neon transition-all shadow-inner"
+                            className="pl-11"
                         />
                     </div>
-                    
+
                     <div className="flex flex-col sm:flex-row gap-4 md:w-2/5">
                         <div className="w-full relative z-30">
-                            <CustomSelect 
+                            <CustomSelect
                                 options={stateOptions}
                                 value={selectedState}
                                 onChange={(val) => { setSelectedState(val); setSelectedCity(''); }}
@@ -190,9 +188,8 @@ export function Services() {
                                 icon={<Filter className="w-4 h-4" />}
                             />
                         </div>
-
                         <div className={`w-full relative z-20 ${!selectedState && cityOptions.length === 1 ? 'opacity-40 pointer-events-none' : ''}`}>
-                            <CustomSelect 
+                            <CustomSelect
                                 options={cityOptions}
                                 value={selectedCity}
                                 onChange={(val) => setSelectedCity(val)}
@@ -212,83 +209,59 @@ export function Services() {
                     <div className="flex flex-col items-center justify-center py-20 bg-brand-surface/20 rounded-3xl border border-brand-border/30 relative z-10">
                         <LayoutGrid className="w-16 h-16 text-brand-border mb-4" />
                         <h3 className="text-lg font-bold text-white mb-2">Nenhum painel encontrado</h3>
-                        <p className="text-sm text-brand-muted text-center max-w-md">Não encontramos resultados para a sua busca atual. Tente limpar os filtros ou buscar por outra avenida.</p>
-                        <button 
-                            onClick={() => { setSearchTerm(''); setSelectedState(''); setSelectedCity(''); }}
-                            className="mt-6 bg-[#111113] border border-brand-border/50 px-6 py-2 rounded-xl text-sm font-bold text-white hover:border-brand-neon hover:text-brand-neon transition-all"
-                        >
-                            Limpar Filtros
-                        </button>
+                        <p className="text-sm text-brand-muted text-center max-w-md">Não encontramos resultados para a sua busca atual. Tente limpar os filtros.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
                         {filteredPanels.map((panel) => {
-                            const inCart = cart.some(item => item.id === panel.id);
-
+                            const inCart = isInCart(panel.id);
                             return (
-                                <motion.div 
+                                <motion.div
                                     key={panel.id}
                                     whileHover={{ y: -5 }}
-                                    className={`bg-[#111113] rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col group ${
-                                        inCart ? 'border-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-brand-neon/5' : 'border-white/5 hover:border-[#FF5E00]/40'
-                                    }`}
+                                    className={`bg-[#111113] rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col group ${inCart ? 'border-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-brand-neon/5' : 'border-white/5 hover:border-[#FF5E00]/40'
+                                        }`}
                                 >
                                     <div className="relative h-48 bg-black overflow-hidden border-b border-white/5">
-                                        <img 
-                                            src={panel.images?.[0] || '/placeholder.jpg'} 
-                                            alt={panel.name} 
-                                            className={`w-full h-full object-cover transition-transform duration-500 ${inCart ? '' : 'group-hover:scale-110'}`}
-                                        />
+                                        <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className={`w-full h-full object-cover transition-transform duration-500 ${inCart ? '' : 'group-hover:scale-110'}`} />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                                            <button 
-                                                onClick={() => setSelectedPanel(panel)}
-                                                className="bg-[#FF5E00] text-white px-4 py-2 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-transform shadow-[0_0_15px_rgba(255,94,0,0.5)] border-none"
-                                            >
-                                                <Eye className="w-4 h-4" /> Ver Detalhes
-                                            </button>
+                                            <Button onClick={() => setSelectedPanel(panel)} className="bg-[#FF5E00] text-white hover:scale-105 border-none">
+                                                <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
+                                            </Button>
                                         </div>
                                     </div>
 
                                     <div className="p-5 flex flex-col flex-1">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h3 className="text-base font-bold text-white leading-tight line-clamp-2">{panel.name}</h3>
-                                        </div>
+                                        <h3 className="text-base font-bold text-white leading-tight line-clamp-2 mb-1">{panel.name}</h3>
                                         <p className="text-xs text-brand-muted flex items-center gap-1.5 mb-4">
-                                            <MapPin className="w-3.5 h-3.5 text-[#FF5E00]" /> {panel.city || 'Cidade'} - {panel.state || 'UF'}
+                                            <MapPin className="w-3.5 h-3.5 text-[#FF5E00]" /> {panel.city} - {panel.state}
                                         </p>
-                                        
+
                                         <div className="mt-auto grid grid-cols-2 gap-2 mb-3">
-                                            <div className="bg-[#0A0A0B] rounded-lg p-2 text-center border border-white/5 shadow-inner">
+                                            <div className="bg-[#0A0A0B] rounded-lg p-2 text-center border border-white/5 shadow-inner flex flex-col justify-center">
                                                 <span className="block text-[9px] text-brand-muted uppercase tracking-wider mb-0.5">Formato</span>
-                                                <span className="text-xs font-semibold text-white">{panel.size}</span>
+                                                <span className="text-xs font-semibold text-white truncate px-1">{panel.size}</span>
                                             </div>
-                                            <div className="bg-[#0A0A0B] rounded-lg p-2 text-center border border-white/5 shadow-inner">
-                                                <span className="block text-[9px] text-brand-muted uppercase tracking-wider mb-0.5">Impacto/Dia</span>
-                                                <span className="text-xs font-semibold text-white flex items-center justify-center gap-1">
-                                                    <Activity className="w-3 h-3 text-[#FF5E00]" /> {panel.impacts}
+                                            <div className="bg-[#FF5E00]/10 rounded-lg p-2 text-center border border-[#FF5E00]/20 shadow-inner flex flex-col justify-center">
+                                                <span className="block text-[9px] text-[#FF5E00]/80 uppercase font-black tracking-wider mb-0.5">Impacto/Dia</span>
+                                                <span className="text-xs font-black text-[#FF5E00] flex items-center justify-center gap-1">
+                                                    <Zap className="w-3 h-3 fill-[#FF5E00]" /> {formatImpacts(panel.impacts || 0)}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Box de Preço Adicionado no Card */}
                                         <div className="mb-4 flex items-center justify-between bg-[#25D366]/5 border border-[#25D366]/20 rounded-lg p-2.5">
                                             <span className="text-[10px] font-bold text-[#25D366] uppercase tracking-wider">Investimento</span>
-                                            <span className="text-sm font-black text-[#25D366]">{formatCurrency(Number(panel.price || 0))}</span>
+                                            <span className="text-sm font-black text-[#25D366]">{formatCurrency(Number(panel.price) || 0)}</span>
                                         </div>
 
                                         <button
                                             onClick={() => toggleInCart(panel)}
-                                            className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
-                                                inCart
-                                                    ? 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 group/btn'
-                                                    : 'bg-[#0A0A0B] border border-white/10 text-white hover:border-[#FF5E00] hover:text-[#FF5E00] hover:bg-[#FF5E00]/5'
-                                            }`}
+                                            className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${inCart ? 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20' : 'bg-[#0A0A0B] border border-white/10 text-white hover:border-[#FF5E00] hover:text-[#FF5E00] hover:bg-[#FF5E00]/5'
+                                                }`}
                                         >
                                             {inCart ? (
-                                                <>
-                                                    <span className="group-hover/btn:hidden flex items-center gap-2"><Check className="w-4 h-4" /> Selecionado</span>
-                                                    <span className="hidden group-hover/btn:flex items-center gap-2"><X className="w-4 h-4" /> Remover</span>
-                                                </>
+                                                <><span className="flex items-center gap-2"><X className="w-4 h-4" /> Remover</span></>
                                             ) : (
                                                 <><ShoppingCart className="w-4 h-4" /> Adicionar</>
                                             )}
@@ -301,103 +274,77 @@ export function Services() {
                 )}
             </div>
 
+            {/* MODAL EXPANDIDO DE DETALHES DO PAINEL */}
             <AnimatePresence>
                 {selectedPanel && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-6 bg-black/90 backdrop-blur-md"
-                    >
-                        <motion.div 
-                            initial={{ scale: 0.95, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 20 }}
-                            className="bg-[#0f0f11] border border-white/10 rounded-3xl w-full max-w-5xl h-[85vh] md:h-[75vh] flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)] relative"
-                        >
-                            <button 
-                                onClick={() => setSelectedPanel(null)} 
-                                className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-[#FF5E00] hover:text-white transition-colors border border-white/20"
-                            >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-6 bg-black/90 backdrop-blur-md">
+                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-[#0f0f11] border border-white/10 rounded-3xl w-full max-w-5xl h-[85vh] md:h-[75vh] flex flex-col md:flex-row overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)] relative">
+                            <button onClick={() => setSelectedPanel(null)} className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-[#FF5E00] hover:text-white transition-colors border border-white/20">
                                 <X className="w-5 h-5" />
                             </button>
 
                             <div className="w-full md:w-1/2 h-64 md:h-full relative bg-black">
-                                <MapContainer 
-                                    key={selectedPanel.id}
-                                    center={[selectedPanel.lat, selectedPanel.lng]} 
-                                    zoom={15} 
-                                    className="w-full h-full outline-none"
-                                    zoomControl={false}
-                                >
+                                <MapContainer center={[selectedPanel.lat || 0, selectedPanel.lng || 0]} zoom={15} className="w-full h-full outline-none" zoomControl={false}>
+                                    <MapFixer />
                                     <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                                    <Marker position={[selectedPanel.lat, selectedPanel.lng]} icon={customMarker} />
+                                    <Marker position={[selectedPanel.lat || 0, selectedPanel.lng || 0]} icon={customMarker} />
                                 </MapContainer>
-                                <div className="absolute top-4 left-4 z-[400] bg-[#111113]/80 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl">
-                                    <p className="text-xs font-bold text-[#FF5E00] uppercase tracking-widest flex items-center gap-2">
-                                        <MapPin className="w-4 h-4" /> Localização Exata
-                                    </p>
-                                </div>
                             </div>
 
                             <div className="w-full md:w-1/2 h-full flex flex-col bg-[#111113]">
                                 <div className="h-[45%] w-full relative">
-                                    <img 
-                                        src={selectedPanel.images?.[0] || '/placeholder.jpg'} 
-                                        alt={selectedPanel.name} 
-                                        className="w-full h-full object-cover"
-                                    />
-                                    {/* Ajuste do gradiente para dar destaque absurdo as informações */}
+                                    <img src={selectedPanel.images?.[0] || '/placeholder.jpg'} alt={selectedPanel.name} className="w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/80 to-transparent" />
                                 </div>
-                                
-                                <div className="flex-1 p-6 flex flex-col justify-between relative -mt-16 z-10">
+
+                                <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between relative -mt-16 z-10">
                                     <div>
-                                        <h2 className="text-3xl font-extrabold text-white mb-2 leading-tight drop-shadow-md">{selectedPanel.name}</h2>
-                                        <p className="text-sm text-brand-muted mb-6 flex items-center gap-2">
+                                        <h2 className="text-3xl font-extrabold text-white mb-2 leading-tight">{selectedPanel.name}</h2>
+                                        <p className="text-sm text-brand-muted mb-8 flex items-center gap-2">
                                             <MapPin className="w-4 h-4 text-[#FF5E00]" /> {selectedPanel.city} - {selectedPanel.state}
                                         </p>
 
-                                        {/* Grid de Informações Adicionado o Box de Preço */}
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                                            <div className="p-4 bg-[#0A0A0B] border border-white/5 rounded-2xl flex flex-col justify-center">
-                                                <p className="text-[9px] text-brand-muted uppercase tracking-widest mb-1">Formato</p>
-                                                <p className="text-base font-bold text-white">{selectedPanel.size}</p>
-                                                <p className="text-[10px] text-brand-muted mt-1">{selectedPanel.px || 'Alta Resolução'}</p>
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="bg-[#FF5E00]/10 border border-[#FF5E00]/20 rounded-xl p-4 flex flex-col justify-center shadow-inner relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10">
+                                                    <Zap className="w-16 h-16 text-[#FF5E00]" />
+                                                </div>
+                                                <span className="text-[10px] text-[#FF5E00]/80 uppercase font-black tracking-widest mb-1 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Alcance Diário</span>
+                                                <span className="text-2xl font-black text-[#FF5E00] tracking-tighter">{formatImpacts(selectedPanel.impacts || 0)}</span>
                                             </div>
-                                            
-                                            <div className="p-4 bg-[#FF5E00]/5 border border-[#FF5E00]/20 rounded-2xl flex flex-col justify-center">
-                                                <p className="text-[9px] text-[#FF5E00] uppercase tracking-widest mb-1">Impactos</p>
-                                                <p className="text-base font-bold text-white flex items-center gap-1">
-                                                    {selectedPanel.impacts}
-                                                </p>
-                                                <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia</p>
+                                            <div className="bg-[#25D366]/5 border border-[#25D366]/20 rounded-xl p-4 flex flex-col justify-center shadow-inner relative overflow-hidden">
+                                                <div className="absolute -right-4 -bottom-4 opacity-10">
+                                                    <Activity className="w-16 h-16 text-[#25D366]" />
+                                                </div>
+                                                <span className="text-[10px] text-[#25D366]/80 uppercase font-bold tracking-widest mb-1 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Investimento</span>
+                                                <span className="text-xl font-black text-[#25D366]">{formatCurrency(Number(selectedPanel.price) || 0)}</span>
                                             </div>
+                                        </div>
 
-                                            <div className="p-4 bg-[#25D366]/10 border border-[#25D366]/30 rounded-2xl flex flex-col justify-center col-span-2 md:col-span-1">
-                                                <p className="text-[9px] text-[#25D366] uppercase tracking-widest mb-1">Investimento</p>
-                                                <p className="text-lg font-black text-[#25D366] leading-tight">
-                                                    {formatCurrency(Number(selectedPanel.price || 0))}
-                                                </p>
-                                                <p className="text-[10px] text-[#25D366]/70 mt-1">Mensal</p>
+                                        <div className="flex flex-wrap gap-3 mb-6">
+                                            <div className="px-3 py-2 bg-[#0A0A0B] rounded-lg border border-white/5 flex items-center gap-2 flex-1">
+                                                <LayoutGrid className="w-4 h-4 text-brand-muted" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest">Formato / Tamanho</span>
+                                                    <span className="text-xs font-semibold text-white">{selectedPanel.size}</span>
+                                                </div>
+                                            </div>
+                                            <div className="px-3 py-2 bg-[#0A0A0B] rounded-lg border border-white/5 flex items-center gap-2 flex-1">
+                                                <Eye className="w-4 h-4 text-brand-muted" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest">Resolução (Px)</span>
+                                                    <span className="text-xs font-semibold text-white">{selectedPanel.px}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Botão Dinâmico no Modal */}
                                     <button
                                         onClick={() => toggleInCart(selectedPanel)}
-                                        className={`w-full font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 tracking-wide uppercase text-sm ${
-                                            cart.some(item => item.id === selectedPanel.id)
-                                                ? 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20'
-                                                : 'bg-[#FF5E00] text-white shadow-[0_0_20px_rgba(255,94,0,0.3)] hover:shadow-[0_0_30px_rgba(255,94,0,0.5)] border border-transparent'
-                                        }`}
+                                        className={`w-full font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isInCart(selectedPanel.id) ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-white hover:bg-[#e05300]'
+                                            }`}
                                     >
-                                        {cart.some(item => item.id === selectedPanel.id) ? (
-                                            <><X className="w-5 h-5" /> Remover da Seleção</>
-                                        ) : (
-                                            <><ShoppingCart className="w-5 h-5" /> Adicionar à Seleção</>
-                                        )}
+                                        {isInCart(selectedPanel.id) ? <><X className="w-5 h-5" /> Remover do Orçamento</> : <><ShoppingCart className="w-5 h-5" /> Adicionar ao Orçamento</>}
                                     </button>
                                 </div>
                             </div>
@@ -406,114 +353,67 @@ export function Services() {
                 )}
             </AnimatePresence>
 
+            {/* BARRA LATERAL DO CARRINHO */}
             <AnimatePresence>
                 {isSidebarOpen && (
                     <>
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setIsSidebarOpen(false)}
-                            className="fixed inset-0 top-20 bg-black/60 backdrop-blur-sm z-[9990]"
-                        />
-                        
-                        <motion.div
-                            initial={{ x: '100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
-                            transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-                            className="fixed top-20 right-0 h-[calc(100vh-80px)] w-full md:w-[450px] bg-[#0A0A0B] border-l border-white/10 z-[9990] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
-                        >
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 top-20 bg-black/60 backdrop-blur-sm z-[9990]" />
+                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed top-20 right-0 h-[calc(100vh-80px)] w-full md:w-[450px] bg-[#0A0A0B] border-l border-white/10 z-[9990] flex flex-col">
                             <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0">
-                                <h2 className="text-xl font-bold text-white flex items-center gap-3 tracking-tight">
-                                    <ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> 
-                                    Resumo do Pedido
-                                </h2>
-                                <button onClick={() => setIsSidebarOpen(false)} className="text-brand-muted hover:text-white transition-colors bg-[#0A0A0B] border border-white/5 p-2 rounded-full">
-                                    <X className="w-5 h-5" />
-                                </button>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-3"><ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> Resumo do Pedido</h2>
+                                <button onClick={() => setIsSidebarOpen(false)} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full"><X className="w-5 h-5" /></button>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                                {cart.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
-                                        <ShoppingCart className="w-16 h-16 text-brand-muted mb-4" />
-                                        <p className="text-white font-medium mb-2">Seu pedido está vazio</p>
-                                        <p className="text-sm text-brand-muted">Adicione painéis da gôndola para montar seu circuito.</p>
+                                {cart.map((p, i) => (
+                                    <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl mb-4 relative">
+                                        <div className="w-6 h-6 absolute -top-3 -left-3 bg-[#FF5E00] text-white font-bold text-xs rounded-full flex items-center justify-center border-4 border-[#0A0A0B]">{i + 1}</div>
+                                        <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-lg object-cover" />
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-sm font-bold text-white leading-tight mb-1 truncate pr-6">{p.name}</h4>
+                                            <p className="text-xs text-brand-muted mb-2">{p.city}</p>
+                                            <button onClick={() => toggleInCart(p)} className="text-[10px] text-red-500 font-bold uppercase tracking-wider hover:text-red-400 bg-red-500/10 px-2 py-1 rounded">Remover</button>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col gap-4">
-                                        {cart.map((p, index) => (
-                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl relative">
-                                                <div className="w-6 h-6 absolute -top-3 -left-3 bg-[#FF5E00] text-white font-bold text-xs rounded-full flex items-center justify-center border-4 border-[#0A0A0B]">
-                                                    {index + 1}
-                                                </div>
-                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-20 h-20 rounded-lg object-cover border border-white/5 bg-black shrink-0" />
-                                                <div className="flex-1 flex flex-col">
-                                                    <h4 className="text-sm font-bold text-white leading-tight mb-1 pr-6">{p.name}</h4>
-                                                    <p className="text-xs text-brand-muted mb-auto">{p.city}</p>
-                                                    <div className="flex justify-between items-end mt-2">
-                                                        <div className="flex flex-col gap-1">
-                                                            {p.price && (
-                                                                <span className="text-[10px] font-bold text-[#25D366] bg-[#25D366]/10 border border-[#25D366]/20 px-2 py-0.5 rounded w-fit">
-                                                                    {formatCurrency(Number(p.price))}
-                                                                </span>
-                                                            )}
-                                                            <span className="text-[10px] font-bold text-[#FF5E00] bg-[#FF5E00]/10 border border-[#FF5E00]/20 px-2 py-0.5 rounded w-fit">
-                                                                {p.impacts} impactos
-                                                            </span>
-                                                        </div>
-                                                        <button onClick={() => toggleInCart(p)} className="text-[10px] text-red-500 font-bold uppercase tracking-wider hover:text-red-400 bg-red-500/10 px-2 py-1 rounded transition-colors">
-                                                            Remover
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                ))}
                             </div>
 
-                            <div className="bg-[#111113] p-6 border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] shrink-0">
+                            <div className="bg-[#111113] p-6 border-t border-white/5 shrink-0">
                                 <div className="flex justify-between items-start mb-6">
-                                    <div className="flex flex-col gap-3">
-                                        <div>
-                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Impacto Total</p>
-                                            <p className="text-3xl font-black text-[#FF5E00] drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]">{formatNumber(totalImpacts)}</p>
-                                            <p className="text-[10px] text-brand-muted mt-1">Pessoas/dia alcançadas</p>
+                                    <div className="flex flex-col gap-3 w-full">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Impacto Total</p>
+                                            <p className="text-2xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts || 0)}</p>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</p>
-                                            <p className="text-xl font-black text-[#25D366] drop-shadow-[0_0_10px_rgba(37,211,102,0.3)]">{formatCurrency(totalPrice)}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Telas</p>
-                                        <p className="text-3xl font-black text-white">{cart.length}</p>
-                                    </div>
-                                </div>
+                                        
+                                        {/* Breakout do Desconto */}
+                                        {totalVolumeDiscount > 0 && (
+                                            <>
+                                                <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                                                    <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Subtotal Base</p>
+                                                    <p className="text-sm font-semibold text-brand-muted line-through">{formatCurrency(totalOriginalValue)}</p>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-bold text-[#25D366] uppercase tracking-widest">Desconto Combo (10%)</p>
+                                                    <p className="text-sm font-bold text-[#25D366]">- {formatCurrency(totalVolumeDiscount)}</p>
+                                                </div>
+                                            </>
+                                        )}
 
-                                <div className="flex flex-col gap-3">
-                                    <button
-                                        onClick={() => setIsSidebarOpen(false)}
-                                        className="w-full py-3.5 rounded-xl border border-white/10 text-white font-bold text-xs hover:border-[#FF5E00] hover:text-[#FF5E00] hover:bg-[#FF5E00]/5 transition-all uppercase tracking-wide"
-                                    >
-                                        Continuar Escolhendo
-                                    </button>
-                                    <button
-                                        disabled={cart.length === 0}
-                                        onClick={sendToWhatsApp}
-                                        className="w-full bg-[#25D366] text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] hover:shadow-[0_0_30px_rgba(37,211,102,0.5)] transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide text-sm"
-                                    >
-                                        <MessageCircle className="w-5 h-5" /> Negociar no WhatsApp
-                                    </button>
+                                        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                                            <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Investimento Final</p>
+                                            <p className="text-xl font-black text-[#25D366]">{formatCurrency(finalCartValue || 0)}</p>
+                                        </div>
+                                    </div>
                                 </div>
+                                <Button disabled={cart.length === 0} onClick={handleCheckoutRedirect} className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-4 shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none">
+                                    <MessageCircle className="w-5 h-5 mr-2" /> Finalizar Cotação
+                                </Button>
                             </div>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
-
         </div>
     );
 }

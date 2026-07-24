@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Map as MapIcon, List, LogOut, Globe, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, List, LogOut, Globe, Menu, X, Users, ShoppingCart, ReceiptText } from 'lucide-react';
 
 export function DashboardLayout() {
     const { signOut, user } = useAuth();
@@ -81,6 +81,17 @@ export function DashboardLayout() {
                     </Link>
 
                     <Link
+                        to="/dashboard/pedidos"
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${location.pathname.includes('/dashboard/pedidos')
+                                ? 'bg-brand-neon/10 text-brand-neon font-medium border border-brand-neon/20'
+                                : 'text-brand-text/80 hover:bg-brand-surface hover:text-brand-neon border border-transparent'
+                            }`}
+                    >
+                        <ShoppingCart className="w-4 h-4" />
+                        Pedidos
+                    </Link>
+
+                    <Link
                         to="/dashboard/mapa"
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${isActive('/dashboard/mapa')
                                 ? 'bg-brand-neon/10 text-brand-neon font-medium border border-brand-neon/20'
@@ -89,6 +100,29 @@ export function DashboardLayout() {
                     >
                         <MapIcon className="w-4 h-4" />
                         Mapa de Cobertura
+                    </Link>
+
+                    {/*  Botão da tela de Gestão de Usuários */}
+                    <Link
+                        to="/dashboard/usuarios"
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${location.pathname.includes('/dashboard/usuarios')
+                                ? 'bg-brand-neon/10 text-brand-neon font-medium border border-brand-neon/20'
+                                : 'text-brand-text/80 hover:bg-brand-surface hover:text-brand-neon border border-transparent'
+                            }`}
+                    >
+                        <Users className="w-4 h-4" />
+                        Usuários
+                    </Link>
+
+                    <Link
+                        to="/crm"
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${location.pathname.includes('/crm')
+                                ? 'bg-brand-neon/10 text-brand-neon font-medium border border-brand-neon/20'
+                                : 'text-brand-text/80 hover:bg-brand-surface hover:text-brand-neon border border-transparent'
+                            }`}
+                    >
+                        <ReceiptText className="w-4 h-4" />
+                        CRM
                     </Link>
                 </nav>
 
@@ -118,7 +152,7 @@ export function DashboardLayout() {
                 </div>
             </aside>
 
-            {/* 📺 ÁREA CENTRAL */}
+            {/* ÁREA CENTRAL */}
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-[#0A0A0B]">
 
                 {/* HEADER MOBILE (Visível apenas em telas pequenas) */}
