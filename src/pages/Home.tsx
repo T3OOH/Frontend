@@ -34,6 +34,7 @@ export function Home() {
                         <motion.img 
                             src="/t3d 2.png" 
                             alt="Logo T3 3D" 
+                            loading="eager"
                             className="w-80 h-80 md:w-[420px] md:h-[420px] object-contain mix-blend-screen relative z-10 drop-shadow-[0_0_40px_rgba(255,94,0,0.25)] cursor-pointer"
                             transition={{
                                 duration: 8,

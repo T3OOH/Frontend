@@ -7,15 +7,23 @@ interface Option {
     label: string;
 }
 
-interface CustomSelectProps {
+export interface CustomSelectProps {
     options: Option[];
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
     icon?: React.ReactNode;
+    disabled?: boolean;
 }
 
-export function CustomSelect({ options, value, onChange, placeholder = "Selecione...", icon }: CustomSelectProps) {
+export function CustomSelect({ 
+    options, 
+    value, 
+    onChange, 
+    placeholder = "Selecione...", 
+    icon,
+    disabled = false 
+}: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -33,27 +41,33 @@ export function CustomSelect({ options, value, onChange, placeholder = "Selecion
     }, []);
 
     return (
-        <div className="relative w-full text-sm" ref={containerRef}>
+        <div className={`relative w-full text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} ref={containerRef}>
             {/* BOTÃO DO SELECT */}
             <button
                 type="button"
+                disabled={disabled}
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full flex items-center justify-between bg-[#0f0f11]/80 border rounded-xl px-4 py-3 transition-all duration-200 outline-none backdrop-blur-md
-                    ${isOpen ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] text-white' : 'border-brand-border/50 text-brand-muted hover:border-brand-neon/50 hover:text-white'}
+                    ${disabled 
+                        ? 'border-brand-border/30 text-brand-muted/70 pointer-events-none' 
+                        : isOpen 
+                            ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] text-white' 
+                            : 'border-brand-border/50 text-brand-muted hover:border-brand-neon/50 hover:text-white'
+                    }
                 `}
             >
                 <div className="flex items-center gap-3 overflow-hidden">
-                    {icon && <span className={`${isOpen ? 'text-brand-neon' : 'text-brand-muted'}`}>{icon}</span>}
+                    {icon && <span className={`${isOpen && !disabled ? 'text-brand-neon' : 'text-brand-muted'}`}>{icon}</span>}
                     <span className="truncate font-medium">
                         {selectedOption ? selectedOption.label : placeholder}
                     </span>
                 </div>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-neon' : 'text-brand-muted'}`} />
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen && !disabled ? 'rotate-180 text-brand-neon' : 'text-brand-muted'}`} />
             </button>
 
             {/* LISTA SUSPENSA (DROPDOWN) */}
             <AnimatePresence>
-                {isOpen && (
+                {isOpen && !disabled && (
                     <motion.div
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}

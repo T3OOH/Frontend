@@ -8,14 +8,14 @@ import { Input } from '@/components/Input';
 import { loginSchema, LoginFormData } from '@/schemas/login.schema';
 import { authService } from '@/services/auth.service';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext'; // ✨ Importando o Toast
+import { useToast } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
 
 export function Login() {
     const navigate = useNavigate();
 
     const { signIn, isAuthenticated } = useAuth(); 
-    const toast = useToast(); // ✨ Instanciando o Toast
+    const toast = useToast();
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -31,7 +31,7 @@ export function Login() {
         try {
             const response = await authService.login(data);
             signIn(response.token, response.user);
-            toast.success('Login realizado com sucesso!'); // ✨ Notificação de sucesso
+            toast.success('Login realizado com sucesso!');
         } catch (error: any) {
             const backendError = error.response?.data;
             console.error("Erro detalhado do login:", backendError || error);
@@ -104,7 +104,7 @@ export function Login() {
             </div>
 
             <div className="hidden lg:flex lg:w-1/2 relative z-0">
-                <img src="/Cidadet3.png" alt="Cidade" className="absolute inset-0 w-full h-full object-cover" />
+                <img src="/cidadet3 2.png" alt="Cidade" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-[#0A0A0B]/30 mix-blend-multiply" />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] from-0% via-[#0A0A0B]/80 via-15% to-transparent w-full" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/40 to-transparent" />

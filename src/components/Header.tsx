@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ArrowRight, LogIn, LayoutDashboard, LogOut } from 'lucide-react';
+import { Menu, X, ArrowRight, LogIn, LayoutDashboard, LogOut, Briefcase, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-// Importação do service para o prefetching
 import { panelsService } from '@/services/panels.service';
 
 const navLinks = [
@@ -44,9 +43,19 @@ export function Header() {
         };
     }, [isOpen]);
 
+    // Define o nome de exibição baseado na Role
+    const getRoleDisplayName = (role?: string) => {
+        switch (role) {
+            case 'ADMIN':
+            case 'MANAGER': return 'Gestor';
+            case 'COMERCIAL': return 'Comercial';
+            case 'USER': return 'Cliente';
+            default: return '';
+        }
+    };
+
     return (
         <>
-            {/* O Header base agora tem z-[9999] para ficar acima de botões de mapa */}
             <header 
                 className={cn(
                     "fixed top-0 inset-x-0 h-20 z-[9999] transition-all duration-300 border-b",
@@ -128,12 +137,13 @@ export function Header() {
                                             {user?.name?.split(' ')[0]}
                                         </span>
                                         <span className="text-[9px] text-brand-neon font-medium leading-tight uppercase tracking-widest">
-                                            {user?.role === 'USER' ? 'Cliente' : 'Gestor'}
+                                            {getRoleDisplayName(user?.role)}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-1">
+                                    {/* Botões Específicos por Role */}
                                     {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
                                         <button 
                                             onClick={() => navigate('/dashboard')}
@@ -143,6 +153,26 @@ export function Header() {
                                             <LayoutDashboard className="w-4 h-4" />
                                         </button>
                                     )}
+                                    {(user?.role as string) === 'COMERCIAL' && (
+                                        <button 
+                                            onClick={() => navigate('/crm')}
+                                            className="p-1.5 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded-full transition-colors"
+                                            title="Área Comercial"
+                                        >
+                                            <Briefcase className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {user?.role === 'USER' && (
+                                        <button 
+                                            onClick={() => navigate('/perfil')}
+                                            className="p-1.5 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded-full transition-colors"
+                                            title="Meu Perfil"
+                                        >
+                                            <UserIcon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    
+                                    {/* Logout (Para todos) */}
                                     <button 
                                         onClick={signOut}
                                         className="p-1.5 text-brand-muted hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
@@ -154,7 +184,8 @@ export function Header() {
                             </div>
                         )}
 
-                        {user?.role !== 'ADMIN' && user?.role !== 'MANAGER' && (
+                        {/* Botão de Orçamento fica visível apenas para Unauthenticated ou USERs */}
+                        {(!isAuthenticated || user?.role === 'USER') && (
                             <Button 
                                 size="sm" 
                                 className="shadow-[0_0_15px_rgba(255,94,0,0.2)] hover:shadow-[0_0_25px_rgba(255,94,0,0.4)] transition-shadow"
@@ -181,7 +212,6 @@ export function Header() {
                 </div>
             </header>
 
-            {/* A Gaveta também recebe z-[9998] para empurrar mapas e outros floats para trás */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -229,7 +259,7 @@ export function Header() {
                                                     {user?.name?.split(' ')[0]}
                                                 </span>
                                                 <span className="text-[10px] text-brand-neon uppercase tracking-wider font-medium mt-0.5">
-                                                    {user?.role === 'USER' ? 'Cliente' : 'Gestor'}
+                                                    {getRoleDisplayName(user?.role)}
                                                 </span>
                                             </div>
                                         </div>
@@ -253,7 +283,7 @@ export function Header() {
                                     >
                                         Login
                                     </Button>
-                                ) : (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                                ) : (user?.role === 'ADMIN' || user?.role === 'MANAGER') ? (
                                     <Button
                                         variant="secondary"
                                         size="lg"
@@ -263,15 +293,34 @@ export function Header() {
                                     >
                                         Painel de Gestão
                                     </Button>
-                                )}
+                                ) : (user?.role as string) === 'COMERCIAL' ? (
+                                    <Button
+                                        variant="secondary"
+                                        size="lg"
+                                        className="w-full justify-center border-brand-border/40"
+                                        onClick={() => { setIsOpen(false); navigate('/crm'); }}
+                                        rightIcon={<Briefcase className="w-5 h-5" />}
+                                    >
+                                        Área Comercial
+                                    </Button>
+                                ) : user?.role === 'USER' ? (
+                                    <Button
+                                        variant="secondary"
+                                        size="lg"
+                                        className="w-full justify-center border-brand-border/40"
+                                        onClick={() => { setIsOpen(false); navigate('/perfil'); }}
+                                        rightIcon={<UserIcon className="w-5 h-5" />}
+                                    >
+                                        Meu Perfil
+                                    </Button>
+                                ) : null}
 
-                                {user?.role !== 'ADMIN' && user?.role !== 'MANAGER' && (
+                                {(!isAuthenticated || user?.role === 'USER') && (
                                     <Button 
                                         size="lg" 
                                         className="w-full justify-center shadow-[0_0_15px_rgba(255,94,0,0.2)]" 
                                         rightIcon={<ArrowRight className="w-5 h-5" />}
                                         onClick={() => { setIsOpen(false); navigate('/mapa'); }}
-                                        // Prefetching no toque do botão mobile
                                         onTouchStart={() => panelsService.getMapMarkers().catch(() => {})}
                                     >
                                         Solicitar Orçamento
