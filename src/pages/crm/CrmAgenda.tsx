@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import { agendaService, Task } from '@/services/agenda.service';
 import { 
     Calendar as CalendarIcon, 
     Clock, 
@@ -13,16 +13,6 @@ import {
     Circle,
     X
 } from 'lucide-react';
-
-interface Task {
-    id: string;
-    title: string;
-    client: string;
-    time: string;
-    date: string;
-    type: 'call' | 'meeting' | 'message' | 'task';
-    status: 'pending' | 'completed' | 'overdue';
-}
 
 export function CrmAgenda() {
     // Estados do Calendário
@@ -55,11 +45,12 @@ export function CrmAgenda() {
     const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
     const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-    // Buscar tarefas na API
+    // Buscar tarefas usando o Serviço
     const fetchTasks = async () => {
         try {
-            const response = await axios.get('http://localhost:3333/agenda');
-            setTasks(response.data);
+            setLoading(true);
+            const data = await agendaService.getTasks();
+            setTasks(data);
         } catch (error) {
             console.error("Erro ao buscar tarefas", error);
         } finally {
@@ -82,10 +73,10 @@ export function CrmAgenda() {
         const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
         
         // Atualiza a UI imediatamente para sensação de tempo real
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as any } : t));
 
         try {
-            await axios.patch(`http://localhost:3333/agenda/${id}/toggle`, { status: newStatus });
+            await agendaService.toggleTaskStatus(id, newStatus);
         } catch (error) {
             console.error("Erro ao atualizar status", error);
             fetchTasks(); // Reverte em caso de erro
@@ -96,11 +87,11 @@ export function CrmAgenda() {
     const handleCreateTask = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:3333/agenda', {
+            const createdTask = await agendaService.createTask({
                 ...newTask,
                 date: selectedDate.toISOString()
             });
-            setTasks([...tasks, response.data]);
+            setTasks([...tasks, createdTask]);
             setIsModalOpen(false);
             setNewTask({ title: '', client: '', time: '09:00', type: 'meeting' });
         } catch (error) {
@@ -128,7 +119,7 @@ export function CrmAgenda() {
                 </div>
                 <button 
                     onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-brand-neon text-[#0A0A0B] px-5 py-2.5 rounded-xl font-bold hover:bg-brand-neon/90 transition-colors shadow-[0_0_15px_rgba(255,94,0,0.2)]"
+                    className="flex items-center gap-2 bg-brand-neon text-[#fdfdfd] px-5 py-2.5 rounded-xl font-bold hover:bg-brand-neon/90 transition-colors shadow-[0_0_15px_rgba(255,94,0,0.2)]"
                 >
                     <Plus className="w-5 h-5" />
                     Novo Compromisso

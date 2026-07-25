@@ -163,7 +163,7 @@ export function CrmClients() {
                 </div>
                 <button 
                     onClick={openModalForCreate}
-                    className="flex items-center gap-2 bg-brand-neon text-[#0A0A0B] px-5 py-2.5 rounded-xl font-bold hover:bg-brand-neon/90 transition-colors shadow-[0_0_15px_rgba(255,94,0,0.2)]"
+                    className="flex items-center gap-2 bg-brand-neon text-[#fafafc] px-5 py-2.5 rounded-xl font-bold hover:bg-brand-neon/90 transition-colors shadow-[0_0_15px_rgba(255,94,0,0.2)]"
                 >
                     <Plus className="w-5 h-5" />
                     Novo Cliente
