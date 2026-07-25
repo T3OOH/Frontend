@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
-import { MapPin, Loader2, Activity } from 'lucide-react';
+import { MapPin, Loader2, Activity, BarChart2 } from 'lucide-react';
 import { panelsService } from '@/services/panels.service';
 
 export function DashboardMap() {
@@ -62,69 +62,140 @@ export function DashboardMap() {
     }
 
     return (
-        <div className="flex flex-col h-full max-w-7xl mx-auto w-full">
+        <div className="w-full h-full flex flex-col relative">
             
-            {/* Header Fixo */}
-            <div className="flex-shrink-0 mb-6">
-                <h1 className="text-2xl font-bold text-brand-text tracking-tight mb-1">Mapa de Cobertura</h1>
-                <p className="text-sm text-brand-muted">Visualize a distribuição geográfica dos seus painéis e o status operacional em tempo real.</p>
-            </div>
-
-            {/* Container do Mapa */}
-            <div className="flex-1 min-h-0 relative rounded-xl overflow-hidden border border-brand-border/40 shadow-2xl bg-brand-surface/10">
+            {/* ========================================================= */}
+            {/* DESKTOP LAYOUT (100% PRESERVADO)                            */}
+            {/* ========================================================= */}
+            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full">
                 
-                {isLoading ? (
-                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-black/80 backdrop-blur-sm">
-                        <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
-                        <p className="text-sm text-brand-muted font-medium">Sincronizando circuito...</p>
-                    </div>
-                ) : (
-                    <>
-                        <InteractiveMap panels={panels} />
+                {/* Header Fixo */}
+                <div className="flex-shrink-0 mb-6">
+                    <h1 className="text-2xl font-bold text-brand-text tracking-tight mb-1">Mapa de Cobertura</h1>
+                    <p className="text-sm text-brand-muted">Visualize a distribuição geográfica dos seus painéis e o status operacional em tempo real.</p>
+                </div>
 
-                        {/* Cartão de Resumo Flutuante */}
-                        <div className="absolute top-6 left-6 z-[1000] bg-[#121212]/95 backdrop-blur-md border border-brand-border/40 p-5 rounded-xl flex flex-col gap-4 min-w-[260px] shadow-[0_8px_30px_rgb(0,0,0,0.4)] pointer-events-auto">
-                            <h3 className="font-semibold text-brand-text text-sm flex items-center gap-2 border-b border-brand-border/40 pb-3">
-                                <MapPin className="w-4 h-4 text-brand-neon" />
-                                Visão Geral do Circuito
-                            </h3>
+                {/* Container do Mapa */}
+                <div className="flex-1 min-h-0 relative rounded-xl overflow-hidden border border-brand-border/40 shadow-2xl bg-brand-surface/10">
+                    
+                    {isLoading ? (
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-black/80 backdrop-blur-sm">
+                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
+                            <p className="text-sm text-brand-muted font-medium">Sincronizando circuito...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <InteractiveMap panels={panels} />
 
-                            <div className="flex flex-col gap-4">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Total de Painéis</span>
-                                    <span className="font-bold text-brand-text text-lg leading-none">{panels.length}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Disponíveis</span>
-                                    <span className="font-bold text-brand-text text-lg leading-none">{availableCount}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Ocupados</span>
-                                    <span className="font-bold text-brand-text text-lg leading-none">{occupiedCount}</span>
-                                </div>
-                                
-                                <div className="h-px w-full bg-brand-border/40 my-1" />
-                                
-                                {/* Impactos Diários reais vindos do Banco */}
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex justify-between items-center text-sm group">
-                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                                            <Activity className="w-3.5 h-3.5 text-brand-neon" />
-                                            Impactos Diários
-                                        </span>
-                                        <span className="font-bold text-brand-text text-xl leading-none">{formattedImpacts}</span>
+                            {/* Cartão de Resumo Flutuante */}
+                            <div className="absolute top-6 left-6 z-[1000] bg-[#121212]/95 backdrop-blur-md border border-brand-border/40 p-5 rounded-xl flex flex-col gap-4 min-w-[260px] shadow-[0_8px_30px_rgb(0,0,0,0.4)] pointer-events-auto">
+                                <h3 className="font-semibold text-brand-text text-sm flex items-center gap-2 border-b border-brand-border/40 pb-3">
+                                    <MapPin className="w-4 h-4 text-brand-neon" />
+                                    Visão Geral do Circuito
+                                </h3>
+
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Total de Painéis</span>
+                                        <span className="font-bold text-brand-text text-lg leading-none">{panels.length}</span>
                                     </div>
-                                    {totalImpacts > 0 && (
-                                        <span className="text-[#10b981] font-medium text-[11px] text-right">
-                                            +8% de alcance estimado
-                                        </span>
-                                    )}
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Disponíveis</span>
+                                        <span className="font-bold text-brand-text text-lg leading-none">{availableCount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Ocupados</span>
+                                        <span className="font-bold text-brand-text text-lg leading-none">{occupiedCount}</span>
+                                    </div>
+                                    
+                                    <div className="h-px w-full bg-brand-border/40 my-1" />
+                                    
+                                    {/* Impactos Diários reais vindos do Banco */}
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex justify-between items-center text-sm group">
+                                            <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                                                <Activity className="w-3.5 h-3.5 text-brand-neon" />
+                                                Impactos Diários
+                                            </span>
+                                            <span className="font-bold text-brand-text text-xl leading-none">{formattedImpacts}</span>
+                                        </div>
+                                        {totalImpacts > 0 && (
+                                            <span className="text-[#10b981] font-medium text-[11px] text-right">
+                                                +8% de alcance estimado
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    )}
+                </div>
             </div>
+
+            {/* ========================================================= */}
+            {/* MOBILE LAYOUT (NATIVO E FLUIDO)                             */}
+            {/* ========================================================= */}
+            <div className="flex lg:hidden flex-col flex-1 w-full min-h-[500px]">
+                
+                {/* Header Compacto Mobile */}
+                <div className="px-4 py-3 shrink-0 bg-[#0A0A0B] border-b border-brand-border/20 shadow-sm z-10 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-brand-neon" /> Mapa de Cobertura
+                        </h1>
+                        <p className="text-[11px] text-brand-muted">Distribuição geográfica em tempo real</p>
+                    </div>
+                </div>
+
+                {/* Container do Mapa Mobile */}
+                <div className="flex-1 relative bg-black">
+                    {isLoading ? (
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-black/80 backdrop-blur-sm">
+                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
+                            <p className="text-sm text-brand-muted font-medium uppercase tracking-widest">Sincronizando...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <InteractiveMap panels={panels} />
+
+                            {/* Cartão de Resumo Flutuante (Bottom Sheet Style) */}
+                            <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
+                                <div className="bg-[#111113]/95 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] pointer-events-auto">
+                                    
+                                    <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                                        <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-1.5">
+                                            <BarChart2 className="w-3.5 h-3.5" /> Resumo
+                                        </span>
+                                        <div className="bg-[#25D366]/10 px-2 py-0.5 rounded text-[10px] font-bold text-[#25D366]">
+                                            {panels.length} Totais
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <div className="bg-brand-surface/40 p-2.5 rounded-xl border border-white/5 flex flex-col">
+                                            <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Disponíveis</span>
+                                            <span className="text-lg font-black text-white leading-none">{availableCount}</span>
+                                        </div>
+                                        <div className="bg-brand-surface/40 p-2.5 rounded-xl border border-white/5 flex flex-col">
+                                            <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Ocupados</span>
+                                            <span className="text-lg font-black text-white leading-none">{occupiedCount}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-brand-neon/10 border border-brand-neon/20 p-3 rounded-xl flex justify-between items-center shadow-inner">
+                                        <span className="text-[10px] text-brand-neon font-black uppercase tracking-widest flex items-center gap-1.5">
+                                            <Activity className="w-3.5 h-3.5" /> Impactos/Dia
+                                        </span>
+                                        <span className="text-xl font-black text-brand-neon leading-none">{formattedImpacts}</span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
         </div>
     );
 }
