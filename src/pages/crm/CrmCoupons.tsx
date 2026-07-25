@@ -109,7 +109,7 @@ export function CrmCoupons() {
                 </div>
                 <button 
                     onClick={() => setIsCreating(!isCreating)}
-                    className="flex items-center gap-2 bg-brand-neon text-[#0A0A0B] px-5 py-2.5 rounded-xl font-semibold hover:bg-brand-neon/90 transition-all"
+                    className="flex items-center gap-2 bg-brand-neon text-[#fcfcfd] px-5 py-2.5 rounded-xl font-semibold hover:bg-brand-neon/90 transition-all"
                 >
                     {isCreating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     {isCreating ? 'Cancelar' : 'Novo Cupom'}
