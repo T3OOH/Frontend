@@ -11,7 +11,7 @@ export function Panels() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
-    
+
     const toast = useToast();
 
     useEffect(() => {
@@ -57,7 +57,7 @@ export function Panels() {
 
     return (
         <div className="w-full h-full flex flex-col">
-            
+
             {/* ========================================================= */}
             {/* DESKTOP LAYOUT (100% PRESERVADO)                            */}
             {/* ========================================================= */}
@@ -130,11 +130,11 @@ export function Panels() {
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium border ${panel.status === 'AVAILABLE' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                        panel.status === 'OCCUPIED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                    panel.status === 'OCCUPIED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                        'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
                                                     }`}>
                                                     <span className={`w-1.5 h-1.5 rounded-full ${panel.status === 'AVAILABLE' ? 'bg-green-500' :
-                                                            panel.status === 'OCCUPIED' ? 'bg-red-500' : 'bg-yellow-500'
+                                                        panel.status === 'OCCUPIED' ? 'bg-red-500' : 'bg-yellow-500'
                                                         }`} />
                                                     {panel.status === 'AVAILABLE' ? 'Disponível' :
                                                         panel.status === 'OCCUPIED' ? 'Ocupado' : 'Manutenção'}
@@ -177,7 +177,7 @@ export function Panels() {
             {/* ========================================================= */}
             {/* Adicionado pb-[100px] para impedir que a HUD corte o fim da lista */}
             <div className="flex lg:hidden flex-col w-full pb-[100px]">
-                
+
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h1 className="text-xl font-bold text-white tracking-tight">Meus Painéis</h1>
@@ -223,23 +223,21 @@ export function Panels() {
                     ) : (
                         filteredPanels.map((panel) => (
                             <div key={panel.id} className="bg-[#111113] border border-white/5 rounded-[20px] overflow-hidden flex flex-col shadow-md">
-                                
+
                                 {/* Área da Imagem (NOVO) */}
                                 <div className="w-full h-32 bg-black relative shrink-0">
                                     <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-80" />
-                                    
+
                                     <div className="absolute top-3 right-3">
-                                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider border backdrop-blur-md ${
-                                            panel.status === 'AVAILABLE' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                                            panel.status === 'OCCUPIED' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                            'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                        }`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${
-                                                panel.status === 'AVAILABLE' ? 'bg-green-500' :
-                                                panel.status === 'OCCUPIED' ? 'bg-red-500' : 'bg-yellow-500'
-                                            }`} />
+                                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider border backdrop-blur-md ${panel.status === 'AVAILABLE' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                                panel.status === 'OCCUPIED' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                                    'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                            }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${panel.status === 'AVAILABLE' ? 'bg-green-500' :
+                                                    panel.status === 'OCCUPIED' ? 'bg-red-500' : 'bg-yellow-500'
+                                                }`} />
                                             {panel.status === 'AVAILABLE' ? 'Disponível' :
-                                             panel.status === 'OCCUPIED' ? 'Ocupado' : 'Manutenção'}
+                                                panel.status === 'OCCUPIED' ? 'Ocupado' : 'Manutenção'}
                                         </span>
                                     </div>
                                 </div>
@@ -267,9 +265,9 @@ export function Panels() {
                                                 Editar
                                             </Button>
                                         </Link>
-                                        <Button 
-                                            variant="secondary" 
-                                            className="w-12 h-10 px-0 flex items-center justify-center border-red-500/20 text-red-500 bg-red-500/5 active:bg-red-500/10 shrink-0" 
+                                        <Button
+                                            variant="secondary"
+                                            className="w-12 h-10 px-0 flex items-center justify-center border-red-500/20 text-red-500 bg-red-500/5 active:bg-red-500/10 shrink-0"
                                             onClick={() => handleDelete(panel.id)}
                                         >
                                             <Trash2 className="w-4 h-4" />

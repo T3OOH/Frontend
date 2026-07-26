@@ -1,24 +1,23 @@
 /* =======================================================
-   T3 OOH - LEAFLET CUSTOM DARK THEME
+   T3 OOH - LEAFLET CUSTOM DARK THEME (Premium UI)
    ======================================================= */
 
 /* 1. O Container Principal (A Caixa do Popup) */
 .leaflet-popup-content-wrapper {
-    background-color: #0f0f11 !important;
-    /* Fundo dark da plataforma */
-    border: 1px solid rgba(255, 94, 0, 0.3) !important;
-    /* Borda Neon Sutil */
-    border-radius: 16px !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 94, 0, 0.1) !important;
-    padding: 0 !important;
-    /* Tiramos o padding padrão para o React controlar tudo */
+    background-color: rgba(17, 17, 19, 0.95) !important; /* #111113 com 95% de opacidade */
+    backdrop-filter: blur(16px) !important; /* Efeito Glassmorphism igual ao React */
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important; /* Borda branca bem sutil (white/5) */
+    border-radius: 20px !important; /* Arredondamento premium dos cards */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 94, 0, 0.15) !important; /* Sombra densa com brilho neon */
+    padding: 0 !important; /* Tiramos o padding padrão para o React controlar tudo */
     overflow: hidden;
 }
 
 /* 2. O Triângulo (Setinha que aponta pro pino) */
 .leaflet-popup-tip {
-    background-color: #0f0f11 !important;
-    border: 1px solid rgba(255, 94, 0, 0.3) !important;
+    background-color: #111113 !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
     /* Ocultar bordas superiores para mesclar perfeitamente com a caixa */
     border-top-color: transparent !important;
     border-left-color: transparent !important;
@@ -31,29 +30,40 @@
 .leaflet-popup-content {
     margin: 0 !important;
     width: auto !important;
-    min-width: 240px !important;
-    /* Garante que a caixa nunca fique espremida */
+    min-width: 260px !important; /* Um pouco maior para não espremer o design */
 }
 
-/* 4. O Botão de Fechar Natinvo (X) */
+/* 4. O Botão de Fechar Nativo (X) - Estilo App Moderno */
 .leaflet-popup-close-button {
-    color: #86868B !important;
-    /* brand-muted */
-    padding: 8px 12px 0 0 !important;
-    font-size: 20px !important;
-    font-weight: 300 !important;
-    transition: all 0.3s ease;
+    color: #fff !important; 
+    background-color: rgba(0, 0, 0, 0.5) !important; /* Fundo preto translúcido */
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 50% !important; /* Botão 100% redondo */
+    width: 28px !important;
+    height: 28px !important;
+    top: 12px !important;
+    right: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    transition: all 0.3s ease !important;
     z-index: 10 !important;
 }
 
+/* Efeito ao passar o mouse no "X" */
 .leaflet-popup-close-button:hover {
-    color: #FF5E00 !important;
-    /* brand-neon */
-    background: transparent !important;
+    color: #FF5E00 !important; /* brand-neon */
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 94, 0, 0.4) !important;
     transform: scale(1.1);
 }
 
-/* Cor de fundo padrão da div do mapa (evita flash branco ao carregar tiles) */
+/* 5. Cor de fundo padrão da div do mapa (evita flash branco ao carregar tiles) */
 .leaflet-container {
     background-color: #0A0A0B !important;
+    font-family: inherit !important; /* Puxa a mesma fonte do resto do site */
 }
