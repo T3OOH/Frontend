@@ -6,6 +6,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import { MainLayout } from '@/layouts/MainLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { CrmLayout } from '@/layouts/CrmLayout'; 
+import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 
 // ==========================================
 // CODE SPLITTING 
@@ -121,6 +122,15 @@ export function AppRoutes() {
                             </Route>
 
                         </Routes>
+
+                        {/* 
+                          * Componente Global de Retorno ao Topo.
+                          * Posicionado fora do escopo do <Routes> para garantir que 
+                          * permaneça injetado na árvore do DOM independente da navegação,
+                          * gerenciando sua própria renderização baseada no scroll.
+                          */}
+                        <ScrollToTopButton />
+
                     </BrowserRouter>
                 </CartProvider>
             </AuthProvider>

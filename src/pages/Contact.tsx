@@ -13,6 +13,12 @@ const ATTENDANTS = [
     { id: 'lucas', name: 'Lucas Dourado', fullName: 'Lucas Dourado', phone: '556492832807' }
 ];
 
+/**
+ * Componente de Contato / Fale com um Especialista.
+ * Implementa integração direta com WhatsApp formatando a mensagem e dados do lead.
+ * Possui layouts distintos e otimizados para Desktop (Split Screen estático) 
+ * e Mobile (App Pattern com rolagem).
+ */
 export function Contact() {
     const [selectedAttendant, setSelectedAttendant] = useState(ATTENDANTS[0]);
 
@@ -25,8 +31,11 @@ export function Contact() {
         resolver: zodResolver(contactSchema),
     });
 
+    /**
+     * Formata os dados do formulário e redireciona para a API nativa do WhatsApp.
+     * @param data - Dados validados do formulário de contato.
+     */
     const onSubmit = (data: ContactFormData) => {
-        // Formata a mensagem para o WhatsApp
         const text = `Olá, ${selectedAttendant.name}! Meu nome é *${data.name}*.
 Gostaria de falar sobre um orçamento/contato.
 
@@ -37,29 +46,24 @@ ${data.company ? `Empresa: ${data.company}\n` : ''}
 *Mensagem:*
 ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
 
-        // Codifica o texto para formato de URL
         const encodedText = encodeURIComponent(text);
-        
-        // Cria o link do wa.me e abre em nova aba
         const whatsappUrl = `https://wa.me/${selectedAttendant.phone}?text=${encodedText}`;
-        window.open(whatsappUrl, '_blank');
         
+        window.open(whatsappUrl, '_blank');
         reset();
     };
 
     return (
-        // Trava a tela inteira e tira qualquer scroll global
         <div className="h-[100dvh] w-full flex bg-[#0A0A0B] overflow-hidden">
             
             {/* ========================================================= */}
-            {/* DESKTOP LAYOUT (100% PRESERVADO)                            */}
+            {/* DESKTOP LAYOUT (SPLIT SCREEN FIXO SEM SCROLL)               */}
             {/* ========================================================= */}
             
-            {/* COLUNA ESQUERDA (FORMULÁRIO DESKTOP) */}
             <div className="hidden lg:flex w-[45%] h-full flex-col relative z-20 bg-[#0A0A0B] border-r border-white/5">
                 
-                {/* HEADER FIXO - Protege o botão voltar de sobreposições */}
-                <div className="p-8 shrink-0">
+                {/* HEADER FIXO */}
+                <div className="px-8 py-6 shrink-0">
                     <Link 
                         to="/" 
                         className="inline-flex items-center gap-3 text-brand-muted hover:text-white transition-colors text-sm font-medium group"
@@ -71,34 +75,30 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                     </Link>
                 </div>
 
-                {/* ÁREA DO CARD - Centraliza o card no espaço restante */}
-                <div className="flex-1 flex items-center justify-center px-6 pb-8 overflow-hidden">
+                {/* ÁREA DO CARD - Espaçamentos otimizados para não gerar scroll */}
+                <div className="flex-1 flex items-center justify-center px-6 pb-6 overflow-hidden">
                     
-                    {/* Card Principal - Limita a altura máxima para caber na tela */}
-                    <div className="w-full max-w-[440px] bg-[#111113] border border-white/5 rounded-[24px] p-8 shadow-2xl flex flex-col max-h-full">
+                    <div className="w-full max-w-[440px] bg-[#111113] border border-white/5 rounded-[24px] p-6 xl:p-8 shadow-2xl flex flex-col">
                         
-                        {/* Logo */}
-                        <div className="flex justify-center mb-4 shrink-0">
+                        <div className="flex justify-center mb-3 xl:mb-4 shrink-0">
                             <img 
                                 src="/t3d 2.png" 
                                 alt="T3 Logo" 
-                                className="h-12 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,94,0,0.2)]" 
+                                className="h-10 xl:h-12 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,94,0,0.2)]" 
                             />
                         </div>
 
-                        {/* Textos */}
-                        <div className="mb-5 text-left shrink-0">
-                            <h2 className="text-2xl font-bold text-white tracking-tight mb-1">
+                        <div className="mb-4 text-left shrink-0">
+                            <h2 className="text-xl xl:text-2xl font-bold text-white tracking-tight mb-1">
                                 Fale com um Especialista
                             </h2>
-                            <p className="text-[#8F8F91] text-sm leading-relaxed">
-                                Insira seus dados abaixo e escolha um de nossos consultores para iniciar o atendimento no WhatsApp.
+                            <p className="text-[#8F8F91] text-xs xl:text-sm leading-relaxed">
+                                Insira seus dados abaixo e escolha um consultor para iniciar o atendimento no WhatsApp.
                             </p>
                         </div>
 
-                        {/* Corpo do Form */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 -mr-2">
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pb-2">
+                        <div className="w-full">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5 xl:space-y-3">
                                 <Input
                                     label="Nome Completo *"
                                     placeholder="Ex: João Silva"
@@ -133,23 +133,23 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                                     {...register('company')}
                                 />
 
-                                {/* Seleção de Consultor */}
+                                {/* Seleção de Consultor Compacta */}
                                 <div className="flex flex-col gap-1.5 pt-1">
-                                    <label className="text-xs font-medium text-brand-muted">Escolha um Consultor *</label>
+                                    <label className="text-[11px] xl:text-xs font-medium text-brand-muted">Escolha um Consultor *</label>
                                     <div className="grid grid-cols-2 gap-3">
                                         {ATTENDANTS.map((att) => (
                                             <button
                                                 key={att.id}
                                                 type="button"
                                                 onClick={() => setSelectedAttendant(att)}
-                                                className={`p-3 rounded-xl border flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                                                className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all active:scale-95 ${
                                                     selectedAttendant.id === att.id 
                                                     ? 'bg-brand-neon/10 border-brand-neon text-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)]' 
                                                     : 'bg-[#0A0A0B] border-white/5 text-brand-muted hover:border-white/20'
                                                 }`}
                                             >
-                                                <MessageCircle className="w-4 h-4 shrink-0" />
-                                                <span className="text-xs font-bold line-clamp-1">{att.name}</span>
+                                                <MessageCircle className="w-3.5 h-3.5 xl:w-4 xl:h-4 shrink-0" />
+                                                <span className="text-[11px] xl:text-xs font-bold line-clamp-1">{att.name}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -163,11 +163,11 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                                     rows={2}
                                 />
 
-                                <div className="pt-3">
+                                <div className="pt-2">
                                     <Button
                                         type="submit"
                                         size="lg"
-                                        className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold border-none uppercase tracking-wide text-sm h-12 shadow-[0_4px_15px_rgba(37,211,102,0.3)] shrink-0 transition-colors"
+                                        className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold border-none uppercase tracking-wide text-xs xl:text-sm h-11 xl:h-12 shadow-[0_4px_15px_rgba(37,211,102,0.3)] shrink-0 transition-colors"
                                         rightIcon={<Send className="w-4 h-4" />}
                                     >
                                         Enviar via WhatsApp

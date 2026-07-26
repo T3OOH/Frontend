@@ -4,48 +4,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================================= */
+/* BASE: Estilos globais e tags HTML brutas                  */
+/* ========================================================= */
 @layer base {
   body {
     @apply bg-brand-black text-brand-text font-sans antialiased selection:bg-brand-neon/30 selection:text-brand-neon;
     overflow-x: hidden;
   }
+
+  /* Scrollbar Global Padrão */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px; /* Adicionado para scrolls horizontais caso existam */
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-border rounded-full transition-colors duration-300;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-neon;
+  }
 }
 
+/* ========================================================= */
+/* COMPONENTS: Componentes de terceiros e classes compostas  */
+/* ========================================================= */
+@layer components {
+  /* Customizações Leaflet Premium integradas com o Tema */
+  .leaflet-container {
+    @apply bg-brand-black !important; /* Remove o #1C1C1E fixo e usa a cor da marca */
+    font-family: inherit;
+  }
+
+  .leaflet-popup-content-wrapper {
+    @apply bg-brand-surface border border-brand-border/50 text-white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    padding: 4px !important;
+  }
+
+  .leaflet-popup-tip {
+    /* Mantém a setinha do popup na mesma cor do container */
+    @apply bg-brand-surface !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ========================================================= */
+/* UTILITIES: Utilitários reaproveitáveis de layout          */
+/* ========================================================= */
 @layer utilities {
   .glass-panel {
     @apply bg-brand-surface/60 backdrop-blur-2xl border border-brand-border shadow-ios;
   }
-}
 
-::-webkit-scrollbar {
-  width: 6px;
+  /* 
+   * Utilitário para forçar o scrollbar customizado em divs específicas.
+   * Substituímos o #333 e o #ff4500 pelas cores oficiais do tema.
+   */
+  .custom-scrollbar::-webkit-scrollbar { 
+    width: 6px; 
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track { 
+    @apply bg-transparent; 
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb { 
+    @apply bg-brand-border rounded-full; 
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    @apply bg-brand-neon; 
+  }
 }
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-brand-border rounded-full;
-}
-
-/* Customizações Leaflet Premium */
-.leaflet-container {
-  background-color: #1C1C1E !important;
-  font-family: inherit;
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-  padding: 4px !important;
-}
-
-.leaflet-popup-tip {
-  box-shadow: none !important;
-}
-
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff4500; }
