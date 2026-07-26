@@ -4,6 +4,7 @@ import type { User } from '@/contexts/AuthContext';
 export interface LoginData {
     email: string;
     password: string;
+    captchaToken?: string | null;
 }
 
 export interface AuthResponse {

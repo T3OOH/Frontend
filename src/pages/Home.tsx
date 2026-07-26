@@ -25,8 +25,9 @@ export function Home() {
     const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
     const [locationStatus, setLocationStatus] = useState('Descubra os melhores pontos na sua região');
 
-    // Ref para fechar o dropdown ao clicar fora
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    // Refs para fechar o dropdown ao clicar fora (Desktop e Mobile separados)
+    const desktopDropdownRef = useRef<HTMLDivElement>(null);
+    const mobileDropdownRef = useRef<HTMLDivElement>(null);
 
     // --- EFEITOS ---
     useEffect(() => {
@@ -61,9 +62,14 @@ export function Home() {
         }
     }, []);
 
+    // Fecha o dropdown se clicar fora da barra de pesquisa ativa
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const clickedOutsideDesktop = desktopDropdownRef.current && !desktopDropdownRef.current.contains(target);
+            const clickedOutsideMobile = mobileDropdownRef.current && !mobileDropdownRef.current.contains(target);
+            
+            if (clickedOutsideDesktop && clickedOutsideMobile) {
                 setIsDropdownOpen(false);
             }
         };
@@ -112,10 +118,10 @@ export function Home() {
     }, [allPanels]); 
 
     // =========================================================
-    // LÓGICA: DISTÂNCIA REAL (PRÓXIMOS DE VOCÊ)
+    // LÓGICA: DISTÂNCIA REAL E DESTAQUES
     // =========================================================
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371; // Raio da Terra em km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -135,14 +141,11 @@ export function Home() {
                     : Infinity;
                 return { ...panel, distance: dist };
             })
-            .filter(panel => panel.distance < 50) // Limite de 50km
+            .filter(panel => panel.distance < 50) 
             .sort((a, b) => a.distance - b.distance)
-            .slice(0, 3); // Exibe os 3 mais próximos
+            .slice(0, 3); 
     }, [allPanels, userLocation]);
 
-    // =========================================================
-    // LÓGICA: DESTAQUES (FAVORITOS & CARROSSEL)
-    // =========================================================
     const [carouselIndex, setCarouselIndex] = useState(0);
     const hasEnoughFavorites = favorites.size >= 3;
 
@@ -150,11 +153,9 @@ export function Home() {
         if (allPanels.length === 0) return [];
 
         if (hasEnoughFavorites) {
-            // Se tiver 3 ou mais favoritos, trava o carrossel e mostra apenas eles
             return allPanels.filter(p => favorites.has(p.id)).slice(0, 3);
         }
 
-        // Lógica de Carrossel Circular
         const safeIndex = carouselIndex % allPanels.length;
         const end = safeIndex + 3;
         
@@ -170,7 +171,7 @@ export function Home() {
         
         const interval = setInterval(() => {
             setCarouselIndex(prev => (prev + 1) % allPanels.length);
-        }, 3500); // Roda a cada 3.5 segundos
+        }, 3500); 
         
         return () => clearInterval(interval);
     }, [hasEnoughFavorites, allPanels.length]);
@@ -220,6 +221,75 @@ export function Home() {
         });
     };
 
+    // =========================================================
+    // COMPONENTE REUTILIZÁVEL: BARRA DE PESQUISA UNIFICADA
+    // =========================================================
+const renderSearchBar = (refTarget: React.RefObject<HTMLDivElement | null>, isMobile: boolean) => (
+        <div className={`relative w-full ${isMobile ? '' : 'max-w-2xl mx-auto'} z-[60]`} ref={refTarget}>
+            {/* Reduzimos o py-2 para py-1.5 e o pr-2 para pr-1.5 para afinar a barra */}
+            <form onSubmit={handleSearchSubmit} className="flex items-center justify-between bg-[#111113]/90 backdrop-blur-xl border border-brand-border/40 rounded-full pl-5 pr-1.5 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.6)] focus-within:border-brand-neon/50 transition-all">
+                <div className="flex items-center gap-3 flex-1">
+                    <button type="submit" aria-label="Pesquisar" className="p-0.5 flex items-center justify-center">
+                        <Search className="w-4 h-4 text-brand-neon" /> {/* Ícone ligeiramente menor (w-4) */}
+                    </button>
+                    <div className="flex flex-col flex-1 justify-center">
+                        <input 
+                            type="text" 
+                            placeholder="Para onde quer anunciar?"
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                            onFocus={() => {
+                                if (searchQuery.trim() && filteredPanels.length > 0) setIsDropdownOpen(true);
+                            }}
+                            className="bg-transparent border-none outline-none text-[13px] font-bold text-white leading-none placeholder:text-brand-muted w-full"
+                        />
+                        <span className="text-[9px] text-brand-muted font-medium mt-1 leading-none">Goiânia • Impacto Diário</span>
+                    </div>
+                </div>
+                {/* O botão de filtro agora tem w-8 h-8 fixo para não esticar a barra */}
+                <button type="button" className="w-8 h-8 flex items-center justify-center bg-[#1A1A1D] hover:bg-brand-surface/80 rounded-full border border-brand-border/30 transition-colors ml-2 shrink-0">
+                    <Filter className="w-3.5 h-3.5 text-brand-muted" />
+                </button>
+            </form>
+
+            <AnimatePresence>
+                {isDropdownOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-[110%] left-0 w-full bg-[#111113]/95 backdrop-blur-2xl border border-brand-border/40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden z-[70]"
+                    >
+                        {filteredPanels.length > 0 ? (
+                            <ul className="flex flex-col max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {filteredPanels.map((panel, idx) => (
+                                    <li key={panel.id || idx}>
+                                        <Link 
+                                            to={`/servicos?panelId=${panel.id}`} 
+                                            onClick={() => setIsDropdownOpen(false)}
+                                            className="flex items-center gap-4 px-5 py-3 hover:bg-brand-surface/60 border-b border-white/5 last:border-none transition-colors group"
+                                        >
+                                            <div className="w-10 h-10 rounded-lg bg-black overflow-hidden shrink-0 border border-white/10 group-hover:border-brand-neon/50 transition-colors">
+                                                <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100" />
+                                            </div>
+                                            <div className="flex flex-col flex-1">
+                                                <span className="text-sm font-bold text-white group-hover:text-brand-neon transition-colors line-clamp-1">{panel.name}</span>
+                                                <span className="text-xs text-brand-muted flex items-center gap-1"><MapPin className="w-3 h-3" /> {panel.city} - {panel.state}</span>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-brand-muted group-hover:text-brand-neon transition-colors" />
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="px-6 py-6 text-center">
+                                <p className="text-sm text-brand-muted">Nenhum painel encontrado para "{searchQuery}"</p>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+
     return (
         <div className="relative w-full min-h-screen bg-[#0A0A0B] overflow-x-hidden">
 
@@ -235,67 +305,9 @@ export function Home() {
             {/* ========================================================= */}
             <div className="hidden lg:flex flex-col relative z-10 w-full pb-24">
                 
-                {/* BARRA DE PESQUISA INTELIGENTE */}
-                <div className="w-full max-w-7xl mx-auto px-6 pt-6 pb-2 relative z-[60]" ref={dropdownRef}>
-                    <div className="relative w-full max-w-2xl mx-auto">
-                        <form onSubmit={handleSearchSubmit} className="flex items-center justify-between bg-[#111113]/90 backdrop-blur-xl border border-brand-border/40 rounded-full pl-6 pr-2 py-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] w-full transition-all hover:border-brand-neon/50 focus-within:border-brand-neon/80">
-                            <div className="flex items-center gap-4 flex-1">
-                                <Search className="w-5 h-5 text-brand-neon" />
-                                <div className="flex flex-col flex-1">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Para onde quer anunciar? (Ex: Goiânia)"
-                                        value={searchQuery}
-                                        onChange={handleSearchChange}
-                                        onFocus={() => {
-                                            if (searchQuery.trim() && filteredPanels.length > 0) setIsDropdownOpen(true);
-                                        }}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-white leading-tight placeholder:text-brand-muted/70 w-full"
-                                    />
-                                </div>
-                            </div>
-                            <button type="submit" className="bg-brand-neon text-[#0A0A0B] px-6 py-2.5 rounded-full font-black text-sm hover:brightness-110 transition-all shadow-[0_0_15px_rgba(255,94,0,0.3)]">
-                                Buscar Painéis
-                            </button>
-                        </form>
-
-                        {/* DROPDOWN DE RESULTADOS FLUTUANTE */}
-                        <AnimatePresence>
-                            {isDropdownOpen && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                                    className="absolute top-[110%] left-0 w-full bg-[#111113]/95 backdrop-blur-2xl border border-brand-border/40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden z-[70]"
-                                >
-                                    {filteredPanels.length > 0 ? (
-                                        <ul className="flex flex-col">
-                                            {filteredPanels.map((panel, idx) => (
-                                                <li key={panel.id || idx}>
-                                                    <Link 
-                                                        to={`/servicos`}
-                                                        onClick={() => setIsDropdownOpen(false)}
-                                                        className="flex items-center gap-4 px-6 py-4 hover:bg-brand-surface/60 border-b border-white/5 last:border-none transition-colors group"
-                                                    >
-                                                        <div className="w-10 h-10 rounded-lg bg-black overflow-hidden shrink-0 border border-white/10 group-hover:border-brand-neon/50 transition-colors">
-                                                            <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100" />
-                                                        </div>
-                                                        <div className="flex flex-col flex-1">
-                                                            <span className="text-sm font-bold text-white group-hover:text-brand-neon transition-colors line-clamp-1">{panel.name}</span>
-                                                            <span className="text-xs text-brand-muted flex items-center gap-1"><MapPin className="w-3 h-3" /> {panel.city} - {panel.state}</span>
-                                                        </div>
-                                                        <ArrowRight className="w-4 h-4 text-brand-muted group-hover:text-brand-neon transition-colors" />
-                                                    </Link>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="px-6 py-6 text-center">
-                                            <p className="text-sm text-brand-muted">Nenhum painel encontrado para "{searchQuery}"</p>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                {/* BARRA DE PESQUISA INTELIGENTE (DESKTOP) */}
+                <div className="w-full max-w-7xl mx-auto px-6 pt-6 pb-2 relative z-[60]">
+                    {renderSearchBar(desktopDropdownRef, false)}
                 </div>
 
                 {/* HERO SECTION */}
@@ -427,7 +439,7 @@ export function Home() {
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         transition={{ duration: 0.5, ease: "easeInOut" }}
                                     >
-                                        <Link to={`/servicos`} className="bg-[#111113] rounded-[24px] overflow-hidden border border-brand-border/20 shadow-lg block hover:-translate-y-1 hover:border-brand-neon/40 hover:shadow-[0_10px_30px_rgba(255,94,0,0.15)] transition-all h-full">
+                                        <Link to={`/servicos?panelId=${panel.id}`} className="bg-[#111113] rounded-[24px] overflow-hidden border border-brand-border/20 shadow-lg block hover:-translate-y-1 hover:border-brand-neon/40 hover:shadow-[0_10px_30px_rgba(255,94,0,0.15)] transition-all h-full">
                                             <div className="h-[200px] relative bg-black">
                                                 <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover" alt="Painel" />
                                                 
@@ -495,7 +507,7 @@ export function Home() {
                         
                         <div className="grid grid-cols-3 gap-6">
                             {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => (
-                                <Link to={`/servicos`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-4 rounded-[20px] border border-brand-border/20 shadow-md items-center relative overflow-hidden hover:border-brand-neon/40 hover:-translate-y-1 transition-all">
+                                <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-4 rounded-[20px] border border-brand-border/20 shadow-md items-center relative overflow-hidden hover:border-brand-neon/40 hover:-translate-y-1 transition-all">
                                     <div className="w-28 h-28 rounded-xl overflow-hidden bg-black shrink-0 relative">
                                         <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover" alt="Painel" />
                                         <div className="absolute top-2 left-2 bg-[#0A0A0B]/80 px-2 py-1 rounded text-[10px] font-bold text-white">PRO</div>
@@ -525,68 +537,9 @@ export function Home() {
             {/* ========================================================= */}
             <div className="flex lg:hidden flex-col relative z-20 pb-36 pt-4 w-full">
 
-                {/* BARRA DE PESQUISA MOBILE */}
-                <div className="px-4 sticky top-0 z-50 pt-2 pb-4 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/5" ref={dropdownRef}>
-                    <div className="relative">
-                        <form onSubmit={handleSearchSubmit} className="flex items-center justify-between bg-[#111113] border border-brand-border/40 rounded-full pl-4 pr-2 py-2 shadow-[0_8px_20px_rgba(0,0,0,0.6)]">
-                            <div className="flex items-center gap-3 flex-1">
-                                <button type="submit" aria-label="Pesquisar">
-                                    <Search className="w-5 h-5 text-brand-neon" />
-                                </button>
-                                <div className="flex flex-col flex-1">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Para onde quer anunciar?"
-                                        value={searchQuery}
-                                        onChange={handleSearchChange}
-                                        onFocus={() => {
-                                            if (searchQuery.trim() && filteredPanels.length > 0) setIsDropdownOpen(true);
-                                        }}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-white leading-tight placeholder:text-white w-full"
-                                    />
-                                    <span className="text-[10px] text-brand-muted">Goiânia • Impacto Diário</span>
-                                </div>
-                            </div>
-                            <button type="button" className="p-2 bg-[#1A1A1D] rounded-full border border-brand-border/30">
-                                <Filter className="w-4 h-4 text-brand-muted" />
-                            </button>
-                        </form>
-
-                        <AnimatePresence>
-                            {isDropdownOpen && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                                    className="absolute top-[110%] left-0 w-full bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-2xl shadow-2xl overflow-hidden z-[70]"
-                                >
-                                    {filteredPanels.length > 0 ? (
-                                        <ul className="flex flex-col max-h-[300px] overflow-y-auto">
-                                            {filteredPanels.map((panel, idx) => (
-                                                <li key={panel.id || idx}>
-                                                    <Link 
-                                                        to={`/servicos`}
-                                                        onClick={() => setIsDropdownOpen(false)}
-                                                        className="flex items-center gap-3 px-4 py-3 hover:bg-brand-surface/60 border-b border-white/5 last:border-none transition-colors"
-                                                    >
-                                                        <div className="w-8 h-8 rounded-md bg-black overflow-hidden shrink-0">
-                                                            <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover" />
-                                                        </div>
-                                                        <div className="flex flex-col flex-1">
-                                                            <span className="text-sm font-bold text-white line-clamp-1">{panel.name}</span>
-                                                            <span className="text-[10px] text-brand-muted">{panel.city} - {panel.state}</span>
-                                                        </div>
-                                                    </Link>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="px-4 py-4 text-center">
-                                            <p className="text-xs text-brand-muted">Nenhum painel encontrado.</p>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                {/* BARRA DE PESQUISA INTELIGENTE (MOBILE) */}
+                <div className="px-4 sticky top-0 z-50 pt-2 pb-4 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/5">
+                    {renderSearchBar(mobileDropdownRef, true)}
                 </div>
 
                 <div className="px-4 mt-6 mb-6">
@@ -643,7 +596,7 @@ export function Home() {
                         {displayFeaturedPanels.length > 0 ? displayFeaturedPanels.map((panel, idx) => {
                             const isFavorite = favorites.has(panel.id);
                             return (
-                            <Link to={`/servicos`} key={panel.id || idx} className="snap-start flex-shrink-0 w-[260px] bg-[#111113] rounded-[20px] overflow-hidden border border-brand-border/20 shadow-lg block">
+                            <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="snap-start flex-shrink-0 w-[260px] bg-[#111113] rounded-[20px] overflow-hidden border border-brand-border/20 shadow-lg block">
                                 <div className="h-[160px] relative bg-black">
                                     <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover" alt="Painel" />
                                     
@@ -709,7 +662,7 @@ export function Home() {
                     
                     <div className="flex flex-col gap-3">
                         {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => (
-                            <Link to={`/servicos`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-3 rounded-[16px] border border-brand-border/20 shadow-md items-center relative overflow-hidden">
+                            <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-3 rounded-[16px] border border-brand-border/20 shadow-md items-center relative overflow-hidden">
                                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
                                     <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover" alt="Painel" />
                                     <div className="absolute top-1 left-1 bg-[#0A0A0B]/80 px-1.5 py-0.5 rounded text-[8px] font-bold text-white">PRO</div>

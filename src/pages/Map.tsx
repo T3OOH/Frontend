@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
 import { 
     Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, 
-    Zap, Layers, MapPin, Compass, Shield, MonitorPlay
+    Zap, Layers, MapPin, Compass, Shield, MonitorPlay, Maximize, Minimize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,9 +32,24 @@ export function Map() {
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(searchParams.get('checkout') === 'true');
     const [isSubmitting, setIsSubmitting] = useState(false);
     
+    // Estado para o modo Tela Cheia
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    
     const [checkoutForm, setCheckoutForm] = useState({ 
         name: '', email: '', phone: '', company: '', message: '' 
     });
+
+    // Efeito para travar o scroll da página quando em Fullscreen ou no Checkout
+    useEffect(() => {
+        if (isFullscreen || isCheckoutOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isFullscreen, isCheckoutOpen]);
 
     useEffect(() => {
         if (user) {
@@ -162,7 +177,11 @@ export function Map() {
     };
 
     return (
-        <div className="flex-1 w-full flex bg-[#0A0A0B] relative overflow-hidden min-h-[calc(100vh-5rem)]">
+        <div className={
+            isFullscreen 
+            ? "fixed inset-0 z-[9999] flex bg-[#0A0A0B] overflow-hidden" 
+            : "flex-1 w-full flex bg-[#0A0A0B] relative overflow-hidden min-h-[calc(100vh-5rem)]"
+        }>
             
             {/* --- MAPA BACKGROUND --- */}
             <div className="absolute inset-0 z-0 bg-brand-black">
@@ -176,8 +195,21 @@ export function Map() {
                 )}
             </div>
 
+            {/* --- BOTÃO FULLSCREEN (SOMENTE DESKTOP) --- */}
+            {!isCheckoutOpen && (
+                <div className="hidden md:flex absolute top-6 right-6 z-[400] pointer-events-auto">
+                    <button
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="p-3 bg-[#111113]/90 backdrop-blur-md border border-white/10 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.6)] text-white hover:text-[#FF5E00] hover:border-[#FF5E00]/50 transition-all"
+                        title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
+                    >
+                        {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                    </button>
+                </div>
+            )}
+
             {/* ========================================================= */}
-            {/* DESKTOP LAYOUT (100% PRESERVADO)                            */}
+            {/* DESKTOP LAYOUT                                            */}
             {/* ========================================================= */}
             
             {/* Botão Flutuante Desktop */}
@@ -294,9 +326,10 @@ export function Map() {
             
             {!isCheckoutOpen && (
                 <>
-                    {/* Barra de Pesquisa Superior Flutuante (Livrando a visão) */}
-                    <div className="md:hidden absolute top-4 left-4 right-4 z-40 pointer-events-auto">
-                        <div className="bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full px-4 py-3 shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-3 transition-all focus-within:border-brand-neon/50">
+                    {/* Barra de Pesquisa Superior Flutuante + Botão Fullscreen */}
+                    <div className="md:hidden absolute top-4 left-4 right-4 z-40 pointer-events-auto flex items-center gap-2">
+                        {/* Barra de Pesquisa */}
+                        <div className="flex-1 bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full px-4 py-[11px] shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-3 transition-all focus-within:border-brand-neon/50">
                             <Search className="w-5 h-5 text-brand-neon flex-shrink-0" />
                             <input 
                                 className="bg-transparent border-none text-white w-full focus:outline-none text-[13px] placeholder-brand-muted"
@@ -310,10 +343,19 @@ export function Map() {
                                 </button>
                             )}
                         </div>
+
+                        {/* Botão Fullscreen Mobile */}
+                        <button
+                            onClick={() => setIsFullscreen(!isFullscreen)}
+                            className="flex-shrink-0 flex items-center justify-center w-[44px] h-[44px] bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.6)] text-white hover:text-[#FF5E00] transition-all"
+                            title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
+                        >
+                            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                        </button>
                     </div>
 
                     {/* Container Inferior (Pílula de Carrinho + Cards Compactos) */}
-                    <div className="md:hidden absolute bottom-[76px] left-0 right-0 z-40 pointer-events-none flex flex-col items-center justify-end pb-2">
+                    <div className={`md:hidden absolute left-0 right-0 z-40 pointer-events-none flex flex-col items-center justify-end pb-2 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
                         
                         {/* Botão de Solicitar Orçamento (Estilo Pill) */}
                         <AnimatePresence>
@@ -390,8 +432,8 @@ export function Map() {
                 </>
             )}
 
-            {/* Bottom Navigation Nativa (Apenas Mobile, Oculta se Checkout Aberto) */}
-            {!isCheckoutOpen && (
+            {/* Bottom Navigation Nativa (Oculta se Checkout Aberto ou em Fullscreen) */}
+            {!isCheckoutOpen && !isFullscreen && (
                 <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 z-[100] px-6 py-3 flex justify-between items-center pb-safe">
                     <Link to="/" className="flex flex-col items-center gap-1 text-brand-muted hover:text-white transition-colors">
                         <Compass className="w-5 h-5" />

@@ -7,6 +7,7 @@ import { MainLayout } from '@/layouts/MainLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { CrmLayout } from '@/layouts/CrmLayout'; 
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { ScrollToTop } from '@/components/ScrollToTop'; // <-- IMPORTADO AQUI
 
 // ==========================================
 // CODE SPLITTING 
@@ -76,6 +77,12 @@ export function AppRoutes() {
             <AuthProvider>
                 <CartProvider>
                     <BrowserRouter>
+                        {/* 
+                          * COMPONENTE INVISÍVEL PARA SCROLL AUTOMÁTICO
+                          * Garante que toda troca de rota comece no topo da página
+                          */}
+                        <ScrollToTop />
+
                         <Routes>
                             {/* ROTAS PÚBLICAS */}
                             <Route path="/" element={<MainLayout />}>
@@ -124,7 +131,7 @@ export function AppRoutes() {
                         </Routes>
 
                         {/* 
-                          * Componente Global de Retorno ao Topo.
+                          * Componente Global de Retorno ao Topo (Botão visual).
                           * Posicionado fora do escopo do <Routes> para garantir que 
                           * permaneça injetado na árvore do DOM independente da navegação,
                           * gerenciando sua própria renderização baseada no scroll.
