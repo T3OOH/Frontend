@@ -1,23 +1,33 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Mail, Phone, ArrowRight, CircleUser } from 'lucide-react';
 
+/**
+ * Componente global de Rodapé (Footer).
+ * Renderiza as informações institucionais, links de navegação auxiliar e dados de contato.
+ * Implementa propriedades de flexbox (shrink-0, mt-auto) e z-index para garantir
+ * que permaneça sempre ao final do fluxo de rolagem, sem sobrepor o conteúdo principal.
+ *
+ * @returns {JSX.Element} A estrutura do rodapé adaptada para Desktop e Mobile.
+ */
 export function Footer() {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-[#050505] border-t border-brand-border/30 pt-10 lg:pt-16 pb-6 relative overflow-hidden">
-            {/* Efeito de luz de fundo no Footer */}
+        <footer className="w-full flex-shrink-0 mt-auto bg-[#050505] border-t border-brand-border/30 pt-10 lg:pt-16 pb-6 relative overflow-hidden z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+            
+            {/* Efeitos visuais de iluminação restritos ao escopo do componente */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-brand-neon/50 to-transparent opacity-50" />
             <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-neon/5 rounded-full mix-blend-screen filter blur-[100px] pointer-events-none" />
 
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 
                 {/* ========================================================= */}
-                {/* DESKTOP LAYOUT (100% PRESERVADO)                            */}
+                {/* VIEWPORT: DESKTOP                                           */}
                 {/* ========================================================= */}
                 <div className="hidden lg:block">
                     <div className="grid grid-cols-12 gap-8 mb-16">
-                        {/* Coluna 1: Marca e Sobre */}
+                        
+                        {/* Seção Institucional e Identidade Visual */}
                         <div className="col-span-4 flex flex-col items-start">
                             <Link to="/" className="flex items-center gap-1.5 mb-6 group">
                                 <img src="/t3d 2.png" alt="Logo T3" className="h-12 w-auto object-contain transition-all" />
@@ -43,7 +53,7 @@ export function Footer() {
                             </div>
                         </div>
 
-                        {/* Coluna 2: Links Rápidos */}
+                        {/* Seção de Navegação Rápida */}
                         <div className="col-span-3 col-start-6 flex flex-col">
                             <h4 className="text-brand-text font-bold mb-6 uppercase tracking-wider text-xs">Links Rápidos</h4>
                             <nav className="flex flex-col gap-3">
@@ -62,7 +72,7 @@ export function Footer() {
                             </nav>
                         </div>
 
-                        {/* Coluna 3: Contato */}
+                        {/* Seção de Informações de Contato */}
                         <div className="col-span-4 flex flex-col">
                             <h4 className="text-brand-text font-bold mb-6 uppercase tracking-wider text-xs">Atendimento</h4>
                             <ul className="flex flex-col gap-4">
@@ -86,7 +96,7 @@ export function Footer() {
                         </div>
                     </div>
 
-                    {/* Base do Footer / Copyright Desktop */}
+                    {/* Rodapé Base (Copyright e Políticas) */}
                     <div className="pt-8 border-t border-brand-border/30 flex items-center justify-between gap-4">
                         <p className="text-xs text-brand-muted">© {currentYear} T3 OOH. Todos os direitos reservados.</p>
                         <div className="flex items-center gap-4">
@@ -98,10 +108,12 @@ export function Footer() {
                 </div>
 
                 {/* ========================================================= */}
-                {/* MOBILE LAYOUT (App Pattern)                                 */}
+                {/* VIEWPORT: MOBILE                                            */}
                 {/* ========================================================= */}
-                <div className="lg:hidden flex flex-col pb-28">
-                    <div className="flex flex-col items-center text-center mb-10">
+                {/* Espaçamento extra (pb-[120px]) garante folga para a bottom navigation global */}
+                <div className="lg:hidden flex flex-col pb-[120px] bg-[#050505]">
+                    
+                    <div className="flex flex-col items-center text-center mb-10 pt-4">
                         <img src="/t3d 2.png" alt="Logo T3" className="h-16 w-auto object-contain mb-4 drop-shadow-[0_0_15px_rgba(255,94,0,0.2)]" />
                         <p className="text-sm text-brand-muted leading-relaxed px-4">
                             A plataforma inteligente para gestão e locação de painéis de LED no Centro-Oeste e Brasil.
@@ -109,7 +121,7 @@ export function Footer() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-8 mb-10 border-t border-b border-brand-border/20 py-8">
-                        {/* Navegação */}
+                        {/* Coluna de Navegação Mobile */}
                         <div className="flex flex-col items-center">
                             <h4 className="text-brand-text font-bold mb-4 uppercase tracking-wider text-xs">Navegação</h4>
                             <nav className="flex flex-col gap-3 items-center">
@@ -118,7 +130,8 @@ export function Footer() {
                                 <Link to="/contato" className="text-[13px] text-brand-muted hover:text-brand-neon">Contato</Link>
                             </nav>
                         </div>
-                        {/* Redes */}
+                        
+                        {/* Coluna de Redes Sociais Mobile */}
                         <div className="flex flex-col items-center">
                             <h4 className="text-brand-text font-bold mb-4 uppercase tracking-wider text-xs">Redes</h4>
                             <div className="flex gap-3">
@@ -140,7 +153,7 @@ export function Footer() {
                         </div>
                     </div>
 
-                    {/* Contato Mobile */}
+                    {/* Resumo de Contato Mobile */}
                     <div className="flex flex-col gap-3 items-center mb-10">
                         <span className="flex items-center gap-2 text-sm text-brand-muted">
                             <Phone className="w-4 h-4 text-brand-neon" /> (62) 9320-6010
@@ -150,7 +163,7 @@ export function Footer() {
                         </span>
                     </div>
 
-                    {/* Copyright Mobile */}
+                    {/* Documentos e Direitos Mobile */}
                     <div className="flex flex-col items-center gap-4 text-center">
                         <p className="text-[11px] text-brand-muted/70">
                             © {currentYear} T3 OOH. Todos os direitos reservados.<br/>CNPJ: 43.773.494/0001-50
