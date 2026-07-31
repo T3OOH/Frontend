@@ -4,18 +4,20 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { 
-    MapPin, ShoppingCart, X,  Loader2, MessageCircle, Activity, 
+import {
+    MapPin, ShoppingCart, X, Loader2, MessageCircle, Activity,
     LayoutGrid, Search, Filter, Zap, Compass, Shield, MonitorPlay,
-    Send, Tag, CheckCircle2, Ticket, CalendarDays, Heart // <-- Heart importado aqui
+    Send, Tag, CheckCircle2, Ticket, CalendarDays, Heart
 } from 'lucide-react';
 
+import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Marcador expandido com o design da marca T3
 const expandedMarker = L.divIcon({
@@ -43,9 +45,9 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style
 const formatImpacts = (rawImpacts: string | number) => {
     if (!rawImpacts) return '0';
     const strVal = String(rawImpacts).toLowerCase();
-    
+
     let n = Number(strVal.replace(/\D/g, ''));
-    
+
     if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
     else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
     else if (strVal.includes('bi')) n *= 1000000000;
@@ -58,6 +60,7 @@ const formatImpacts = (rawImpacts: string | number) => {
 };
 
 export function Services() {
+    const { user } = useAuth();
     const { cart, toggleInCart, isInCart, clearCart } = useCart();
     const { addToast } = useToast();
 
@@ -66,27 +69,32 @@ export function Services() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedState, setSelectedState] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
-    
-    // Estado de Favoritos
+
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
-    
-    // Estados do Modal e Sidebar
+
     const [selectedPanel, setSelectedPanel] = useState<Panel | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
-    // Estados do Checkout
+
     const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm'>('cart');
     const [months, setMonths] = useState(1);
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, discount: number } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Formulário CRM
-    const [formData, setFormData] = useState({ name: '', email: '', whatsapp: '', company: '', notes: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', company: '', message: '' });
 
-    // ==========================================
-    // EFEITO DE BLOQUEIO DE SCROLL (Fundo Congelado)
-    // ==========================================
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                name: user.name || '',
+                email: user.email || '',
+                phone: (user as any).phone || (user as any).whatsapp || '',
+                company: (user as any).company || ''
+            }));
+        }
+    }, [user]);
+
     useEffect(() => {
         if (isSidebarOpen || selectedPanel) {
             document.body.style.overflow = 'hidden';
@@ -112,14 +120,14 @@ export function Services() {
                         city: p.city || 'Desconhecida',
                         state: p.state || '',
                         status: p.status || 'AVAILABLE',
-                        impacts: String(p.impacts || '0'),   
-                        size: String(p.size || 'Padrão'),    
+                        impacts: String(p.impacts || '0'),
+                        size: String(p.size || 'Padrão'),
                         px: String(p.px || 'Alta Resolução'),
-                        lat: Number(p.lat) || 0, 
+                        lat: Number(p.lat) || 0,
                         lng: Number(p.lng) || 0,
                         price: Number(p.price) || 0
                     })) as Panel[];
-                
+
                 setPanels(validPanels);
             } catch (error) {
                 console.error("Erro ao carregar serviços:", error);
@@ -130,7 +138,6 @@ export function Services() {
         fetchPanels();
     }, []);
 
-    // Reinicia o carrinho se for fechado
     useEffect(() => {
         if (!isSidebarOpen) {
             setTimeout(() => setCheckoutStep('cart'), 300);
@@ -157,7 +164,6 @@ export function Services() {
         });
     }, [panels, searchTerm, selectedState, selectedCity]);
 
-    // Opções de Meses para o CustomSelect
     const monthOptions = useMemo(() => {
         return Array.from({ length: 12 }, (_, i) => ({
             value: String(i + 1),
@@ -165,9 +171,6 @@ export function Services() {
         }));
     }, []);
 
-    // ==========================================
-    // CÁLCULOS FINANCEIROS VIVOS
-    // ==========================================
     const totalCartImpacts = cart.reduce((acc, cartItem) => {
         const livePanel = panels.find(p => p.id === cartItem.id);
         const impactToSum = livePanel ? livePanel.impacts : cartItem.impacts;
@@ -184,7 +187,6 @@ export function Services() {
         return acc + (Number(livePanel ? livePanel.price : cartItem.price) || 0);
     }, 0);
 
-    // Lógica: Desconto de Volume + Cupom
     const volumeDiscount = cart.length > 1 ? baseMonthly * 0.10 : 0;
     const subtotalMonthly = baseMonthly - volumeDiscount;
 
@@ -196,10 +198,9 @@ export function Services() {
     const totalWithoutAnyDiscount = baseMonthly * months;
     const totalEconomy = totalWithoutAnyDiscount - finalTotalValue;
 
-    // Função de Favoritar
     const toggleFavorite = (e: React.MouseEvent, panelId: string) => {
-        e.preventDefault(); 
-        e.stopPropagation(); // Evita que o modal de detalhes abra ao curtir
+        e.preventDefault();
+        e.stopPropagation();
         setFavorites(prev => {
             const next = new Set(prev);
             if (next.has(panelId)) next.delete(panelId);
@@ -208,7 +209,6 @@ export function Services() {
         });
     };
 
-    // Ações do Cupom e CRM
     const handleApplyCoupon = () => {
         if (!couponInput) return;
         if (couponInput.toUpperCase() === 'T3PRO') {
@@ -223,34 +223,70 @@ export function Services() {
     const handleCRMSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulando envio para o CRM
-        await new Promise(r => setTimeout(r, 1500));
-        addToast('Pedido enviado com sucesso! Nosso comercial entrará em contato em breve.', 'success');
-        clearCart();
-        setIsSidebarOpen(false);
-        setIsSubmitting(false);
-        setCheckoutStep('cart');
+        try {
+            const totalOriginalCartValue = cart.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+            const discountRatio = totalOriginalCartValue > 0 ? (finalMonthlyValue / totalOriginalCartValue) : 1;
+
+            const structuredItems = cart.map(p => ({
+                panelId: p.id,
+                priceSnapshot: Number(p.price || 0) * discountRatio
+            }));
+
+            let extraNotes = formData.message;
+            if (appliedCoupon || volumeDiscount > 0) {
+                extraNotes += `\n\n[NOTAS DE DESCONTO]:`;
+                if (appliedCoupon) extraNotes += ` Cupom ${appliedCoupon.code} (${appliedCoupon.discount * 100}% OFF).`;
+                if (volumeDiscount > 0) extraNotes += ` Desconto de volume aplicado.`;
+            }
+
+            const payload = {
+                clientDetails: {
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    company: formData.company,
+                    message: extraNotes.trim()
+                },
+                contractMonths: months,
+                originalValue: totalWithoutAnyDiscount,
+                expectedValue: finalTotalValue,
+                items: structuredItems,
+                source: 'CATALOG_SERVICES'
+            };
+
+            await api.post('/crm/deals/checkout', payload);
+
+            addToast('Pedido enviado com sucesso! Nosso comercial entrará em contato.', 'success');
+            clearCart();
+            setIsSidebarOpen(false);
+            setCheckoutStep('cart');
+
+            setFormData(prev => ({ ...prev, message: '' }));
+        } catch (err: any) {
+            console.error("Erro no Checkout:", err);
+            const errorMsg = err.response?.data?.details?.[0]?.message || err.response?.data?.error || 'Erro ao processar pedido. Verifique os dados informados.';
+            addToast(errorMsg, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    // Componente de Card Padronizado
     const renderCard = (panel: Panel) => {
         const inCart = isInCart(panel.id);
-        const isFavorite = favorites.has(panel.id); // Verifica se é favorito
+        const isFavorite = favorites.has(panel.id);
 
         return (
-            <motion.div 
-                key={panel.id} 
+            <motion.div
+                key={panel.id}
                 onClick={() => setSelectedPanel(panel)}
                 whileHover={{ y: -5 }}
-                className={`bg-[#111113] rounded-[20px] overflow-hidden border transition-all shadow-xl flex flex-col cursor-pointer ${
-                    inCart ? 'border-[#FF5E00] shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-[#FF5E00]/5' : 'border-white/5 hover:border-[#FF5E00]/40'
-                }`}
+                className={`bg-[#111113] rounded-[20px] overflow-hidden border transition-all shadow-xl flex flex-col cursor-pointer ${inCart ? 'border-[#FF5E00] shadow-[0_0_20px_rgba(255,94,0,0.15)] bg-[#FF5E00]/5' : 'border-white/5 hover:border-[#FF5E00]/40'
+                    }`}
             >
                 <div className="h-48 relative bg-black shrink-0 w-full">
                     <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-90" />
-                    
-                    {/* BOTÃO DE CORAÇÃO ADICIONADO AQUI */}
-                    <button 
+
+                    <button
                         onClick={(e) => toggleFavorite(e, panel.id)}
                         className="absolute top-3 right-3 bg-[#0A0A0B]/60 backdrop-blur-md p-1.5 rounded-full border border-white/10 z-10 hover:scale-110 transition-transform"
                     >
@@ -284,13 +320,12 @@ export function Services() {
                         <span className="text-base font-black text-[#25D366]">{formatCurrency(Number(panel.price) || 0)}</span>
                     </div>
 
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }} 
-                        className={`w-full py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
-                            inCart 
-                            ? 'bg-[#0A0A0B] text-red-500 border border-red-500/30 hover:bg-red-500/10' 
-                            : 'bg-[#0A0A0B] text-white border border-white/10 hover:border-[#FF5E00] hover:text-[#FF5E00]'
-                        }`}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
+                        className={`w-full py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${inCart
+                                ? 'bg-[#0A0A0B] text-red-500 border border-red-500/30 hover:bg-red-500/10'
+                                : 'bg-[#0A0A0B] text-white border border-white/10 hover:border-[#FF5E00] hover:text-[#FF5E00]'
+                            }`}
                     >
                         {inCart ? (
                             <><X className="w-4 h-4" /> REMOVER</>
@@ -349,7 +384,7 @@ export function Services() {
                             <CustomSelect
                                 options={stateOptions}
                                 value={selectedState}
-                                onChange={(val) => { setSelectedState(val); setSelectedCity(''); }}
+                                onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }}
                                 placeholder="Todos os Estados"
                                 icon={<Filter className="w-4 h-4" />}
                             />
@@ -358,7 +393,7 @@ export function Services() {
                             <CustomSelect
                                 options={cityOptions}
                                 value={selectedCity}
-                                onChange={(val) => setSelectedCity(val)}
+                                onChange={(val: string) => setSelectedCity(val)}
                                 placeholder="Todas as Cidades"
                                 icon={<MapPin className="w-4 h-4" />}
                             />
@@ -393,8 +428,8 @@ export function Services() {
                         <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                             <MonitorPlay className="w-5 h-5 text-brand-neon" /> Painéis
                         </h1>
-                        <button 
-                            onClick={() => setIsSidebarOpen(true)} 
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
                             className="relative p-2.5 bg-[#111113] border border-brand-border/40 rounded-full text-white shadow-md active:scale-95 transition-transform"
                         >
                             <ShoppingCart className="w-5 h-5" />
@@ -427,7 +462,7 @@ export function Services() {
                             <CustomSelect
                                 options={stateOptions}
                                 value={selectedState}
-                                onChange={(val) => { setSelectedState(val); setSelectedCity(''); }}
+                                onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }}
                                 placeholder="Estado"
                                 icon={<Filter className="w-3.5 h-3.5" />}
                             />
@@ -436,7 +471,7 @@ export function Services() {
                             <CustomSelect
                                 options={cityOptions}
                                 value={selectedCity}
-                                onChange={(val) => setSelectedCity(val)}
+                                onChange={(val: string) => setSelectedCity(val)}
                                 placeholder="Cidade"
                                 icon={<MapPin className="w-3.5 h-3.5" />}
                             />
@@ -487,11 +522,11 @@ export function Services() {
             <AnimatePresence>
                 {selectedPanel && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[99990] bg-black/95 backdrop-blur-md flex items-center justify-center p-0 md:p-6 lg:p-10">
-                        
+
                         <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="w-full h-full md:h-[85vh] md:max-h-[850px] md:max-w-6xl bg-[#111113] md:rounded-3xl flex flex-col md:flex-row relative overflow-hidden shadow-2xl border border-white/5">
-                            
-                            <button 
-                                onClick={() => setSelectedPanel(null)} 
+
+                            <button
+                                onClick={() => setSelectedPanel(null)}
                                 className="absolute top-4 right-4 z-[99999] w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 border border-white/20 shadow-lg transition-colors"
                             >
                                 <X className="w-5 h-5" />
@@ -509,7 +544,7 @@ export function Services() {
                             </div>
 
                             <div className="w-full md:w-[450px] lg:w-[500px] flex flex-col h-full bg-[#111113] relative z-10 shrink-0 border-l border-white/5">
-                                
+
                                 <div className="w-full h-[35vh] md:h-72 relative shrink-0">
                                     <img src={selectedPanel.images?.[0] || '/placeholder.jpg'} alt={selectedPanel.name} className="w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/40 to-transparent" />
@@ -533,7 +568,7 @@ export function Services() {
                                             <Activity className="w-16 h-16 text-[#25D366] absolute -right-4 -bottom-4 opacity-10" />
                                         </div>
                                     </div>
-                                    
+
                                     <div className="md:hidden w-full h-48 rounded-2xl overflow-hidden bg-black relative mb-6 border border-white/5">
                                         <MapContainer key={`mobile-map-${selectedPanel.id}`} center={[selectedPanel.lat || -16.6869, selectedPanel.lng || -49.2648]} zoom={15} className="w-full h-full outline-none" zoomControl={false} dragging={false}>
                                             <MapFixer />
@@ -550,9 +585,8 @@ export function Services() {
                                 <div className="absolute bottom-0 left-0 right-0 p-5 bg-[#111113] border-t border-white/5 pb-safe z-50">
                                     <button
                                         onClick={() => toggleInCart(selectedPanel)}
-                                        className={`w-full font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 uppercase tracking-widest text-sm shadow-lg ${
-                                            isInCart(selectedPanel.id) ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-[#0A0A0B] hover:brightness-110'
-                                        }`}
+                                        className={`w-full font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 uppercase tracking-widest text-sm shadow-lg ${isInCart(selectedPanel.id) ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-[#0A0A0B] hover:brightness-110'
+                                            }`}
                                     >
                                         {isInCart(selectedPanel.id) ? <><X className="w-5 h-5" /> REMOVER DO ORÇAMENTO</> : <><ShoppingCart className="w-5 h-5" /> ADICIONAR AO ORÇAMENTO</>}
                                     </button>
@@ -569,16 +603,16 @@ export function Services() {
             <AnimatePresence>
                 {isSidebarOpen && (
                     <>
-                        <motion.div 
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                            onClick={() => setIsSidebarOpen(false)} 
-                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99990]" 
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99990]"
                         />
-                        <motion.div 
+                        <motion.div
                             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className="fixed inset-y-0 right-0 h-full w-full md:w-[480px] bg-[#0A0A0B] border-l border-white/10 z-[99999] flex flex-col shadow-2xl"
                         >
-                            
+
                             {/* HEADER DINÂMICO */}
                             <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0 pt-[env(safe-area-inset-top,20px)] z-20 relative">
                                 <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
@@ -595,7 +629,7 @@ export function Services() {
 
                             {/* BODY DINÂMICO (Área de Rolagem Restrita) */}
                             <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
-                                
+
                                 {checkoutStep === 'cart' ? (
                                     cart.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-60">
@@ -606,7 +640,7 @@ export function Services() {
                                         <div className="flex flex-col gap-4 pb-4">
                                             {cart.map((p, i) => (
                                                 <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl relative shadow-md">
-                                                    <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-[#0A0A0B] font-bold text-[10px] rounded-full flex items-center justify-center border-2 border-[#0A0A0B] z-10">{i + 1}</div>
+                                                    <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow-md z-10">{i + 1}</div>
                                                     <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-lg object-cover bg-black" />
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                         <h4 className="text-sm font-bold text-white leading-tight mb-1 truncate pr-2">{p.name}</h4>
@@ -621,7 +655,7 @@ export function Services() {
                                         </div>
                                     )
                                 ) : (
-                                    <div className="flex flex-col gap-6 animate-fade-in pb-4">
+                                    <form onSubmit={handleCRMSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
                                         <div className="bg-[#111113] rounded-[16px] p-5 border border-white/5">
                                             <div className="flex justify-between items-center mb-4">
                                                 <span className="text-[10px] text-brand-muted font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Painéis no Carrinho</span>
@@ -644,44 +678,41 @@ export function Services() {
 
                                         <div className="flex flex-col gap-4">
                                             <h3 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Seus Dados de Contato</h3>
-                                            
+
                                             <div className="flex flex-col gap-1">
                                                 <label className="text-xs text-brand-muted">Nome Completo *</label>
-                                                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                                <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col gap-1">
                                                     <label className="text-xs text-brand-muted">E-mail *</label>
-                                                    <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                                    <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
                                                 </div>
                                                 <div className="flex flex-col gap-1">
                                                     <label className="text-xs text-brand-muted">WhatsApp *</label>
-                                                    <input type="text" required value={formData.whatsapp} onChange={(e) => setFormData({...formData, whatsapp: e.target.value})} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                                    <input type="text" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
                                                 </div>
                                             </div>
 
                                             <div className="flex flex-col gap-1">
                                                 <label className="text-xs text-brand-muted">Empresa / Agência</label>
-                                                <input type="text" value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                                <input type="text" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
                                             </div>
 
                                             <div className="flex flex-col gap-1">
                                                 <label className="text-xs text-brand-muted">Observações (Opcional)</label>
-                                                <textarea rows={3} placeholder="Mencione condições de pagamento, datas da campanha, etc." value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none resize-none" />
+                                                <textarea rows={3} placeholder="Mencione condições de pagamento, datas da campanha, etc." value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none resize-none" />
                                             </div>
                                         </div>
-                                    </div>
+                                    </form>
                                 )}
-
                             </div>
 
-                            {/* FOOTER DINÂMICO (Área Fixa com Configurações e Totais) */}
+                            {/* FOOTER DINÂMICO */}
                             {checkoutStep === 'cart' ? (
                                 <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-20 relative">
                                     <div className="flex flex-col w-full mb-4">
-                                        
-                                        {/* Configuração de Campanha */}
                                         <div className="flex flex-col gap-3 border-b border-white/5 pb-4 mb-4">
                                             <div className="grid grid-cols-2 gap-3 items-end">
                                                 <div className="flex flex-col gap-1.5 relative z-50">
@@ -689,7 +720,7 @@ export function Services() {
                                                     <CustomSelect
                                                         options={monthOptions}
                                                         value={String(months)}
-                                                        onChange={(val) => setMonths(Number(val))}
+                                                        onChange={(val: string) => setMonths(Number(val))}
                                                         placeholder="Duração"
                                                         icon={<CalendarDays className="w-4 h-4" />}
                                                     />
@@ -706,21 +737,21 @@ export function Services() {
                                                             disabled={appliedCoupon !== null}
                                                         />
                                                         {appliedCoupon ? (
-                                                            <Button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4"/></Button>
+                                                            <Button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4" /></Button>
                                                         ) : (
-                                                            <Button onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4"/></Button>
+                                                            <Button onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4" /></Button>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                            {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
+                                            {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
                                             <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Impacto Total</p>
                                             <p className="text-xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts || 0)}</p>
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</span>
@@ -728,7 +759,7 @@ export function Services() {
                                                 <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
                                                 <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
                                             </div>
-                                            
+
                                             {totalEconomy > 0 && (
                                                 <div className="flex flex-col items-end">
                                                     <span className="bg-[#25D366]/10 text-[#25D366] text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border border-[#25D366]/20">
@@ -738,10 +769,11 @@ export function Services() {
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    <Button 
-                                        disabled={cart.length === 0} 
-                                        onClick={() => setCheckoutStep('crm')} 
+
+                                    <Button
+                                        disabled={cart.length === 0 || isSubmitting}
+                                        onClick={() => setCheckoutStep('crm')}
+                                        isLoading={isSubmitting}
                                         className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
                                     >
                                         <MessageCircle className="w-5 h-5 mr-2" /> Finalizar Cotação
@@ -750,21 +782,21 @@ export function Services() {
                             ) : (
                                 <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-3 z-20 relative">
                                     <button onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
-                                    <Button 
-                                        onClick={handleCRMSubmit} 
-                                        disabled={isSubmitting || !formData.name || !formData.email || !formData.whatsapp}
+                                    <Button
+                                        onClick={handleCRMSubmit}
+                                        disabled={isSubmitting || !formData.name || !formData.email || !formData.phone}
                                         className="w-full bg-[#FF5E00] hover:brightness-110 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(255,94,0,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
                                     >
-                                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin"/> : <Ticket className="w-5 h-5" />} 
+                                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Ticket className="w-5 h-5" />}
                                         Gerar Ticket Comercial CRM
                                     </Button>
                                 </div>
                             )}
-
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
+
         </div>
     );
 }

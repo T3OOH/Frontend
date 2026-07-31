@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
 import { 
     Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, 
-    Zap, Layers, MapPin, Compass, Shield, MonitorPlay, Maximize, Minimize
+    Zap, MapPin, Maximize, Minimize, Compass, Shield, MonitorPlay,
+    Ticket, CalendarDays, Tag, CheckCircle2, MessageCircle, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,8 +12,8 @@ import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
 import { Input } from '@/components/Input';
-import { Textarea } from '@/components/Textarea';
 import { Button } from '@/components/Button';
+import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext'; 
 
@@ -26,6 +27,8 @@ export function Map() {
     const [panels, setPanels] = useState<Panel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedState, setSelectedState] = useState('');
+    const [selectedCity, setSelectedCity] = useState('');
     const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
@@ -34,10 +37,38 @@ export function Map() {
     
     // Estado para o modo Tela Cheia
     const [isFullscreen, setIsFullscreen] = useState(false);
-    
+
+    // ============================================================================
+    // ESTADOS UNIFICADOS DO CHECKOUT (CARRINHO + CRM)
+    // ============================================================================
+    const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm'>('cart');
+    const [months, setMonths] = useState(1);
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, discount: number } | null>(null);
     const [checkoutForm, setCheckoutForm] = useState({ 
         name: '', email: '', phone: '', company: '', message: '' 
     });
+
+    // Sincronização entre páginas (Map <-> Services) via LocalStorage
+    useEffect(() => {
+        const savedData = localStorage.getItem('@t3:checkoutSync');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.months) setMonths(parsed.months);
+                if (parsed.appliedCoupon !== undefined) setAppliedCoupon(parsed.appliedCoupon);
+                if (parsed.checkoutForm) setCheckoutForm(prev => ({ ...prev, ...parsed.checkoutForm }));
+            } catch (e) {
+                console.error("Erro ao ler sync do checkout:", e);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('@t3:checkoutSync', JSON.stringify({
+            months, appliedCoupon, checkoutForm
+        }));
+    }, [months, appliedCoupon, checkoutForm]);
 
     // Efeito para travar o scroll da página quando em Fullscreen ou no Checkout
     useEffect(() => {
@@ -52,17 +83,17 @@ export function Map() {
     }, [isFullscreen, isCheckoutOpen]);
 
     useEffect(() => {
-        if (user) {
+        if (user && !checkoutForm.name) {
             const u = user as any; 
             setCheckoutForm(prev => ({
                 ...prev,
                 name: u.name || prev.name,
                 email: u.email || prev.email,
-                phone: u.phone || prev.phone,
+                phone: u.phone || u.whatsapp || prev.phone,
                 company: u.company || prev.company
             }));
         }
-    }, [user]);
+    }, [user, checkoutForm.name]);
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -112,28 +143,37 @@ export function Map() {
         fetchPanels();
     }, []);
 
-    const filteredPanels = panels.filter((p) => p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.city?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const stateOptions = useMemo(() => {
+        const states = Array.from(new Set(panels.map(p => p.state).filter(Boolean))).sort();
+        return [{ value: '', label: 'Todos os Estados' }, ...states.map(st => ({ value: st as string, label: st as string }))];
+    }, [panels]);
 
-    // Lógica de Desconto Combo Progressivo
-    let totalOriginalValue = 0;
-    let totalVolumeDiscount = 0;
+    const cityOptions = useMemo(() => {
+        const filtered = selectedState ? panels.filter(p => p.state === selectedState) : panels;
+        const cities = Array.from(new Set(filtered.map(p => p.city).filter(Boolean))).sort();
+        return [{ value: '', label: 'Todas as Cidades' }, ...cities.map(city => ({ value: city as string, label: city as string }))];
+    }, [panels, selectedState]);
 
-    cart.forEach((cartItem, index) => {
-        const livePanel = panels.find(p => p.id === cartItem.id);
-        const price = Number(livePanel ? livePanel.price : cartItem.price) || 0;
-        
-        totalOriginalValue += price;
-        if (index > 0) {
-            totalVolumeDiscount += price * 0.10;
-        }
+    const filteredPanels = panels.filter(panel => {
+        const matchesSearch = panel.name?.toLowerCase().includes(searchTerm.toLowerCase()) || panel.city?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesState = selectedState ? panel.state === selectedState : true;
+        const matchesCity = selectedCity ? panel.city === selectedCity : true;
+        return matchesSearch && matchesState && matchesCity;
     });
 
-    const finalCartValue = totalOriginalValue - totalVolumeDiscount;
+    // ============================================================================
+    // CÁLCULOS MATEMÁTICOS UNIFICADOS DO CHECKOUT
+    // ============================================================================
+    const monthOptions = useMemo(() => {
+        return Array.from({ length: 12 }, (_, i) => ({
+            value: String(i + 1),
+            label: `${i + 1} ${i === 0 ? 'Mês' : 'Meses'}`
+        }));
+    }, []);
 
     const totalCartImpacts = cart.reduce((acc, cartItem) => {
         const livePanel = panels.find(p => p.id === cartItem.id);
         const impactToSum = livePanel ? livePanel.impacts : cartItem.impacts;
-        
         const strVal = String(impactToSum || '').toLowerCase();
         let n = Number(strVal.replace(/\D/g, ''));
         if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
@@ -142,35 +182,80 @@ export function Map() {
         return acc + n;
     }, 0);
 
-    const handleSubmitQuotation = async (e: React.FormEvent) => {
+    const baseMonthly = cart.reduce((acc, cartItem) => {
+        const livePanel = panels.find(p => p.id === cartItem.id);
+        return acc + (Number(livePanel ? livePanel.price : cartItem.price) || 0);
+    }, 0);
+
+    const volumeDiscount = cart.length > 1 ? baseMonthly * 0.10 : 0;
+    const subtotalMonthly = baseMonthly - volumeDiscount;
+
+    const totalContractValue = subtotalMonthly * months;
+    const couponDiscount = appliedCoupon ? totalContractValue * appliedCoupon.discount : 0;
+    const finalTotalValue = totalContractValue - couponDiscount;
+    const finalMonthlyValue = finalTotalValue / months;
+
+    const totalWithoutAnyDiscount = baseMonthly * months;
+    const totalEconomy = totalWithoutAnyDiscount - finalTotalValue;
+
+    const handleApplyCoupon = () => {
+        if (!couponInput) return;
+        if (couponInput.toUpperCase() === 'T3PRO') {
+            setAppliedCoupon({ code: 'T3PRO', discount: 0.15 });
+            addToast('Cupom Especial aplicado com sucesso! (15% OFF)', 'success');
+        } else {
+            addToast('Cupom inválido ou expirado.', 'error');
+            setAppliedCoupon(null);
+        }
+    };
+
+    const handleCRMSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         try {
-            const systemNote = totalVolumeDiscount > 0 
-                ? `\n\n[SISTEMA]: O cliente obteve R$ ${totalVolumeDiscount.toFixed(2)} de desconto por pacote (10% a partir do 2º painel). Valor estimado do orçamento: ${formatCurrency(finalCartValue)}.`
-                : '';
+            const totalOriginalCartValue = cart.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+            const discountRatio = totalOriginalCartValue > 0 ? (finalMonthlyValue / totalOriginalCartValue) : 1;
+
+            const structuredItems = cart.map(p => ({
+                panelId: p.id,
+                priceSnapshot: Number(p.price || 0) * discountRatio
+            }));
+
+            let extraNotes = checkoutForm.message;
+            if (appliedCoupon || volumeDiscount > 0) {
+                extraNotes += `\n\n[NOTAS DE DESCONTO]:`;
+                if (appliedCoupon) extraNotes += ` Cupom ${appliedCoupon.code} (${appliedCoupon.discount * 100}% OFF).`;
+                if (volumeDiscount > 0) extraNotes += ` Desconto de volume aplicado.`;
+            }
 
             const payload = {
                 clientDetails: {
-                    ...checkoutForm,
-                    message: checkoutForm.message + systemNote
+                    name: checkoutForm.name,
+                    email: checkoutForm.email,
+                    phone: checkoutForm.phone,
+                    company: checkoutForm.company,
+                    message: extraNotes.trim()
                 },
-                panelIds: cart.map(p => p.id),
+                contractMonths: months,
+                originalValue: totalWithoutAnyDiscount,
+                expectedValue: finalTotalValue,
+                items: structuredItems,
                 source: 'INTERACTIVE_MAP'
             };
 
             await api.post('/crm/deals/checkout', payload);
 
-            addToast('Seu pedido foi registrado com sucesso.', 'success');
-
+            addToast('Pedido enviado com sucesso! Nosso comercial entrará em contato.', 'success');
             clearCart();
             setIsCheckoutOpen(false);
+            setCheckoutStep('cart');
             setCheckoutForm({ name: '', email: '', phone: '', company: '', message: '' });
             navigate('/dashboard');
-        } catch (error) {
-            console.error("[Map] Checkout Integration Error:", error);
-            addToast('Falha ao processar solicitação. Verifique sua conexão.', 'error');
+        } catch (err: any) {
+            console.error("Erro no Checkout:", err);
+            const errorMsg = err.response?.data?.details?.[0]?.message || err.response?.data?.error || 'Erro ao processar pedido. Verifique os dados informados.';
+            addToast(errorMsg, 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -229,7 +314,7 @@ export function Map() {
                 )}
             </AnimatePresence>
 
-            {/* Sidebar Desktop */}
+            {/* Sidebar Desktop (Busca) */}
             <AnimatePresence initial={false}>
                 {isSidebarOpen && !isCheckoutOpen && (
                     <motion.div initial={{ x: '-120%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-120%', opacity: 0 }} className="hidden md:flex absolute top-4 left-4 bottom-4 w-96 bg-[#0A0A0B]/85 backdrop-blur-2xl border border-brand-border/40 z-40 flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
@@ -241,14 +326,34 @@ export function Map() {
                                 </button>
                             </div>
 
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
-                                <Input
-                                    placeholder="Buscar por avenida..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9"
-                                />
+                            <div className="flex flex-col gap-3">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
+                                    <Input
+                                        placeholder="Buscar por avenida..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-9"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="w-1/2">
+                                        <CustomSelect
+                                            options={stateOptions}
+                                            value={selectedState}
+                                            onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }}
+                                            placeholder="Estado"
+                                        />
+                                    </div>
+                                    <div className={`w-1/2 ${!selectedState ? 'opacity-40 pointer-events-none' : ''}`}>
+                                        <CustomSelect
+                                            options={cityOptions}
+                                            value={selectedCity}
+                                            onChange={(val: string) => setSelectedCity(val)}
+                                            placeholder="Cidade"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -327,8 +432,7 @@ export function Map() {
             {!isCheckoutOpen && (
                 <>
                     {/* Barra de Pesquisa Superior Flutuante + Botão Fullscreen */}
-                    <div className="md:hidden absolute top-4 left-4 right-4 z-40 pointer-events-auto flex items-center gap-2">
-                        {/* Barra de Pesquisa */}
+                    <div className="md:hidden absolute top-4 left-4 right-4 z-[400] pointer-events-auto flex items-center gap-2">
                         <div className="flex-1 bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full px-4 py-[11px] shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-3 transition-all focus-within:border-brand-neon/50">
                             <Search className="w-5 h-5 text-brand-neon flex-shrink-0" />
                             <input 
@@ -355,7 +459,7 @@ export function Map() {
                     </div>
 
                     {/* Container Inferior (Pílula de Carrinho + Cards Compactos) */}
-                    <div className={`md:hidden absolute left-0 right-0 z-40 pointer-events-none flex flex-col items-center justify-end pb-2 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
+                    <div className={`md:hidden absolute left-0 right-0 z-[400] pointer-events-none flex flex-col items-center justify-end pb-2 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
                         
                         {/* Botão de Solicitar Orçamento (Estilo Pill) */}
                         <AnimatePresence>
@@ -434,7 +538,7 @@ export function Map() {
 
             {/* Bottom Navigation Nativa (Oculta se Checkout Aberto ou em Fullscreen) */}
             {!isCheckoutOpen && !isFullscreen && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 z-[100] px-6 py-3 flex justify-between items-center pb-safe">
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 z-[500] px-6 py-3 flex justify-between items-center pb-safe">
                     <Link to="/" className="flex flex-col items-center gap-1 text-brand-muted hover:text-white transition-colors">
                         <Compass className="w-5 h-5" />
                         <span className="text-[9px] font-medium">Explorar</span>
@@ -455,90 +559,197 @@ export function Map() {
             )}
 
             {/* ========================================================= */}
-            {/* CHECKOUT MODAL (COMPARTILHADO, MAS RESPONSIVO)              */}
+            {/* CHECKOUT MODAL (UNIFICADO COM SERVICES)                     */}
             {/* ========================================================= */}
             
             <AnimatePresence>
                 {isCheckoutOpen && (
-                    <motion.div initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '100%', opacity: 0 }} className="absolute top-0 right-0 h-full w-full md:w-[480px] bg-[#0A0A0B]/95 backdrop-blur-2xl border-l border-brand-border/40 z-[110] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.7)]">
-                        <div className="p-5 md:p-6 border-b border-brand-border/40 flex justify-between items-center bg-brand-surface/10 pt-[env(safe-area-inset-top,20px)]">
-                            <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2"><Send className="w-5 h-5 text-brand-neon" /> Finalizar Pedido CRM</h2>
-                            <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-brand-surface/50 rounded-full text-brand-muted hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+                    <motion.div 
+                        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="fixed inset-y-0 right-0 h-full w-full md:w-[480px] bg-[#0A0A0B] border-l border-white/10 z-[99999] flex flex-col shadow-2xl"
+                    >
+                        {/* HEADER DINÂMICO */}
+                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0 pt-[env(safe-area-inset-top,20px)] z-20 relative">
+                            <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
+                                {checkoutStep === 'cart' ? (
+                                    <><ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> Resumo do Pedido</>
+                                ) : (
+                                    <><Send className="w-5 h-5 text-[#FF5E00]" /> Finalizar Pedido CRM</>
+                                )}
+                            </h2>
+                            <button onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-5 md:p-6 custom-scrollbar space-y-6">
-                            
-                            <div className="bg-[#111113] border border-brand-border/40 rounded-2xl p-5 flex flex-col gap-4 shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF5E00]/5 rounded-full blur-[40px] pointer-events-none"></div>
-                                
-                                <div className="flex items-center justify-between border-b border-brand-border/30 pb-3 relative z-10">
-                                    <span className="text-xs font-bold text-brand-muted uppercase tracking-wider flex items-center gap-1.5">
-                                        <Layers className="w-4 h-4 text-brand-neon" /> Painéis no Carrinho
-                                    </span>
-                                    <span className="text-sm font-black text-white bg-[#0A0A0B] px-3 py-1 rounded-md border border-brand-border/50">{cart.length} unid</span>
-                                </div>
-                                
-                                <div className="flex items-end justify-between relative z-10 pt-1">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-[#FF5E00]/80 uppercase font-black tracking-widest mb-0.5">Alcance Total (Diário)</span>
-                                        <span className="text-2xl font-black text-[#FF5E00] tracking-tighter leading-none">{formatImpacts(totalCartImpacts || 0)}</span>
+                        {/* BODY DINÂMICO */}
+                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
+                            {checkoutStep === 'cart' ? (
+                                cart.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-60">
+                                        <ShoppingCart className="w-12 h-12 text-brand-muted mb-4" />
+                                        <p className="text-sm text-brand-muted">Seu carrinho de orçamentos está vazio.</p>
                                     </div>
-                                    <div className="flex flex-col text-right">
-                                        {totalVolumeDiscount > 0 && (
-                                            <span className="text-[10px] text-red-500 line-through mb-0.5 font-bold decoration-red-500/50">
-                                                {formatCurrency(totalOriginalValue)}
-                                            </span>
-                                        )}
-                                        <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mb-1">
-                                            {totalVolumeDiscount > 0 ? 'Investimento (c/ Desconto)' : 'Investimento Base'}
-                                        </span>
-                                        <span className="text-xl font-black text-[#25D366] leading-none">{formatCurrency(finalCartValue || 0)}</span>
-                                        {totalVolumeDiscount > 0 && (
-                                            <span className="text-[9px] font-bold text-[#25D366] mt-1.5 bg-[#25D366]/10 px-1.5 py-0.5 rounded uppercase tracking-wider ml-auto w-fit">
-                                                Economia: {formatCurrency(totalVolumeDiscount)}
-                                            </span>
-                                        )}
+                                ) : (
+                                    <div className="flex flex-col gap-4 pb-4">
+                                        {cart.map((p, i) => (
+                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl relative shadow-md">
+                                                <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow-md z-10">{i + 1}</div>
+                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-lg object-cover bg-black" />
+                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                    <h4 className="text-sm font-bold text-white leading-tight mb-1 truncate pr-2">{p.name}</h4>
+                                                    <p className="text-xs text-brand-muted mb-3"><MapPin className="w-3 h-3 inline-block -mt-0.5" /> {p.city}</p>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-sm font-bold text-[#25D366]">{formatCurrency(Number(p.price))}</span>
+                                                        <button onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-wider hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-3 py-1.5 rounded-md transition-colors">Remover</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            </div>
+                                )
+                            ) : (
+                                <form onSubmit={handleCRMSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
+                                    <div className="bg-[#111113] rounded-[16px] p-5 border border-white/5">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <span className="text-[10px] text-brand-muted font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Painéis no Carrinho</span>
+                                            <span className="bg-white/10 text-white text-xs font-bold px-2 py-0.5 rounded">{cart.length} unid</span>
+                                        </div>
+                                        <div className="border-t border-white/5 my-4" />
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] text-[#FF5E00] font-bold uppercase tracking-widest mb-1">Alcance Total (Diário)</span>
+                                                <span className="text-xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts)}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end text-right">
+                                                {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(totalWithoutAnyDiscount)}</span>}
+                                                <span className="text-[9px] text-brand-muted font-bold uppercase tracking-widest mb-1">Investimento (C/ Desconto)</span>
+                                                <span className="text-xl font-black text-[#25D366] leading-none mb-1.5">{formatCurrency(finalTotalValue)}</span>
+                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded uppercase tracking-wider">Economia: {formatCurrency(totalEconomy)}</span>}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <h3 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-4">Seus Dados de Contato</h3>
-                                <form id="quotation-form" onSubmit={handleSubmitQuotation} className="space-y-4">
-                                    <div>
-                                        <label className="text-xs text-brand-muted mb-1 block">Nome Completo *</label>
-                                        <Input required value={checkoutForm.name} onChange={e => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="bg-[#111113]" />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs text-brand-muted mb-1 block">E-mail *</label>
-                                            <Input required type="email" value={checkoutForm.email} onChange={e => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="bg-[#111113]" />
+                                    <div className="flex flex-col gap-4">
+                                        <h3 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Seus Dados de Contato</h3>
+
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-brand-muted">Nome Completo *</label>
+                                            <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
                                         </div>
-                                        <div>
-                                            <label className="text-xs text-brand-muted mb-1 block">WhatsApp *</label>
-                                            <Input required value={checkoutForm.phone} onChange={e => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="bg-[#111113]" />
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-xs text-brand-muted">E-mail *</label>
+                                                <input type="email" required value={checkoutForm.email} onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-xs text-brand-muted">WhatsApp *</label>
+                                                <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-brand-muted mb-1 block">Empresa / Agência</label>
-                                        <Input value={checkoutForm.company} onChange={e => setCheckoutForm({ ...checkoutForm, company: e.target.value })} className="bg-[#111113]" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-brand-muted mb-1 block">Observações (Opcional)</label>
-                                        <Textarea value={checkoutForm.message} onChange={e => setCheckoutForm({ ...checkoutForm, message: e.target.value })} rows={3} placeholder="Mencione condições de pagamento, datas da campanha, etc." className="bg-[#111113]" />
+
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-brand-muted">Empresa / Agência</label>
+                                            <input type="text" value={checkoutForm.company} onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-brand-muted">Observações (Opcional)</label>
+                                            <textarea rows={3} placeholder="Mencione condições de pagamento, datas da campanha, etc." value={checkoutForm.message} onChange={(e) => setCheckoutForm({ ...checkoutForm, message: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none resize-none" />
+                                        </div>
                                     </div>
                                 </form>
-                            </div>
+                            )}
                         </div>
 
-                        <div className="p-5 md:p-6 bg-[#0A0A0B] border-t border-brand-border/40 pb-safe">
-                            <Button type="submit" form="quotation-form" disabled={isSubmitting || cart.length === 0} className="w-full py-4 text-sm font-bold rounded-xl">
-                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Gerar Ticket Comercial CRM'}
-                            </Button>
-                        </div>
+                        {/* FOOTER DINÂMICO */}
+                        {checkoutStep === 'cart' ? (
+                            <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-20 relative">
+                                <div className="flex flex-col w-full mb-4">
+                                    <div className="flex flex-col gap-3 border-b border-white/5 pb-4 mb-4">
+                                        <div className="grid grid-cols-2 gap-3 items-end">
+                                            <div className="flex flex-col gap-1.5 relative z-50">
+                                                <label className="text-[9px] text-brand-muted uppercase tracking-widest font-bold">Duração da Campanha</label>
+                                                <CustomSelect
+                                                    options={monthOptions}
+                                                    value={String(months)}
+                                                    onChange={(val: string) => setMonths(Number(val))}
+                                                    placeholder="Duração"
+                                                    icon={<CalendarDays className="w-4 h-4" />}
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1.5 h-full">
+                                                <label className="text-[9px] text-brand-muted uppercase tracking-widest font-bold">Cupom Promocional</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="CUPOM"
+                                                        value={couponInput}
+                                                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                                        className="w-full bg-[#111113] border border-white/10 rounded-xl px-3 text-white text-xs font-bold focus:border-brand-neon outline-none uppercase placeholder:normal-case placeholder:font-normal h-[42px]"
+                                                        disabled={appliedCoupon !== null}
+                                                    />
+                                                    {appliedCoupon ? (
+                                                        <Button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4" /></Button>
+                                                    ) : (
+                                                        <Button onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4" /></Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                        <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Impacto Total</p>
+                                        <p className="text-xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts || 0)}</p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</span>
+                                            {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}/mês</span>}
+                                            <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
+                                            <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
+                                        </div>
+
+                                        {totalEconomy > 0 && (
+                                            <div className="flex flex-col items-end">
+                                                <span className="bg-[#25D366]/10 text-[#25D366] text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border border-[#25D366]/20">
+                                                    Economia de {formatCurrency(totalEconomy)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <Button
+                                    disabled={cart.length === 0 || isSubmitting}
+                                    onClick={() => setCheckoutStep('crm')}
+                                    isLoading={isSubmitting}
+                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
+                                >
+                                    <MessageCircle className="w-5 h-5 mr-2" /> Finalizar Cotação
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-3 z-20 relative">
+                                <button onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
+                                <Button
+                                    onClick={handleCRMSubmit}
+                                    disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
+                                    className="w-full bg-[#FF5E00] hover:brightness-110 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(255,94,0,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                                >
+                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Ticket className="w-5 h-5" />}
+                                    Gerar Ticket Comercial CRM
+                                </Button>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
+
         </div>
     );
 }

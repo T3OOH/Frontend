@@ -95,7 +95,7 @@ export function Header() {
                                 initial={{ opacity: 0, scale: 0.8, x: -20 }}
                                 animate={{ opacity: 1, scale: 1, x: 0 }}
                                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                                src="/LOGO T3 BRANCO COM LARANJA somente t3.PNG" 
+                                src="/t3d 2.png" 
                                 alt="Logo T3" 
                                 className="h-8 md:h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,94,0,0.15)] group-hover:drop-shadow-[0_0_20px_rgba(255,94,0,0.5)] transition-all duration-300"
                             />

@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
-import { Target, DollarSign, TrendingUp, Users, Clock, CheckCircle2, ArrowRight, UserPlus, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { crmService } from '@/services/crm.service';
 import { useNavigate } from 'react-router-dom';
+import { 
+    Target, DollarSign, TrendingUp, Users, Clock, 
+    CheckCircle2, ArrowRight, UserPlus, Loader2, FileDown 
+} from 'lucide-react';
 
-/**
- * Componente principal de Visão Geral (Overview) do CRM.
- * Exibe métricas de performance comercial, fila de pedidos em tempo real (pool)
- * e próximos passos do vendedor.
- * 
- * Implementa a arquitetura de viewports isolados para renderização otimizada
- * em Desktop e Mobile.
- */
+// Dependências de exportação de documentos
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 export function CrmOverview() {
     const { user } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
     
+    // =========================================================
+    // ESTADOS
+    // =========================================================
     const [metrics, setMetrics] = useState({
         totalExpectedValue: 0,
         totalActiveDeals: 0,
@@ -25,24 +27,23 @@ export function CrmOverview() {
         totalWonValue: 0
     });
     
+    // panels: Catálogo em memória para resgatar os preços reais
+    const [panels, setPanels] = useState<any[]>([]);
     const [globalDeals, setGlobalDeals] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [claimingId, setClaimingId] = useState<string | null>(null);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null);
 
-    /**
-     * Ciclo de vida de inicialização e polling.
-     * Busca os dados ao montar o componente e configura uma atualização
-     * automática a cada 10 segundos para manter a fila de pedidos em tempo real.
-     */
+    // =========================================================
+    // EFEITOS E POLLING
+    // =========================================================
     useEffect(() => {
         let isPolling = true;
         let pollInterval: ReturnType<typeof setInterval>;
 
         const initFetch = async () => {
             const success = await fetchData();
-            // Se falhou por limite de requisições (429), não iniciamos o polling
             if (success && isPolling) {
-                // Passando de 10s para 60 segundos (60000ms) para poupar o servidor
                 pollInterval = setInterval(fetchData, 60000);
             }
         };
@@ -58,19 +59,21 @@ export function CrmOverview() {
     const fetchData = async () => {
         try {
             setIsLoading(true);
-            const [metricsData, dealsData] = await Promise.all([
+            const [metricsData, dealsData, panelsData] = await Promise.all([
                 crmService.getMetrics().catch(() => null),
-                crmService.getGlobalDeals()
+                crmService.getGlobalDeals(),
+                // Puxamos o catálogo para poder cruzar com os nomes que vêm no texto do CRM
+                crmService.getDeals ? crmService.getDeals() : fetch('http://localhost:3333/panels').then(res => res.json()).catch(() => [])
             ]);
             if (metricsData) setMetrics(metricsData);
             if (dealsData) setGlobalDeals(dealsData);
-            return true; // Sucesso
+            if (panelsData && Array.isArray(panelsData)) setPanels(panelsData);
+            return true;
         } catch (error: any) {
             console.error("Erro ao carregar dados do overview:", error);
-            // Se tomarmos um 429, avisamos o usuário e paramos o processo
             if (error.response?.status === 429) {
-                addToast("Limite de requisições atingido. Atualização automática pausada.", "error");
-                return false; // Falha de Rate Limit
+                addToast("Limite de requisições atingido.", "error");
+                return false; 
             }
             return true; 
         } finally {
@@ -78,11 +81,6 @@ export function CrmOverview() {
         }
     };
 
-    /**
-     * Permite que um usuário (vendedor) assuma um negócio da fila global.
-     * 
-     * @param dealId - O identificador único do negócio a ser assumido.
-     */
     const handleClaimDeal = async (dealId: string) => {
         try {
             setClaimingId(dealId);
@@ -97,13 +95,226 @@ export function CrmOverview() {
         }
     };
 
-    /**
-     * Redireciona o usuário para o chat de um negócio que ele já atende.
-     * 
-     * @param dealId - O identificador único do negócio.
-     */
     const handleOpenChat = (dealId: string) => {
         navigate(`/crm/chat?dealId=${dealId}`);
+    };
+
+    // =========================================================
+    // SERVIÇO: GERAÇÃO DE CONTRATO PDF COM EXTRATOR INTELIGENTE E JUSTIFY CORRIGIDO
+    // =========================================================
+    const generateContractPDF = async (deal: any) => {
+        try {
+            setIsGeneratingPdf(deal.id);
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            const pageHeight = doc.internal.pageSize.height;
+            
+            const marginLeft = 20; 
+            const marginRight = 20;
+            const contentWidth = pageWidth - marginLeft - marginRight;
+            let currentY = 0;
+
+            // 1. CABEÇALHO FUNDO BRANCO E LOGO CENTRALIZADA
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(28);
+            doc.setTextColor(255, 94, 0);
+            doc.text("t3", pageWidth / 2, 25, { align: "center" });
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("T3 LED MÍDIA E TECNOLOGIA LTDA", pageWidth / 2, 32, { align: "center" });
+
+            currentY = 50;
+
+            // 2. TÍTULO DO DOCUMENTO
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("PROPOSTA COMERCIAL E CONTRATO DE VEICULAÇÃO OOH", pageWidth / 2, currentY, { align: "center" });
+            currentY += 15;
+
+            // 3. DADOS DE IDENTIFICAÇÃO DO CONTRATANTE
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            
+            const clientName = deal.client?.name || "Cliente Não Informado";
+            const clientCompany = deal.client?.company || "Não Informada";
+            const clientEmail = deal.client?.email || "Não Informado";
+            const clientPhone = deal.client?.phone || deal.client?.whatsapp || "Não Informado";
+            const clientCpf = deal.client?.document || deal.client?.cpf || "___.___.___-__"; 
+            const orderDate = new Date(deal.createdAt).toLocaleDateString('pt-BR');
+
+            const clientData = [
+                `CONTRATANTE: ${clientName}`,
+                `EMPRESA / AGÊNCIA: ${clientCompany}`,
+                `CPF / CNPJ: ${clientCpf}`,
+                `E-MAIL: ${clientEmail}`,
+                `TELEFONE: ${clientPhone}`,
+                `DATA DO PEDIDO: ${orderDate}`,
+            ];
+
+            clientData.forEach((text: string) => {
+                doc.text(text, marginLeft, currentY);
+                currentY += 6;
+            });
+            currentY += 10;
+
+            // ============================================================
+            // MÁGICA DE EXTRAÇÃO DE DADOS (Lendo a string do backend)
+            // ============================================================
+            const sourceText = deal.description || deal.message || deal.notes || deal.client?.message || "";
+            let dealPanels = deal.panels || deal.items || [];
+
+            // Se a API não devolveu o array estruturado, nós "lemos" o texto
+            if (dealPanels.length === 0 && sourceText) {
+                const panelsMatch = sourceText.match(/Painéis Solicitados:\s*([^\n]+)/);
+                if (panelsMatch) {
+                    const rawNames = panelsMatch[1].replace(/\.$/, '').trim();
+                    const panelNames = rawNames.split(',').map((n: string) => n.trim());
+                    
+                    dealPanels = panelNames.map((name: string) => {
+                        // Cruza o nome do texto com nosso catálogo em memória
+                        const found = panels.find(p => p.name?.trim().toLowerCase() === name.toLowerCase());
+                        // Se não achar, usa mock com preço rateado
+                        return found ? { panel: found } : { panel: { name, city: 'GOIÂNIA', state: 'GO', price: deal.expectedValue / panelNames.length } }; 
+                    });
+                }
+            }
+
+            // Lê os valores matemáticos direto do log do sistema
+            let finalMonthlyValue = Number(deal.expectedValue || 0);
+            let finalTotalContract = Number(deal.expectedValue || 0);
+
+            const monthlyMatch = sourceText.match(/Valor mensal:\s*R\$\s*([\d.,]+)/);
+            if (monthlyMatch) {
+                finalMonthlyValue = Number(monthlyMatch[1].replace(/\./g, '').replace(',', '.'));
+            }
+
+            const totalMatch = sourceText.match(/Valor Total Contrato.*?\:\s*R\$\s*([\d.,]+)/);
+            if (totalMatch) {
+                finalTotalContract = Number(totalMatch[1].replace(/\./g, '').replace(',', '.'));
+            }
+
+            // Descobre o rateio do desconto para aplicar individualmente
+            const totalOriginal = dealPanels.reduce((sum: number, item: any) => sum + Number(item.panel?.price || item.price || 0), 0);
+            const discountRatio = totalOriginal > 0 ? (finalMonthlyValue / totalOriginal) : 1;
+
+            // 4. PLANILHA DE GASTOS (AutoTable)
+            doc.setFont("helvetica", "bold");
+            doc.text("1. ESCOPO DOS SERVIÇOS E INVESTIMENTO", marginLeft, currentY);
+            currentY += 5;
+
+            // Monta as linhas baseadas no que foi extraído ou recebido da API nova
+            const tableRows = dealPanels.length > 0 
+                ? dealPanels.map((item: any) => {
+                    const p = item.panel || item; // Suporta tanto o array antigo de panels quanto o novo de items
+                    const originalPrice = Number(p.price || 0);
+                    const discountedPrice = item.priceSnapshot ? Number(item.priceSnapshot) : (originalPrice * discountRatio);
+                    
+                    const city = p.city ? String(p.city).toUpperCase() : 'CIDADE';
+                    const state = p.state ? String(p.state).toUpperCase() : 'UF';
+                    const locationPrefix = `(${city} - ${state}) `;
+                    
+                    return [
+                        `${locationPrefix}${p.name || 'Painel'}`, // Col 1
+                        formatCurrency(originalPrice),            // Col 2
+                        formatCurrency(discountedPrice)           // Col 3
+                    ];
+                })
+                : [["Circuito T3 LED Mídia - Pacote Customizado", formatCurrency(finalMonthlyValue), formatCurrency(finalMonthlyValue)]];
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['Painéis Solicitados', 'Valor do Painel', 'Valor com Desconto']],
+                body: [
+                    ...tableRows,
+                    [{ content: 'VALOR MENSAL (COM DESCONTO):', colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } }, formatCurrency(finalMonthlyValue)],
+                    [{ content: 'VALOR TOTAL A SER PAGO (CONTRATO):', colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', fillColor: [255, 94, 0], textColor: [255, 255, 255] } }, formatCurrency(finalTotalContract)]
+                ],
+                theme: 'striped',
+                headStyles: { fillColor: [255, 94, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                margin: { left: marginLeft, right: marginRight },
+                styles: { font: 'helvetica', fontSize: 9 }
+            });
+
+            currentY = (doc as any).lastAutoTable.finalY + 15;
+
+            // 5. CORPO DO DOCUMENTO (Termos Legais)
+            doc.setFont("helvetica", "bold");
+            doc.text("2. TERMOS DE CONTRATAÇÃO E VEICULAÇÃO", marginLeft, currentY);
+            currentY += 6;
+
+            doc.setFont("helvetica", "normal");
+            
+            const paragraphs = [
+                "Pelo presente instrumento, a T3 LED MÍDIA compromete-se a realizar a veiculação de mídia digital outdoor (DOOH) nas localizações e faces especificadas na planilha de custos acima. A CONTRATANTE reconhece que o período padrão de veiculação (contrato) compreende ciclos de 30 (trinta) dias consecutivos, contados a partir da data de ativação efetiva da campanha em nosso sistema central de exibição.",
+                "Os valores apresentados representam o custo integral para a exibição no formato inserção em loop ou exclusividade, conforme ajustado previamente em tratativas comerciais registradas, estando sujeitos à validação técnica e adequação do material criativo enviado. É de inteira responsabilidade da CONTRATANTE o envio dos arquivos digitais nas especificações técnicas exigidas (resolução, formato e duração).",
+                "Em caso de manutenção técnica imprevista que resulte na inatividade dos telões contratados, a CONTRATANTE será devidamente compensada através da extensão do período de veiculação ou realocação em equipamento de impacto visual equivalente, não cabendo multas recíprocas por casos de força maior. O presente pedido consolida a intenção de contratação, pendente apenas da assinatura digital e da compensação do investimento inicial para o início da veiculação."
+            ];
+
+            const writeParagraph = (text: string) => {
+                // Conta as linhas apenas para saber a altura que o parágrafo vai ocupar
+                const lines = doc.splitTextToSize(text, contentWidth);
+                if (currentY + (lines.length * 5) > pageHeight - 40) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+                
+                // MÁGICA AQUI: maxWidth diz ao jsPDF para não vazar a margem e respeitar o limite, e align 'justify' faz o alinhamento
+                doc.text(text, marginLeft, currentY, { align: "justify", maxWidth: contentWidth }); 
+                currentY += (lines.length * 5) + 4;
+            };
+
+            paragraphs.forEach(writeParagraph);
+
+            // 6. ÁREA DE ASSINATURAS
+            currentY += 20;
+            if (currentY > pageHeight - 40) {
+                doc.addPage();
+                currentY = 40;
+            }
+
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+            
+            // Linha Assinatura T3
+            doc.line(marginLeft, currentY, marginLeft + 60, currentY); 
+            // Linha Assinatura Cliente
+            doc.line(pageWidth - marginRight - 60, currentY, pageWidth - marginRight, currentY); 
+            
+            currentY += 5;
+            doc.setFontSize(9);
+            doc.text("T3 LED Mídia e Tecnologia", marginLeft, currentY);
+            
+            const clientSigName = doc.splitTextToSize(clientName, 60);
+            doc.text(clientSigName, pageWidth - marginRight - 60, currentY);
+
+            // 7. RODAPÉ PAGINADO (Padrão Footer do Site)
+            const pageCount = (doc.internal as any).getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                
+                const footerY = pageHeight - 15;
+                doc.setDrawColor(200, 200, 200);
+                doc.line(marginLeft, footerY - 5, pageWidth - marginRight, footerY - 5);
+                
+                doc.text("T3 LED Mídia • CNPJ: 00.000.000/0000-00 • Goiânia, Goiás, Brasil", pageWidth / 2, footerY, { align: "center" });
+                doc.text("contato@t3ooh.com.br • Segurança e Performance em OOH", pageWidth / 2, footerY + 4, { align: "center" });
+                doc.text(`Página ${i} de ${pageCount}`, pageWidth - marginRight, footerY + 4, { align: "right" });
+            }
+
+            doc.save(`Contrato_T3_${clientName.replace(/\s+/g, '_')}.pdf`);
+            addToast("Documento gerado com sucesso!", "success");
+
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            addToast("Ocorreu um erro ao formatar o documento.", "error");
+        } finally {
+            setIsGeneratingPdf(null);
+        }
     };
 
     const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -115,11 +326,16 @@ export function CrmOverview() {
         { title: 'Carteira de Clientes', value: metrics.totalClients, desc: 'Total cadastrados', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' }
     ];
 
+    // =========================================================
+    // FILTRA OS NEGÓCIOS PARA REMOVER OS FECHADOS (WON E LOST) DA FILA
+    // =========================================================
+    const activeDeals = globalDeals.filter(deal => deal.status !== 'WON' && deal.status !== 'LOST');
+
     return (
         <div className="w-full h-full flex flex-col relative">
 
             {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP                                           */}
+            {/* VIEWPORT: DESKTOP                                         */}
             {/* ========================================================= */}
             <div className="hidden lg:flex flex-col gap-6 animate-fade-in max-w-7xl mx-auto w-full">
                 
@@ -152,9 +368,9 @@ export function CrmOverview() {
                         <div className="p-5 border-b border-brand-border/40 flex justify-between items-center bg-[#0A0A0B]/50">
                             <div>
                                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-brand-neon" /> Fila de Pedidos (Pool)
+                                    <Users className="w-5 h-5 text-brand-neon" /> Fila de Pedidos Ativos
                                 </h2>
-                                <p className="text-xs text-brand-muted mt-1">Pedidos de orçamento chegando em tempo real.</p>
+                                <p className="text-xs text-brand-muted mt-1">Pedidos aguardando atendimento ou em negociação.</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="flex h-3 w-3 relative">
@@ -170,14 +386,14 @@ export function CrmOverview() {
                                 <div className="h-full flex items-center justify-center">
                                     <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
                                 </div>
-                            ) : globalDeals.length === 0 ? (
+                            ) : activeDeals.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-brand-muted">
                                     <Users className="w-12 h-12 mb-3 opacity-20" />
                                     <p>A fila está vazia no momento.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {globalDeals.map(deal => {
+                                    {activeDeals.map(deal => {
                                         const isUnassigned = !deal.sellerId;
                                         const isMine = deal.sellerId === user?.id;
 
@@ -198,7 +414,7 @@ export function CrmOverview() {
                                                     </div>
                                                 </div>
 
-                                                <div>
+                                                <div className="flex items-center gap-2">
                                                     {isUnassigned ? (
                                                         <button 
                                                             onClick={() => handleClaimDeal(deal.id)}
@@ -208,12 +424,22 @@ export function CrmOverview() {
                                                             {claimingId === deal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UserPlus className="w-4 h-4" /> Atender Agora</>}
                                                         </button>
                                                     ) : isMine ? (
-                                                        <button 
-                                                            onClick={() => handleOpenChat(deal.id)}
-                                                            className="w-full sm:w-auto bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
-                                                        >
-                                                            <ArrowRight className="w-4 h-4" /> Abrir Chat
-                                                        </button>
+                                                        <>
+                                                            <button 
+                                                                onClick={() => generateContractPDF(deal)}
+                                                                disabled={isGeneratingPdf === deal.id}
+                                                                className="w-full sm:w-auto bg-[#0A0A0B] hover:bg-brand-surface text-brand-muted border border-brand-border/30 hover:border-brand-neon/50 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                                                title="Baixar Contrato"
+                                                            >
+                                                                {isGeneratingPdf === deal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Contrato
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleOpenChat(deal.id)}
+                                                                className="w-full sm:w-auto bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                <ArrowRight className="w-4 h-4" /> Abrir Chat
+                                                            </button>
+                                                        </>
                                                     ) : (
                                                         <div className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold text-brand-muted border border-brand-border/30 flex items-center justify-center bg-[#0A0A0B] cursor-not-allowed">
                                                             Em Atendimento
@@ -255,7 +481,6 @@ export function CrmOverview() {
                     <p className="text-xs text-brand-muted">Sua performance comercial hoje.</p>
                 </div>
 
-                {/* Grid 2x2 para os Cards Analíticos */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                     {statCards.map((stat, i) => (
                         <div key={i} className="bg-[#111113] p-4 rounded-[20px] border border-brand-border/20 shadow-sm flex flex-col justify-between h-[130px]">
@@ -294,14 +519,14 @@ export function CrmOverview() {
                                 <div className="py-10 flex items-center justify-center">
                                     <Loader2 className="w-6 h-6 text-brand-neon animate-spin" />
                                 </div>
-                            ) : globalDeals.length === 0 ? (
+                            ) : activeDeals.length === 0 ? (
                                 <div className="py-10 flex flex-col items-center justify-center text-brand-muted">
                                     <Users className="w-10 h-10 mb-2 opacity-20" />
                                     <p className="text-xs">A fila está vazia no momento.</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
-                                    {globalDeals.map(deal => {
+                                    {activeDeals.map(deal => {
                                         const isUnassigned = !deal.sellerId;
                                         const isMine = deal.sellerId === user?.id;
 
@@ -323,7 +548,7 @@ export function CrmOverview() {
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-1">
+                                                <div className="mt-1 flex gap-2">
                                                     {isUnassigned ? (
                                                         <button 
                                                             onClick={() => handleClaimDeal(deal.id)}
@@ -333,12 +558,22 @@ export function CrmOverview() {
                                                             {claimingId === deal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UserPlus className="w-4 h-4" /> Atender Agora</>}
                                                         </button>
                                                     ) : isMine ? (
-                                                        <button 
-                                                            onClick={() => handleOpenChat(deal.id)}
-                                                            className="w-full bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                                                        >
-                                                            <ArrowRight className="w-4 h-4" /> Abrir Chat
-                                                        </button>
+                                                        <>
+                                                            <button 
+                                                                onClick={() => generateContractPDF(deal)}
+                                                                disabled={isGeneratingPdf === deal.id}
+                                                                className="bg-[#0A0A0B] text-white border border-white/10 px-3 rounded-xl flex items-center justify-center"
+                                                                title="Baixar Contrato"
+                                                            >
+                                                                {isGeneratingPdf === deal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleOpenChat(deal.id)}
+                                                                className="flex-1 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                                                            >
+                                                                <ArrowRight className="w-4 h-4" /> Abrir Chat
+                                                            </button>
+                                                        </>
                                                     ) : (
                                                         <div className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-brand-muted border border-white/5 flex items-center justify-center bg-[#050505]">
                                                             Em Atendimento
@@ -370,10 +605,7 @@ export function CrmOverview() {
 
                 </div>
 
-                {/* Espaçador fantasma (Spacer) para garantir rolagem completa e evitar corte pela Bottom Navigation */}
-                <div className="h-[120px] w-full shrink-0 pointer-events-none" aria-hidden="true" />
             </div>
-
         </div>
     );
 }
