@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     User as UserIcon, 
     Mail, 
@@ -8,40 +8,31 @@ import {
     Check, 
     Loader2, 
     Calendar, 
-    Clock, 
     ArrowRight,
     ArrowLeft,
-    Send,
-    MessageSquare,
-    FileText,
-    Paperclip
+    MessageCircle,
+    Building,
+    Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { profileService } from '@/services/profile.service';
-import { crmService } from '@/services/crm.service'; 
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { io, Socket } from 'socket.io-client';
-import { api } from '@/lib/axios';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-const socket: Socket = io(SOCKET_URL, { autoConnect: false });
-
-interface ChatMessage {
-    id: string;
-    chatId: string;
-    text?: string;
-    time: string | Date;
-    isSender: boolean;
-    mediaUrl?: string;
-    mediaType?: string;
-}
+// Utilitário para formatar o WhatsApp em tempo real
+const maskPhone = (value: string) => {
+    let v = value.replace(/\D/g, ""); 
+    if (v.length > 11) v = v.substring(0, 11); 
+    if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    else if (v.length > 0) v = v.replace(/^(\d*)/, "($1");
+    return v;
+};
 
 export function UserProfile() {
-    const { user } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
     
@@ -51,17 +42,12 @@ export function UserProfile() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [myOrders, setMyOrders] = useState<any[]>([]);
+    
     const [formData, setFormData] = useState({
-        name: '', email: '', phone: '', company: '',
+        name: '', email: '', phone: '', companyName: '',
     });
 
     const [activeOrder, setActiveOrder] = useState<any | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [chatInput, setChatInput] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
-    
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchProfileData = useCallback(async () => {
         try {
@@ -70,148 +56,67 @@ export function UserProfile() {
                 profileService.getProfile(),
                 profileService.getMyOrders()
             ]);
+            
             setFormData({
-                name: profileData.name || '', email: profileData.email || '',
-                phone: profileData.phone || '', company: profileData.company || '',
+                name: profileData.name || '', 
+                email: profileData.email || '',
+                phone: profileData.phone || profileData.whatsapp || '', 
+                // Captura do campo legado ou novo para exibir em tela
+                companyName: profileData.companyName || profileData.company || '',
             });
             setMyOrders(ordersData);
         } catch (error) {
             console.error("Profile data fetch failed:", error);
+            addToast('Erro ao carregar dados do perfil.', 'error');
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [addToast]);
 
     useEffect(() => {
         fetchProfileData();
     }, [fetchProfileData]);
 
-    useEffect(() => {
-        if (!activeOrder) return;
-
-        async function fetchMessages() {
-            try {
-                const history = await crmService.getChatHistory(activeOrder.id);
-                const formattedMessages: ChatMessage[] = history.map((msg: any) => ({
-                    id: msg.id,
-                    chatId: msg.dealId,
-                    text: msg.content,
-                    time: msg.createdAt,
-                    isSender: msg.senderId === user?.id,
-                    mediaUrl: msg.mediaUrl,
-                    mediaType: msg.mediaType
-                }));
-                setMessages(formattedMessages);
-            } catch (error) {
-                console.error("Message history fetch failed:", error);
-            }
-        }
-
-        fetchMessages();
-        socket.connect();
-        socket.emit('join_chat', activeOrder.id);
-
-        const handleReceiveMessage = (incomingMsg: any) => {
-            if (incomingMsg.isInternal) return;
-            setMessages(prev => [
-                ...prev, 
-                {
-                    id: incomingMsg.id || Math.random().toString(),
-                    chatId: incomingMsg.chatId,
-                    text: incomingMsg.text,
-                    time: incomingMsg.time || new Date(),
-                    isSender: incomingMsg.senderId === user?.id,
-                    mediaUrl: incomingMsg.mediaUrl,
-                    mediaType: incomingMsg.mediaType
-                }
-            ]);
-        };
-
-        socket.on('receive_message', handleReceiveMessage);
-        return () => {
-            socket.emit('leave_chat', activeOrder.id);
-            socket.off('receive_message', handleReceiveMessage);
-        };
-    }, [activeOrder, user?.id]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, activeOrder]);
-
     const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await profileService.updateProfile({
-                name: formData.name, phone: formData.phone, company: formData.company
-            });
+            // CORREÇÃO DO ERRO 500:
+            // Enviamos apenas "companyName". Se enviarmos "company", o Prisma tenta
+            // acessar a Tabela de Relação Company e causa colisão de tipo.
+            const payload = {
+                name: formData.name, 
+                phone: formData.phone, 
+                companyName: formData.companyName
+            };
+
+            await profileService.updateProfile(payload as any);
+            
             addToast('Perfil atualizado com sucesso!', 'success');
             setIsEditing(false);
         } catch (error) {
-            addToast('Erro ao atualizar o perfil.', 'error');
+            console.error(error);
+            addToast('Erro ao atualizar o perfil. Verifique os dados.', 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleSendMessage = (overridePayload?: any) => {
-        if ((!chatInput.trim() && !overridePayload?.mediaUrl) || !activeOrder) return;
-
-        const msgPayload = overridePayload || {
-            chatId: activeOrder.id,
-            text: chatInput.trim(),
-            senderId: user?.id,
-            isInternal: false
-        };
-
-        socket.emit('send_message', msgPayload);
-
-        setMessages(prev => [
-            ...prev,
-            { 
-                id: Math.random().toString(), 
-                chatId: activeOrder.id, 
-                text: msgPayload.text, 
-                isSender: true, 
-                time: new Date(),
-                mediaUrl: msgPayload.mediaUrl,
-                mediaType: msgPayload.mediaType
-            }
-        ]);
-
-        setChatInput('');
-    };
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !activeOrder) return;
-
-        setIsUploading(true);
-        const uploadData = new FormData();
-        uploadData.append('file', file);
-
-        try {
-            const response = await api.post('/upload', uploadData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            handleSendMessage({
-                chatId: activeOrder.id,
-                senderId: user?.id,
-                isInternal: false,
-                mediaUrl: response.data.url, 
-                mediaType: file.type
-            });
-        } catch (error) {
-            console.error('File upload failed', error);
-            addToast('Falha ao enviar arquivo.', 'error');
-        } finally {
-            setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
+    const handleContactSupport = (order: any) => {
+        const sellerPhone = order.seller?.phone || order.seller?.whatsapp || '5562999999999';
+        
+        let cleanPhone = String(sellerPhone).replace(/\D/g, '');
+        if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
+            cleanPhone = '55' + cleanPhone;
         }
+
+        const text = `Olá! Gostaria de falar sobre o meu orçamento *#${order.id.substring(0,6).toUpperCase()}*.\n\nStatus atual: *${translateStatus(order.status).text}*`;
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+        
+        window.open(waUrl, '_blank');
     };
 
     const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-    const formatTime = (dateInput: string | Date) => new Date(dateInput).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     const translateStatus = (status: string) => {
         if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20' };
@@ -221,193 +126,230 @@ export function UserProfile() {
 
     if (isLoading) {
         return (
-            <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center bg-[#0A0A0B]">
-                <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
+            <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#0A0A0B]">
+                <Loader2 className="w-10 h-10 text-[#FF5E00] animate-spin mb-4" />
+                <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Carregando Perfil...</span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-[calc(100vh-5rem)] bg-[#0A0A0B] py-8 px-4 sm:px-6 mt-20">
-            <div className="max-w-5xl mx-auto w-full animate-fade-in">
+        <div className="min-h-[100dvh] bg-[#0A0A0B] pt-[100px] pb-12 px-4 sm:px-6 relative overflow-x-hidden">
+            
+            {/* Background Effects */}
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#FF5E00]/5 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="max-w-5xl mx-auto w-full relative z-10">
                 
                 {/* Profile Header */}
-                <div className="glass-panel border-brand-border/40 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden mb-6">
-                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-neon/5 rounded-full blur-[80px] pointer-events-none"></div>
-                    <div className="w-24 h-24 rounded-full bg-[#111113] border-2 border-brand-neon/30 flex items-center justify-center text-3xl font-black text-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] flex-shrink-0 z-10">
+                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center text-4xl font-black text-[#FF5E00] shadow-[0_0_30px_rgba(255,94,0,0.15)] flex-shrink-0 z-10">
                         {formData.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <div className="flex-1 text-center sm:text-left z-10 min-w-0">
-                        <h1 className="text-3xl font-bold text-white tracking-tight mb-1 truncate">{formData.name}</h1>
-                        <p className="text-brand-neon text-sm font-medium uppercase tracking-widest mb-4">Cliente T3 OOH</p>
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-brand-muted">
-                            <span className="flex items-center gap-1.5 truncate"><Mail className="w-4 h-4 flex-shrink-0" /> {formData.email}</span>
-                            <span className="flex items-center gap-1.5 flex-shrink-0"><Clock className="w-4 h-4" /> Conta Ativa</span>
+                    <div className="flex-1 text-center sm:text-left z-10 min-w-0 flex flex-col justify-center h-full">
+                        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2 truncate">{formData.name}</h1>
+                        <p className="text-[#FF5E00] text-xs font-bold uppercase tracking-widest mb-5">Conta Corporativa</p>
+                        
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-5 text-[13px] text-[#8F8F91] font-medium">
+                            <span className="flex items-center gap-2 truncate"><Mail className="w-4 h-4 flex-shrink-0" /> {formData.email}</span>
+                            {formData.phone && <span className="flex items-center gap-2 flex-shrink-0"><Phone className="w-4 h-4 flex-shrink-0" /> {formData.phone}</span>}
+                            {formData.companyName && <span className="flex items-center gap-2 flex-shrink-0"><Building className="w-4 h-4 flex-shrink-0" /> {formData.companyName}</span>}
                         </div>
                     </div>
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="flex items-center gap-2 mb-6 border-b border-brand-border/40 pb-px overflow-x-auto custom-scrollbar">
+                <div className="flex items-center gap-4 mb-8 border-b border-white/5 pb-px overflow-x-auto custom-scrollbar px-2">
                     <button 
                         onClick={() => { setActiveTab('data'); setActiveOrder(null); }}
-                        className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === 'data' ? 'text-brand-neon' : 'text-brand-muted hover:text-white'}`}
+                        className={`flex items-center gap-2 px-4 py-4 text-[13px] uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'data' ? 'text-[#FF5E00]' : 'text-[#8F8F91] hover:text-white'}`}
                     >
                         <UserIcon className="w-4 h-4" /> Meus Dados
-                        {activeTab === 'data' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-neon rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
+                        {activeTab === 'data' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-1 bg-[#FF5E00] rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
                     </button>
                     <button 
                         onClick={() => setActiveTab('orders')}
-                        className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === 'orders' ? 'text-brand-neon' : 'text-brand-muted hover:text-white'}`}
+                        className={`flex items-center gap-2 px-4 py-4 text-[13px] uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'orders' ? 'text-[#FF5E00]' : 'text-[#8F8F91] hover:text-white'}`}
                     >
                         <ShoppingBag className="w-4 h-4" /> Meus Orçamentos
-                        {activeTab === 'orders' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-neon rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
+                        {activeTab === 'orders' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-1 bg-[#FF5E00] rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
                     </button>
                 </div>
 
                 <AnimatePresence mode="wait">
+                    {/* MEUS DADOS TAB */}
                     {activeTab === 'data' && (
                         <motion.div 
                             key="data"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="glass-panel border-brand-border/40 rounded-2xl p-6 sm:p-8 relative"
+                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
-                            <div className="flex items-center justify-between mb-8 pb-4 border-b border-brand-border/30">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 border-b border-white/5 pb-8">
                                 <div>
-                                    <h2 className="text-xl font-bold text-white">Informações Pessoais</h2>
-                                    <p className="text-sm text-brand-muted mt-1">Gerencie seus dados de contato e acesso.</p>
+                                    <h2 className="text-2xl font-black text-white tracking-tight">Informações Pessoais</h2>
+                                    <p className="text-sm text-[#8F8F91] mt-2">Mantenha seus dados de contato atualizados para facilitar as negociações.</p>
                                 </div>
-                                <Button variant={isEditing ? 'primary' : 'secondary'} size="sm" onClick={() => !isEditing ? setIsEditing(true) : handleSaveProfile(new Event('submit') as any)} disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditing ? <><Check className="w-4 h-4 mr-2" /> Salvar</> : <><Edit2 className="w-4 h-4 mr-2" /> Editar</>}
+                                <Button 
+                                    variant={isEditing ? 'primary' : 'secondary'} 
+                                    onClick={() => !isEditing ? setIsEditing(true) : handleSaveProfile(new Event('submit') as any)} 
+                                    disabled={isSubmitting}
+                                    className={`shrink-0 uppercase tracking-widest font-bold text-xs px-6 py-4 rounded-xl transition-all ${isEditing ? 'bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] border-none shadow-[0_4px_15px_rgba(255,94,0,0.3)]' : 'bg-[#0A0A0B] text-white border-white/10 hover:border-[#FF5E00] hover:bg-[#FF5E00]/5'}`}
+                                >
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditing ? <><Check className="w-4 h-4 mr-2" /> Salvar Alterações</> : <><Edit2 className="w-4 h-4 mr-2" /> Editar Dados</>}
                                 </Button>
                             </div>
 
-                            <form onSubmit={handleSaveProfile} className="space-y-6 max-w-2xl">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest">Nome Completo</label>
-                                        <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} disabled={!isEditing} className={!isEditing ? 'opacity-70 bg-transparent border-brand-border/30' : ''} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest">Email (Login)</label>
-                                        <Input type="email" value={formData.email} disabled={true} className="opacity-50 cursor-not-allowed bg-transparent border-brand-border/30" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest">WhatsApp / Celular</label>
-                                        <Input placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} className={!isEditing ? 'opacity-70 bg-transparent border-brand-border/30' : ''} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest">Empresa / Agência</label>
-                                        <Input placeholder="Sua empresa" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} disabled={!isEditing} className={!isEditing ? 'opacity-70 bg-transparent border-brand-border/30' : ''} />
-                                    </div>
+                            <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">Nome Completo</label>
+                                    <Input 
+                                        value={formData.name} 
+                                        onChange={e => setFormData({...formData, name: e.target.value})} 
+                                        disabled={!isEditing} 
+                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
+                                    />
                                 </div>
-
-                                {isEditing && (
-                                    <div className="pt-6 border-t border-brand-border/30 flex justify-end gap-3 mt-8">
-                                        <Button variant="ghost" onClick={() => { setIsEditing(false); fetchProfileData(); }}>Cancelar</Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting ? 'Salvando...' : 'Confirmar Alterações'}
-                                        </Button>
-                                    </div>
-                                )}
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">E-mail Corporativo</label>
+                                    <Input 
+                                        type="email" 
+                                        value={formData.email} 
+                                        disabled={true} 
+                                        className="h-14 rounded-xl text-sm opacity-40 cursor-not-allowed bg-[#0A0A0B] border-white/5" 
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">WhatsApp</label>
+                                    <Input 
+                                        placeholder="(00) 00000-0000" 
+                                        value={formData.phone} 
+                                        onChange={e => {
+                                            // Aplica a máscara em tempo real
+                                            setFormData({...formData, phone: maskPhone(e.target.value)})
+                                        }} 
+                                        disabled={!isEditing} 
+                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">Empresa / Marca</label>
+                                    <Input 
+                                        placeholder="Sua empresa" 
+                                        value={formData.companyName} 
+                                        onChange={e => setFormData({...formData, companyName: e.target.value})} 
+                                        disabled={!isEditing} 
+                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
+                                    />
+                                </div>
                             </form>
                         </motion.div>
                     )}
 
+                    {/* MEUS ORÇAMENTOS TAB */}
                     {activeTab === 'orders' && (
                         <motion.div 
                             key="orders"
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="glass-panel border-brand-border/40 rounded-2xl overflow-hidden flex flex-col"
+                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
-                            {/* ACTIVE CHAT VIEWPORT */}
                             {activeOrder ? (
-                                <div className="flex flex-col h-[60vh] min-h-[400px] max-h-[800px] w-full bg-[#0A0A0B]/80">
-                                    <div className="p-3 sm:p-4 border-b border-brand-border/40 bg-[#0A0A0B] flex items-center justify-between">
-                                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                                            <button onClick={() => setActiveOrder(null)} className="p-1.5 sm:p-2 hover:bg-brand-surface rounded-lg text-brand-muted hover:text-white transition-colors flex-shrink-0">
+                                /* ORDER DETAILS VIEW */
+                                <div className="flex flex-col h-full w-full">
+                                    {/* Header do Detalhe */}
+                                    <div className="p-6 md:p-8 border-b border-white/5 bg-[#0A0A0B]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <button 
+                                                onClick={() => setActiveOrder(null)} 
+                                                className="w-10 h-10 flex items-center justify-center bg-[#111113] border border-white/10 hover:border-[#FF5E00]/50 hover:bg-[#FF5E00]/10 rounded-full text-[#8F8F91] hover:text-[#FF5E00] transition-all flex-shrink-0"
+                                            >
                                                 <ArrowLeft className="w-5 h-5" />
                                             </button>
                                             <div className="min-w-0">
-                                                <h2 className="font-bold text-white text-xs sm:text-sm truncate">Orçamento #{activeOrder.id.substring(0,6).toUpperCase()}</h2>
-                                                <p className="text-[9px] sm:text-[10px] text-brand-muted uppercase tracking-widest mt-0.5 truncate">Comercial T3 OOH</p>
+                                                <h2 className="text-xl font-black text-white truncate tracking-tight">Orçamento #{activeOrder.id.substring(0,6).toUpperCase()}</h2>
+                                                <p className="text-[11px] text-[#8F8F91] uppercase tracking-widest font-bold mt-1 flex items-center gap-2">
+                                                    <Calendar className="w-3.5 h-3.5" /> {new Date(activeOrder.createdAt).toLocaleDateString('pt-BR')}
+                                                </p>
                                             </div>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-xl border flex items-center justify-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${translateStatus(activeOrder.status).color}`}>
+                                            {translateStatus(activeOrder.status).text}
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
-                                        {messages.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-brand-muted opacity-50 px-4 text-center">
-                                                <MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 mb-4" />
-                                                <p className="text-sm">O atendimento será iniciado em breve.</p>
-                                            </div>
-                                        ) : (
-                                            messages.map((msg, idx) => (
-                                                <div key={idx} className={`flex ${msg.isSender ? 'justify-end' : 'justify-start'}`}>
-                                                    <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 break-words ${
-                                                        msg.isSender ? 'bg-brand-neon/10 text-brand-text border border-brand-neon/20 rounded-tr-sm' : 'bg-[#111113] border border-brand-border/50 text-white rounded-tl-sm'
-                                                    }`}>
-                                                        {msg.mediaUrl && (
-                                                            <div className="mb-2 mt-1">
-                                                                {msg.mediaType?.includes('image') ? (
-                                                                    <img src={msg.mediaUrl} alt="Upload" className="max-w-xs w-full rounded-lg border border-brand-border/50 object-cover" />
+                                    {/* Corpo do Detalhe */}
+                                    <div className="p-6 md:p-8 flex flex-col gap-8">
+                                        
+                                        <div>
+                                            <h3 className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest mb-4 border-b border-white/5 pb-2">Painéis Solicitados</h3>
+                                            <div className="flex flex-col gap-3">
+                                                {activeOrder.items?.map((item: any, idx: number) => (
+                                                    <div key={item.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#0A0A0B] border border-white/5 rounded-2xl">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-12 h-12 rounded-xl bg-[#111113] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                                                                {item.panel?.images?.[0] ? (
+                                                                    <img src={item.panel.images[0]} alt="Painel" className="w-full h-full object-cover opacity-70" />
                                                                 ) : (
-                                                                    <a href={msg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-[#0A0A0B]/50 p-2.5 rounded-lg border border-brand-border/50 hover:border-brand-neon/50 overflow-hidden">
-                                                                        <FileText className="w-4 h-4 text-brand-neon flex-shrink-0" />
-                                                                        <span className="text-xs underline text-blue-400 truncate">Ver Anexo</span>
-                                                                    </a>
+                                                                    <MapPin className="w-5 h-5 text-[#8F8F91]" />
                                                                 )}
                                                             </div>
-                                                        )}
-                                                        {msg.text && <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
-                                                        <span className="text-[9px] mt-1.5 block font-bold text-brand-muted text-right">
-                                                            {formatTime(msg.time)}
-                                                        </span>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-white">{item.panel?.name || 'Painel Removido'}</span>
+                                                                <span className="text-[11px] text-[#8F8F91] font-medium mt-0.5">{item.panel?.city} - {item.panel?.state}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                            <span className="text-[10px] font-bold text-[#25D366] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
+                                                            <span className="text-sm font-black text-white">{formatCurrency(item.priceSnapshot || 0)}</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
-                                        )}
-                                        <div ref={messagesEndRef} />
-                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
 
-                                    <div className="p-3 sm:p-4 bg-[#0A0A0B] border-t border-brand-border/40 flex-shrink-0">
-                                        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex gap-2">
-                                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                                            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="p-2 sm:p-3 bg-brand-surface rounded-xl text-brand-muted hover:text-white transition-colors disabled:opacity-50 flex-shrink-0">
-                                                {isUploading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />}
-                                            </button>
-                                            <input
-                                                type="text"
-                                                value={chatInput}
-                                                onChange={(e) => setChatInput(e.target.value)}
-                                                placeholder="Responda ao vendedor..."
-                                                className="flex-1 bg-brand-surface border border-brand-border/50 rounded-xl px-3 sm:px-4 text-xs sm:text-sm text-white focus:outline-none focus:border-brand-neon transition-colors w-full"
-                                            />
-                                            <button type="submit" disabled={!chatInput.trim() && !isUploading} className="p-2 sm:p-3 bg-brand-neon hover:bg-[#e05300] disabled:opacity-50 disabled:cursor-not-allowed text-black rounded-xl transition-all shadow-[0_0_15px_rgba(255,94,0,0.2)] flex-shrink-0">
-                                                <Send className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
-                                            </button>
-                                        </form>
+                                        <div className="bg-[#0A0A0B] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-inner">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Resumo Financeiro</span>
+                                                <span className="text-2xl font-black text-[#25D366] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
+                                                <span className="text-xs text-[#8F8F91] font-medium mt-1">Duração: {activeOrder.contractMonths || 1} Meses</span>
+                                            </div>
+                                            
+                                            <Button 
+                                                onClick={() => handleContactSupport(activeOrder)}
+                                                size="lg"
+                                                className="w-full sm:w-auto bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
+                                                rightIcon={<MessageCircle className="w-4 h-4" />}
+                                            >
+                                                Falar com Consultor
+                                            </Button>
+                                        </div>
+
                                     </div>
                                 </div>
                             ) : (
-                                /* DEALS LIST VIEWPORT */
-                                <div className="p-4 sm:p-8">
-                                    <div className="mb-8">
-                                        <h2 className="text-xl font-bold text-white">Histórico de Orçamentos</h2>
-                                        <p className="text-sm text-brand-muted mt-1">Acompanhe o status das suas solicitações feitas no Mapa.</p>
+                                /* LISTA DE ORÇAMENTOS */
+                                <div className="p-6 sm:p-10">
+                                    <div className="mb-10 border-b border-white/5 pb-8">
+                                        <h2 className="text-2xl font-black text-white tracking-tight">Histórico de Orçamentos</h2>
+                                        <p className="text-sm text-[#8F8F91] mt-2">Acompanhe o status das suas solicitações feitas no mapa de painéis.</p>
                                     </div>
 
                                     {myOrders.length === 0 ? (
-                                        <div className="py-16 flex flex-col items-center justify-center text-center">
-                                            <div className="w-16 h-16 rounded-full bg-brand-surface border border-brand-border/50 flex items-center justify-center mb-4">
-                                                <ShoppingBag className="w-8 h-8 text-brand-muted" />
+                                        <div className="py-20 flex flex-col items-center justify-center text-center">
+                                            <div className="w-20 h-20 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center mb-6 shadow-inner">
+                                                <ShoppingBag className="w-8 h-8 text-[#8F8F91]" />
                                             </div>
-                                            <h3 className="text-lg font-bold text-white mb-2">Nenhum orçamento solicitado</h3>
-                                            <p className="text-sm text-brand-muted max-w-md mb-6">Você ainda não solicitou nenhum orçamento.</p>
-                                            <Button onClick={() => navigate('/mapa')} rightIcon={<ArrowRight className="w-4 h-4" />}>
-                                                Acessar Mapa de Painéis
+                                            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Nenhum orçamento solicitado</h3>
+                                            <p className="text-sm text-[#8F8F91] max-w-md mb-8">Navegue pelo nosso catálogo e solicite um orçamento para iniciar sua campanha.</p>
+                                            <Button 
+                                                onClick={() => navigate('/mapa')} 
+                                                className="bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-xs px-8 py-4 h-auto rounded-xl border-none shadow-[0_4px_20px_rgba(255,255,255,0.1)]"
+                                                rightIcon={<MapPin className="w-4 h-4" />}
+                                            >
+                                                Explorar Painéis
                                             </Button>
                                         </div>
                                     ) : (
@@ -415,27 +357,28 @@ export function UserProfile() {
                                             {myOrders.map(order => {
                                                 const statusBadge = translateStatus(order.status);
                                                 return (
-                                                    <div key={order.id} className="bg-[#111113] border border-brand-border/50 rounded-xl p-4 sm:p-5 hover:border-brand-neon/30 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4 group">
-                                                        <div className="flex flex-col gap-1 min-w-0">
-                                                            <div className="flex items-center gap-3">
-                                                                <h4 className="font-bold text-white text-sm truncate">Ticket #{order.id.substring(0, 6).toUpperCase()}</h4>
-                                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border flex-shrink-0 ${statusBadge.color}`}>
+                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-[24px] p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
+                                                        <div className="flex flex-col gap-1.5 min-w-0">
+                                                            <div className="flex items-center gap-4 mb-1">
+                                                                <h4 className="font-black text-white text-base truncate">#{order.id.substring(0, 6).toUpperCase()}</h4>
+                                                                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border flex-shrink-0 ${statusBadge.color}`}>
                                                                     {statusBadge.text}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center gap-4 text-xs text-brand-muted mt-2">
-                                                                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {order.items?.length || 0} Painéis</span>
+                                                            <div className="flex flex-wrap items-center gap-4 text-[12px] text-[#8F8F91] font-medium">
+                                                                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-white/40" /> {new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#FF5E00]/60" /> {order.items?.length || 0} Painéis</span>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-4 sm:gap-6 justify-between lg:justify-end border-t lg:border-t-0 border-brand-border/30 pt-4 lg:pt-0 mt-2 lg:mt-0">
+                                                        
+                                                        <div className="flex items-center gap-6 justify-between lg:justify-end border-t lg:border-t-0 border-white/5 pt-5 lg:pt-0 mt-2 lg:mt-0 w-full lg:w-auto">
                                                             <div className="flex flex-col lg:items-end">
-                                                                <span className="text-[9px] sm:text-[10px] text-brand-muted uppercase tracking-widest font-bold">Investimento</span>
-                                                                <span className="text-base sm:text-lg font-black text-white">{formatCurrency(order.expectedValue || 0)}</span>
+                                                                <span className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold mb-0.5">Total Orçado</span>
+                                                                <span className="text-xl font-black text-white">{formatCurrency(order.expectedValue || 0)}</span>
                                                             </div>
-                                                            <button onClick={() => setActiveOrder(order)} className="text-brand-neon hover:text-white transition-colors text-xs sm:text-sm font-bold flex items-center gap-1 bg-brand-neon/5 hover:bg-brand-neon/10 px-3 sm:px-4 py-2 rounded-lg border border-brand-neon/20 flex-shrink-0">
-                                                                Acompanhar <ArrowRight className="w-4 h-4 ml-1" />
-                                                            </button>
+                                                            <div className="w-12 h-12 rounded-full bg-[#111113] border border-white/10 flex items-center justify-center text-[#8F8F91] hover:bg-[#FF5E00] hover:text-[#0A0A0B] hover:border-[#FF5E00] transition-colors shrink-0">
+                                                                <ArrowRight className="w-5 h-5" />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )
