@@ -47,12 +47,12 @@ export function CustomSelect({
                 type="button"
                 disabled={disabled}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between bg-[#0f0f11]/80 border rounded-xl px-4 py-3 transition-all duration-200 outline-none backdrop-blur-md
+                className={`w-full flex items-center justify-between bg-brand-background border rounded-xl px-4 py-3 transition-all duration-200 outline-none backdrop-blur-md
                     ${disabled 
-                        ? 'border-brand-border/30 text-brand-muted/70 pointer-events-none' 
+                        ? 'border-brand-border text-brand-muted/70 pointer-events-none' 
                         : isOpen 
-                            ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] text-white' 
-                            : 'border-brand-border/50 text-brand-muted hover:border-brand-neon/50 hover:text-white'
+                            ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] text-brand-text' 
+                            : 'border-brand-border text-brand-text hover:border-brand-neon/50'
                     }
                 `}
             >
@@ -73,9 +73,9 @@ export function CustomSelect({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-50 w-full mt-2 bg-[#1C1C1E] border border-brand-border/50 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-xl"
+                        className="absolute z-50 w-full mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-xl overflow-hidden backdrop-blur-xl"
                     >
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1.5">
                             {options.map((option) => {
                                 const isSelected = option.value === value;
                                 return (
@@ -86,10 +86,10 @@ export function CustomSelect({
                                             onChange(option.value);
                                             setIsOpen(false);
                                         }}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-left
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-left font-medium
                                             ${isSelected 
                                                 ? 'bg-brand-neon/10 text-brand-neon font-bold' 
-                                                : 'text-brand-muted hover:bg-brand-surface hover:text-white'
+                                                : 'text-brand-muted hover:bg-brand-background hover:text-brand-text'
                                             }
                                         `}
                                     >

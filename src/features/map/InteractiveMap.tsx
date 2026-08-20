@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,8 +8,8 @@ import { Activity, Maximize } from 'lucide-react';
 interface Panel {
     id: string;
     name: string;
-    lat: number;
-    lng: number;
+    lat: number | string;
+    lng: number | string;
     status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
     impacts: string;
     size: string;
@@ -27,7 +27,7 @@ const worldBounds: L.LatLngBoundsLiteral = [
     [90, 180]
 ];
 
-// Ícone do Mapa Padrão (Design Premium)
+// Ícone do Mapa Padrão
 const customMarker = L.divIcon({
     className: 'custom-marker',
     html: `
@@ -39,7 +39,7 @@ const customMarker = L.divIcon({
     iconAnchor: [18, 18],
 });
 
-// Ícone do Mapa para o painel SELECIONADO (Glow Neon Intenso)
+// Ícone do Mapa para o painel SELECIONADO
 const selectedMarker = L.divIcon({
     className: 'custom-marker-selected',
     html: `
@@ -51,23 +51,61 @@ const selectedMarker = L.divIcon({
     iconAnchor: [24, 24],
 });
 
+// Filtro blindado anti-NaN
+const parseSafeCoord = (value: any, fallback: number): number => {
+    if (value === null || value === undefined || value === '') return fallback;
+    const parsed = parseFloat(String(value).replace(',', '.'));
+    if (isNaN(parsed) || parsed === 0) return fallback; 
+    return parsed;
+};
+
+// Componente que dá o Zoom e Centraliza no Ponto
 function MapController({ selectedPanelId, panels }: { selectedPanelId?: string | null, panels: Panel[] }) {
     const map = useMap();
 
     useEffect(() => {
-        if (selectedPanelId) {
-            const panel = panels.find(p => p.id === selectedPanelId);
-            if (panel && panel.lat && panel.lng) {
-                // Animação suave para o pino clicado
-                map.flyTo([panel.lat, panel.lng], 16, { duration: 1.2, easeLinearity: 0.25 });
-            }
-        }
+        if (!map) return;
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 400); 
+        return () => clearTimeout(timer);
+    }, [map, selectedPanelId]);
+
+    useEffect(() => {
+        if (!selectedPanelId || !map) return;
+
+        const panel = panels.find(p => p.id === selectedPanelId);
+        if (!panel) return;
+
+        const safeLat = parseSafeCoord(panel.lat, -16.6868911); 
+        const safeLng = parseSafeCoord(panel.lng, -49.2647943);
+
+        const timer = setTimeout(() => {
+            map.flyTo([safeLat, safeLng], 16, { 
+                animate: true, 
+                duration: 1.3,
+                easeLinearity: 0.25 
+            });
+        }, 50);
+
+        return () => clearTimeout(timer);
     }, [selectedPanelId, panels, map]);
 
     return null;
 }
 
 export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps) {
+    const markerRefs = useRef<Record<string, L.Marker | null>>({});
+
+    // Abre o popup do Leaflet (Imagem 2) automaticamente
+    useEffect(() => {
+        if (selectedPanelId && markerRefs.current[selectedPanelId]) {
+            const marker = markerRefs.current[selectedPanelId];
+            if (marker && !marker.isPopupOpen()) {
+                marker.openPopup();
+            }
+        }
+    }, [selectedPanelId]);
 
     const getStatusDisplay = (status: string) => {
         switch (status) {
@@ -88,9 +126,9 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
         <MapContainer
             center={defaultCenter}
             zoom={13}
-            minZoom={3} // Impede o usuário de tirar o zoom excessivamente
-            maxBounds={worldBounds} // Trava a navegação nos limites do mapa
-            maxBoundsViscosity={1.0} // Cria o efeito de "parede invisível" elástica
+            minZoom={3} 
+            maxBounds={worldBounds} 
+            maxBoundsViscosity={1.0} 
             className="w-full h-full outline-none z-0"
             zoomControl={false}
         >
@@ -102,33 +140,36 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
             <MapController selectedPanelId={selectedPanelId} panels={panels} />
 
             {panels.map((panel) => {
+                const safeLat = parseSafeCoord(panel.lat, -16.6868911);
+                const safeLng = parseSafeCoord(panel.lng, -49.2647943);
+
                 const statusInfo = getStatusDisplay(panel.status);
                 const isSelected = panel.id === selectedPanelId;
 
                 return (
                     <Marker
                         key={panel.id}
-                        position={[panel.lat, panel.lng]}
+                        position={[safeLat, safeLng]}
                         icon={isSelected ? selectedMarker : customMarker}
                         zIndexOffset={isSelected ? 1000 : 0}
+                        ref={(r) => {
+                            // Salva a referência deste pino
+                            if (r) markerRefs.current[panel.id] = r;
+                        }}
                     >
                         <Popup className="custom-popup" closeButton={true}>
-                            {/* Largura agora é dinâmica baseada no min-width do CSS */}
                             <div className="flex flex-col relative w-full">
 
-                                {/* Header com Imagem e Gradiente Premium */}
                                 <div className="relative h-36 w-full shrink-0">
                                     <img
                                         src={panel.images?.[0] || '/placeholder.jpg'}
                                         alt={panel.name}
                                         className="w-full h-full object-cover"
                                     />
-                                    {/* Gradiente igual ao dos cards React: Transição suave para o #111113 */}
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/40 to-transparent" />
                                 </div>
 
                                 <div className="px-5 pb-5 pt-0 flex flex-col gap-3 relative z-10 -mt-6">
-                                    {/* Título e Status */}
                                     <div>
                                         <h3 className="font-extrabold text-white text-base leading-tight mb-2 drop-shadow-md pr-6">
                                             {panel.name}
@@ -143,24 +184,22 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
 
                                     <hr className="border-white/5" />
 
-                                    {/* Grid de Informações Rápidas */}
                                     <div className="grid grid-cols-2 gap-2 mt-1">
                                         <div className="flex flex-col">
                                             <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
                                                 <Activity className="w-3 h-3 text-[#FF5E00]" />
                                                 Impacto/dia
                                             </span>
-                                            <span className="text-sm font-black text-white">{panel.impacts}</span>
+                                            <span className="text-sm font-black text-white">{panel.impacts || '0'}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
                                                 <Maximize className="w-3 h-3 text-[#FF5E00]" />
                                                 Formato
                                             </span>
-                                            <span className="text-sm font-black text-white">{panel.size}</span>
+                                            <span className="text-sm font-black text-white">{panel.size || 'N/A'}</span>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </Popup>

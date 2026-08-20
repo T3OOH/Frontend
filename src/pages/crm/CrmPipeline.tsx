@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { Plus, MoreHorizontal, DollarSign, Clock, AlertCircle, Loader2, X, Filter } from 'lucide-react';
+import { Plus, DollarSign, Clock, AlertCircle, Loader2, X, Filter, MessageCircle } from 'lucide-react';
 import { crmService, CrmDeal, CrmClient, CreateDealData, DealStage } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -59,8 +59,6 @@ export function CrmPipeline() {
 
     /**
      * Submete o formulário para criação de uma nova oportunidade de negócio no topo do funil.
-     * 
-     * @param e - Evento de submissão do formulário.
      */
     const handleCreateDeal = async (e: FormEvent) => {
         e.preventDefault();
@@ -86,10 +84,27 @@ export function CrmPipeline() {
     };
 
     /**
+     * Abre o WhatsApp do cliente com uma mensagem pré-formatada.
+     */
+    const handleOpenWhatsApp = (e: React.MouseEvent, clientName?: string, phone?: string) => {
+        e.stopPropagation(); // Previne que o click inicie um Drag ou outra ação do Card
+        
+        if (!phone) {
+            toast.error('Cliente não possui telefone/WhatsApp cadastrado.');
+            return;
+        }
+
+        // Limpa tudo que não for número
+        const cleanPhone = phone.replace(/\D/g, '');
+        const firstName = clientName ? clientName.split(' ')[0] : 'Cliente';
+        const defaultText = `Olá, ${firstName}! Aqui é do time comercial da T3 OOH.`;
+        
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultText)}`;
+        window.open(waUrl, '_blank');
+    };
+
+    /**
      * Inicializa a API nativa de Drag and Drop do HTML5.
-     * 
-     * @param e - Evento de drag.
-     * @param dealId - Identificador único do card sendo movido.
      */
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, dealId: string) => {
         setDraggedDealId(dealId);
@@ -107,7 +122,6 @@ export function CrmPipeline() {
 
     /**
      * Processa a finalização do evento de Drag and Drop (Desktop).
-     * Reutiliza a lógica central de mudança de estágio.
      */
     const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetStage: DealStage) => {
         e.preventDefault();
@@ -117,12 +131,7 @@ export function CrmPipeline() {
     };
 
     /**
-     * Altera o estágio de uma oportunidade de negócio.
-     * Aplica UI Otimista para uma resposta visual instantânea e reverte a alteração
-     * em caso de falha na comunicação com o servidor.
-     * 
-     * @param dealId - O identificador do card de negócio.
-     * @param targetStage - O novo estágio (coluna) alvo.
+     * Altera o estágio de uma oportunidade de negócio com UI Otimista.
      */
     const changeDealStage = async (dealId: string, targetStage: DealStage) => {
         const dealToMove = deals.find(d => d.id === dealId);
@@ -130,7 +139,7 @@ export function CrmPipeline() {
 
         const originalDeals = [...deals];
         
-        // UI Otimista: Atualiza localmente antes do retorno da API
+        // UI Otimista
         setDeals(prevDeals => prevDeals.map(d => 
             d.id === dealId ? { ...d, stage: targetStage } : d
         ));
@@ -151,7 +160,7 @@ export function CrmPipeline() {
         { id: 'NEGOTIATION', title: 'Em Negociação', color: 'text-yellow-500', border: 'border-yellow-500/50' },
         { id: 'WAITING_REPLY', title: 'Aguardando Retorno', color: 'text-orange-500', border: 'border-orange-500/50' },
         { id: 'PROPOSAL_SENT', title: 'Proposta Enviada', color: 'text-brand-neon', border: 'border-brand-neon/50' },
-        { id: 'POST_SALES', title: 'Pós-Venda', color: 'text-green-500', border: 'border-green-500/50' },
+        { id: 'POST_SALES', title: 'Pós-Venda', color: 'text-[#25D366]', border: 'border-[#25D366]/50' },
     ];
 
     const formatCurrency = (value: number) => {
@@ -164,11 +173,11 @@ export function CrmPipeline() {
     };
 
     return (
-        <div className="w-full h-full flex flex-col relative animate-fade-in">
+        <div className="w-full h-full flex flex-col relative animate-fade-in gap-6">
             
             {/* OVERLAY DE LOADING GLOBAL */}
             {isLoading && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0A0A0B]/80 backdrop-blur-sm">
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/80 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
                         <span className="text-brand-muted text-xs font-bold tracking-widest uppercase">Carregando Funil...</span>
@@ -177,18 +186,20 @@ export function CrmPipeline() {
             )}
 
             {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP                                           */}
+            {/* VIEWPORT: DESKTOP                                         */}
             {/* ========================================================= */}
             <div className="hidden lg:flex flex-col h-full max-w-[1600px] mx-auto w-full">
                 
                 <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-white tracking-wide">Funil de Vendas</h1>
-                        <p className="text-sm text-brand-muted mt-1">Arraste os cards para avançar as oportunidades no fluxo comercial.</p>
+                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
+                            <Filter className="w-6 h-6 text-brand-neon" /> Funil de Vendas
+                        </h1>
+                        <p className="text-sm text-brand-muted mt-1 font-medium">Arraste os cards para avançar as oportunidades no fluxo comercial.</p>
                     </div>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-brand-neon text-[#0A0A0B] px-5 py-2.5 rounded-xl font-bold hover:bg-[#FF5E00]/90 transition-colors shadow-[0_0_15px_rgba(255,94,0,0.2)]"
+                        className="flex items-center gap-2 bg-brand-neon text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-neonHover transition-colors shadow-sm"
                     >
                         <Plus className="w-5 h-5" />
                         Nova Oportunidade
@@ -204,25 +215,25 @@ export function CrmPipeline() {
                             return (
                                 <div 
                                     key={stage.id} 
-                                    className={`flex flex-col w-[300px] flex-shrink-0 bg-[#0A0A0B]/50 border border-brand-border/40 rounded-2xl overflow-hidden transition-colors ${
-                                        draggedDealId ? 'hover:bg-brand-surface/20 hover:border-brand-neon/30' : ''
+                                    className={`flex flex-col w-[320px] flex-shrink-0 bg-brand-background border border-brand-border rounded-[24px] overflow-hidden transition-colors shadow-sm ${
+                                        draggedDealId ? 'hover:bg-brand-surface/50 hover:border-brand-neon/50' : ''
                                     }`}
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, stage.id)}
                                 >
-                                    <div className={`p-4 border-b-2 bg-[#111113]/80 ${stage.border}`}>
-                                        <div className="flex items-center justify-between mb-1">
+                                    <div className={`p-5 border-b-2 bg-brand-surface/80 backdrop-blur-sm ${stage.border}`}>
+                                        <div className="flex items-center justify-between mb-1.5">
                                             <h3 className={`font-bold text-[13px] tracking-wide uppercase ${stage.color}`}>{stage.title}</h3>
-                                            <span className="bg-[#0A0A0B] text-brand-muted text-xs font-bold px-2.5 py-1 rounded-lg border border-brand-border/40">
+                                            <span className="bg-brand-background text-brand-text text-[11px] font-bold px-2.5 py-1 rounded-lg border border-brand-border">
                                                 {stageDeals.length}
                                             </span>
                                         </div>
-                                        <div className="text-[11px] text-brand-muted font-bold tracking-wider">
+                                        <div className="text-[12px] text-brand-muted font-bold tracking-wider">
                                             {formatCurrency(totalValue)}
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 min-h-[100px]">
+                                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-4 min-h-[100px]">
                                         {stageDeals.map((deal) => {
                                             const daysInStage = calculateDaysInStage(deal.updatedAt);
                                             const isDragging = draggedDealId === deal.id;
@@ -232,28 +243,32 @@ export function CrmPipeline() {
                                                     key={deal.id} 
                                                     draggable
                                                     onDragStart={(e) => handleDragStart(e, deal.id)}
-                                                    className={`bg-[#111113] border p-4 rounded-xl cursor-grab active:cursor-grabbing hover:border-brand-neon/50 transition-all group ${
-                                                        isDragging ? 'opacity-40 border-brand-neon border-dashed' : 'border-brand-border/40 opacity-100 shadow-sm'
+                                                    className={`bg-brand-surface border border-brand-border p-5 rounded-[20px] cursor-grab active:cursor-grabbing hover:border-brand-neon/50 transition-all group shadow-sm ${
+                                                        isDragging ? 'opacity-40 border-brand-neon border-dashed' : 'opacity-100'
                                                     }`}
                                                 >
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <h4 className="text-[13px] font-bold text-white group-hover:text-brand-neon transition-colors leading-tight line-clamp-2">
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <h4 className="text-[14px] font-bold text-brand-text group-hover:text-brand-neon transition-colors leading-tight line-clamp-2 pr-2">
                                                             {deal.title}
                                                         </h4>
-                                                        <button className="text-brand-muted hover:text-white transition-colors shrink-0 ml-2">
-                                                            <MoreHorizontal className="w-4 h-4" />
+                                                        <button 
+                                                            onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
+                                                            className="text-[#25D366] hover:text-white bg-[#25D366]/10 hover:bg-[#25D366] p-2 rounded-full transition-colors shrink-0 shadow-sm"
+                                                            title="Chamar no WhatsApp"
+                                                        >
+                                                            <MessageCircle className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                     
-                                                    <p className="text-[11px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name || 'Cliente desconhecido'}</p>
+                                                    <p className="text-[12px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name || 'Cliente desconhecido'}</p>
                                                     
-                                                    <div className="flex flex-col gap-2">
+                                                    <div className="flex flex-col gap-3">
                                                         <div className="flex items-center justify-between text-xs">
-                                                            <span className="flex items-center gap-1 text-white/90 font-bold">
+                                                            <span className="flex items-center gap-1.5 text-brand-text font-bold">
                                                                 <DollarSign className="w-3.5 h-3.5 text-brand-neon" />
                                                                 {formatCurrency(Number(deal.expectedValue))}
                                                             </span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
+                                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
                                                                 deal.probability > 70 ? 'bg-[#25D366]/10 text-[#25D366]' : 
                                                                 deal.probability > 30 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
                                                             }`}>
@@ -261,14 +276,14 @@ export function CrmPipeline() {
                                                             </span>
                                                         </div>
 
-                                                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-brand-border/20">
-                                                            <div className="flex items-center gap-1 text-[10px] text-brand-muted font-medium">
-                                                                <Clock className="w-3 h-3" />
+                                                        <div className="flex items-center justify-between mt-1 pt-3 border-t border-brand-border">
+                                                            <div className="flex items-center gap-1.5 text-[11px] text-brand-muted font-bold">
+                                                                <Clock className="w-3.5 h-3.5" />
                                                                 {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}
                                                             </div>
                                                             {daysInStage > 7 && (
                                                                 <span title="Estagnado há mais de 7 dias" className="cursor-help">
-                                                                    <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                                                                    <AlertCircle className="w-4 h-4 text-red-500" />
                                                                 </span>
                                                             )}
                                                         </div>
@@ -279,9 +294,9 @@ export function CrmPipeline() {
 
                                         <button 
                                             onClick={() => setIsModalOpen(true)}
-                                            className="w-full py-3 rounded-xl border border-dashed border-brand-border/40 text-[11px] font-bold uppercase tracking-widest text-brand-muted hover:text-white hover:border-brand-neon/50 hover:bg-[#111113] transition-colors flex items-center justify-center gap-2 mt-1"
+                                            className="w-full py-4 rounded-[20px] border-2 border-dashed border-brand-border text-[11px] font-bold uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-neon/50 hover:bg-brand-surface transition-colors flex items-center justify-center gap-2 mt-2"
                                         >
-                                            <Plus className="w-3.5 h-3.5" /> Adicionar
+                                            <Plus className="w-4 h-4" /> Adicionar
                                         </button>
                                     </div>
                                 </div>
@@ -296,54 +311,61 @@ export function CrmPipeline() {
             {/* ========================================================= */}
             <div className="flex lg:hidden flex-col w-full h-full pb-4">
                 
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 px-2 mt-2">
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                            <Filter className="w-5 h-5 text-brand-neon" /> Funil
+                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
+                            <Filter className="w-6 h-6 text-brand-neon" /> Funil
                         </h1>
-                        <p className="text-[11px] text-brand-muted mt-0.5">Gestão de oportunidades</p>
+                        <p className="text-[11px] font-medium text-brand-muted mt-0.5">Gestão de oportunidades</p>
                     </div>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        className="w-10 h-10 bg-brand-neon text-[#0A0A0B] rounded-full flex items-center justify-center shadow-lg shadow-brand-neon/20 active:scale-95 transition-transform shrink-0"
+                        className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-6 h-6" />
                     </button>
                 </div>
 
                 <div className="flex flex-col gap-6">
                     {stages.map((stage) => {
                         const stageDeals = deals.filter((d) => d.stage === stage.id);
-                        if (stageDeals.length === 0) return null; // Oculta estágios vazios no mobile para economizar espaço
+                        if (stageDeals.length === 0) return null; // Oculta estágios vazios no mobile
 
                         return (
                             <div key={stage.id} className="flex flex-col">
-                                <div className={`flex items-center justify-between border-b-2 ${stage.border} pb-2 mb-3`}>
-                                    <h3 className={`font-black text-[11px] uppercase tracking-widest ${stage.color}`}>{stage.title}</h3>
-                                    <span className="bg-[#111113] border border-white/5 text-brand-muted text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                                <div className={`flex items-center justify-between border-b-2 ${stage.border} pb-3 mb-4 px-2`}>
+                                    <h3 className={`font-black text-[12px] uppercase tracking-widest ${stage.color}`}>{stage.title}</h3>
+                                    <span className="bg-brand-surface border border-brand-border text-brand-text text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
                                         {stageDeals.length}
                                     </span>
                                 </div>
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
                                     {stageDeals.map((deal) => {
                                         const daysInStage = calculateDaysInStage(deal.updatedAt);
                                         
                                         return (
-                                            <div key={deal.id} className="bg-[#111113] border border-white/5 p-4 rounded-[20px] flex flex-col shadow-sm">
-                                                <div className="flex items-start justify-between mb-1">
-                                                    <h4 className="text-[14px] font-bold text-white leading-tight line-clamp-2 pr-2">
+                                            <div key={deal.id} className="bg-brand-surface border border-brand-border p-5 rounded-[24px] flex flex-col shadow-sm transition-colors">
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <h4 className="text-[15px] font-bold text-brand-text leading-tight line-clamp-2 pr-3">
                                                         {deal.title}
                                                     </h4>
+                                                    <button 
+                                                        onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
+                                                        className="text-[#25D366] hover:text-white bg-[#25D366]/10 hover:bg-[#25D366] p-2 rounded-full transition-colors shrink-0 shadow-sm"
+                                                        title="Chamar no WhatsApp"
+                                                    >
+                                                        <MessageCircle className="w-4 h-4" />
+                                                    </button>
                                                 </div>
-                                                <p className="text-[11px] text-brand-muted font-medium mb-3 truncate">{deal.client?.name}</p>
+                                                <p className="text-[12px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name}</p>
                                                 
-                                                <div className="flex items-center justify-between mb-3 bg-[#0A0A0B] p-2.5 rounded-xl border border-white/5">
-                                                    <span className="flex items-center gap-1.5 text-white/90 font-bold text-[13px]">
+                                                <div className="flex items-center justify-between mb-4 bg-brand-background p-3.5 rounded-[16px] border border-brand-border shadow-sm">
+                                                    <span className="flex items-center gap-1.5 text-brand-text font-bold text-[14px]">
                                                         <DollarSign className="w-4 h-4 text-brand-neon" />
                                                         {formatCurrency(Number(deal.expectedValue))}
                                                     </span>
-                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black ${
+                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black ${
                                                         deal.probability > 70 ? 'bg-[#25D366]/10 text-[#25D366]' : 
                                                         deal.probability > 30 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
                                                     }`}>
@@ -351,20 +373,20 @@ export function CrmPipeline() {
                                                     </span>
                                                 </div>
 
-                                                <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex items-center gap-3 mt-1">
                                                     <div className="flex-1">
                                                         <select 
                                                             value={deal.stage}
                                                             onChange={(e) => changeDealStage(deal.id, e.target.value as DealStage)}
-                                                            className="w-full bg-[#0A0A0B] border border-white/10 rounded-xl px-3 py-2.5 text-[11px] font-bold text-brand-muted focus:outline-none focus:border-brand-neon appearance-none shadow-inner"
+                                                            className="w-full bg-brand-background border border-brand-border rounded-[16px] px-4 py-3.5 text-[12px] font-bold text-brand-muted focus:outline-none focus:border-brand-neon appearance-none shadow-sm transition-colors"
                                                         >
                                                             {stages.map(s => (
                                                                 <option key={s.id} value={s.id}>{s.title}</option>
                                                             ))}
                                                         </select>
                                                     </div>
-                                                    <div className="flex items-center justify-center shrink-0 px-3 border border-white/5 bg-[#0A0A0B] rounded-xl h-[38px] text-[10px] text-brand-muted font-medium gap-1.5">
-                                                        <Clock className="w-3.5 h-3.5" />
+                                                    <div className="flex items-center justify-center shrink-0 px-4 border border-brand-border bg-brand-background rounded-[16px] h-[46px] text-[11px] text-brand-muted font-bold gap-2 shadow-sm">
+                                                        <Clock className="w-4 h-4 text-brand-neon" />
                                                         {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}
                                                     </div>
                                                 </div>
@@ -377,7 +399,7 @@ export function CrmPipeline() {
                     })}
                 </div>
 
-                {/* Bloco Espaçador Fantasma para Mobile */}
+                {/* Espaçador fantasma Mobile */}
                 <div className="h-[200px] w-full shrink-0 pointer-events-none" aria-hidden="true" />
             </div>
 
@@ -385,28 +407,28 @@ export function CrmPipeline() {
             {/* MODAL GLOBAL (CRIAÇÃO DE OPORTUNIDADE)                      */}
             {/* ========================================================= */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center bg-[#0A0A0B]/80 backdrop-blur-md p-0 lg:p-4">
-                    <div className="bg-[#121214] border-t lg:border border-brand-border/40 rounded-t-[32px] lg:rounded-[24px] w-full max-w-md overflow-hidden shadow-[0_-10px_40px_rgba(0,0,0,0.5)] lg:shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0">
+                <div className="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center bg-brand-background/80 backdrop-blur-md p-0 lg:p-4">
+                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
                         
-                        <div className="flex items-center justify-between p-5 border-b border-brand-border/40 bg-[#121214] lg:bg-brand-surface/30 sticky top-0 z-20">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-brand-neon" /> Nova Oportunidade
+                        <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface sticky top-0 z-20">
+                            <h2 className="text-xl font-bold text-brand-text flex items-center gap-2 tracking-tight">
+                                <Plus className="w-6 h-6 text-brand-neon" /> Nova Oportunidade
                             </h2>
                             <button 
                                 onClick={() => setIsModalOpen(false)}
-                                className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5 transition-colors active:scale-95"
+                                className="text-brand-muted hover:text-brand-text bg-brand-background p-2.5 rounded-full border border-brand-border transition-colors active:scale-95 shadow-sm"
                             >
-                                <X className="w-4 h-4" />
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6">
-                            <form id="pipelineForm" onSubmit={handleCreateDeal} className="flex flex-col gap-4 relative z-10">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
+                            <form id="pipelineForm" onSubmit={handleCreateDeal} className="flex flex-col gap-5 relative z-10">
                                 <div>
-                                    <label className="block text-[11px] font-bold text-brand-muted mb-1.5 uppercase tracking-widest ml-1">Vincular ao Cliente *</label>
+                                    <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Vincular ao Cliente *</label>
                                     <select
                                         required
-                                        className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl px-4 py-3.5 lg:py-3 text-[13px] text-white focus:outline-none focus:border-brand-neon transition-colors appearance-none shadow-inner"
+                                        className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors appearance-none shadow-sm"
                                         value={formData.clientId}
                                         onChange={(e) => setFormData({...formData, clientId: e.target.value})}
                                     >
@@ -418,37 +440,37 @@ export function CrmPipeline() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[11px] font-bold text-brand-muted mb-1.5 uppercase tracking-widest ml-1">Título da Oportunidade *</label>
+                                    <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Título da Oportunidade *</label>
                                     <input
                                         required
                                         type="text"
-                                        className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl px-4 py-3.5 lg:py-3 text-[13px] text-white focus:outline-none focus:border-brand-neon transition-colors shadow-inner"
+                                        className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                                         placeholder="Ex: Contrato Anual Painéis BR-153"
                                         value={formData.title}
                                         onChange={(e) => setFormData({...formData, title: e.target.value})}
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-1.5 uppercase tracking-widest ml-1">Valor (R$)</label>
+                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Valor Estimado (R$)</label>
                                         <input
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl px-4 py-3.5 lg:py-3 text-[13px] text-white focus:outline-none focus:border-brand-neon transition-colors shadow-inner"
+                                            className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                                             placeholder="0.00"
                                             value={formData.expectedValue || ''}
                                             onChange={(e) => setFormData({...formData, expectedValue: Number(e.target.value)})}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-1.5 uppercase tracking-widest ml-1">Probabilidade (%)</label>
+                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Probabilidade (%)</label>
                                         <input
                                             type="number"
                                             min="0"
                                             max="100"
-                                            className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl px-4 py-3.5 lg:py-3 text-[13px] text-white focus:outline-none focus:border-brand-neon transition-colors shadow-inner"
+                                            className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                                             value={formData.probability}
                                             onChange={(e) => setFormData({...formData, probability: Number(e.target.value)})}
                                         />
@@ -457,15 +479,15 @@ export function CrmPipeline() {
                             </form>
                             
                             {/* Spacer Interno Modal Mobile */}
-                            <div className="h-[20px] lg:hidden w-full shrink-0" />
+                            <div className="h-[30px] lg:hidden w-full shrink-0" />
                         </div>
                         
-                        <div className="p-5 border-t border-brand-border/40 shrink-0 bg-[#121214] z-20">
+                        <div className="p-6 lg:p-8 border-t border-brand-border shrink-0 bg-brand-surface z-20">
                             <button
                                 type="submit"
                                 form="pipelineForm"
                                 disabled={isSubmitting}
-                                className="w-full bg-brand-neon text-[#0A0A0B] py-4 lg:py-3.5 rounded-xl text-[13px] font-black uppercase tracking-widest hover:bg-[#FF5E00]/90 transition-all flex items-center justify-center shadow-[0_10px_25px_rgba(255,94,0,0.3)] disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
+                                className="w-full bg-brand-neon text-white py-4 rounded-xl text-[14px] font-bold uppercase tracking-widest hover:bg-brand-neonHover transition-all flex items-center justify-center shadow-md disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
                             >
                                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Negócio'}
                             </button>

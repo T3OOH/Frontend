@@ -12,7 +12,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export function Orders() {
-    // Usaremos a tipagem 'any' baseada no retorno do CRM Deals para facilitar a estrutura
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -29,7 +28,6 @@ export function Orders() {
     async function fetchOrders() {
         try {
             setIsLoading(true);
-            // Puxamos as Oportunidades do CRM, que contém vendedor, itens e status real
             const data = await crmService.getGlobalDeals();
             setOrders(data);
         } catch (error) {
@@ -43,7 +41,6 @@ export function Orders() {
     const handleStatusChange = async (orderId: string, newStatus: string) => {
         try {
             setUpdatingId(orderId);
-            // Forçamos o TypeScript a aceitar a string usando "as any"
             await crmService.updateDealStatus(orderId, newStatus as any);
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
             addToast("Status atualizado com sucesso!", "success");
@@ -286,32 +283,34 @@ export function Orders() {
     };
 
     return (
-        <div className="w-full h-full flex flex-col">
+        <div className="w-full h-full flex flex-col gap-6">
             
             {/* ========================================================= */}
             {/* DESKTOP LAYOUT                                            */}
             {/* ========================================================= */}
-            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full">
+            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full gap-6">
                 
-                <div className="flex-shrink-0 mb-6">
-                    <h1 className="text-2xl font-bold text-white tracking-tight mb-1 flex items-center gap-2">
+                {/* HEADER */}
+                <div className="flex-shrink-0">
+                    <h1 className="text-2xl font-bold text-brand-text tracking-tight mb-1 flex items-center gap-2">
                         <ShoppingCart className="w-6 h-6 text-brand-neon" /> Gestão de Pedidos
                     </h1>
                     <p className="text-sm text-brand-muted">Acompanhe os tickets, histórico de atendimento e gere contratos.</p>
                 </div>
 
-                <div className="glass-panel p-3 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between flex-shrink-0 mb-4 border-brand-border/40 relative z-20 bg-[#111113]">
+                {/* FILTROS E BUSCA */}
+                <div className="bg-brand-surface p-4 rounded-[24px] flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20">
                     <div className="w-full sm:w-[450px] relative">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
                         <input
                             placeholder="Buscar por cliente, vendedor ou painel..."
-                            className="w-full bg-[#0A0A0B] border border-brand-border/60 rounded-xl pl-9 pr-4 py-2.5 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors"
+                            className="w-full bg-brand-background border border-brand-border rounded-xl pl-11 pr-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
-                    <div className="w-full sm:w-64 relative">
+                    <div className="w-full sm:w-72 relative">
                         <CustomSelect
                             options={filterOptions}
                             value={statusFilter}
@@ -321,45 +320,49 @@ export function Orders() {
                     </div>
                 </div>
 
-                <div className="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col relative border-brand-border/40 z-10 bg-[#111113]">
+                {/* TABELA */}
+                <div className="flex-1 min-h-0 bg-brand-surface rounded-[24px] overflow-hidden flex flex-col relative border border-brand-border shadow-sm z-10">
                     {isLoading && (
-                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-black/50 backdrop-blur-sm">
-                            <Loader2 className="w-6 h-6 text-brand-neon animate-spin" />
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/50 backdrop-blur-sm">
+                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
                         </div>
                     )}
 
                     <div className="flex-1 overflow-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse min-w-[1000px]">
-                            <thead className="sticky top-0 bg-[#0A0A0B] z-40 shadow-sm border-b border-white/5">
+                            <thead className="sticky top-0 bg-brand-background/90 backdrop-blur-md z-40">
                                 <tr>
-                                    <th className="px-5 py-4 text-[10px] font-black text-brand-muted uppercase tracking-widest">Cliente / Data</th>
-                                    <th className="px-5 py-4 text-[10px] font-black text-brand-muted uppercase tracking-widest">Atendimento / Itens</th>
-                                    <th className="px-5 py-4 text-[10px] font-black text-brand-muted uppercase tracking-widest">Valor</th>
-                                    <th className="px-5 py-4 text-[10px] font-black text-brand-muted uppercase tracking-widest text-center">Status</th>
-                                    <th className="px-5 py-4 text-[10px] font-black text-brand-muted uppercase tracking-widest text-right">Ações Documentais</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Cliente / Data</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Atendimento / Itens</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Valor</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest text-center border-b border-brand-border">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest text-right border-b border-brand-border">Ações Documentais</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5 relative z-0">
+                            <tbody className="divide-y divide-brand-border relative z-0">
                                 {!isLoading && filteredOrders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-12 text-center text-sm text-brand-muted">
-                                            Nenhum pedido encontrado.
+                                        <td colSpan={5} className="px-6 py-16 text-center text-sm text-brand-muted">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <ReceiptText className="w-8 h-8 opacity-50 mb-2" />
+                                                <span className="font-medium">Nenhum pedido encontrado.</span>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
                                     filteredOrders.map((order) => (
-                                        <tr key={order.id} className="hover:bg-brand-surface/20 transition-colors">
-                                            <td className="px-5 py-4 align-top">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="font-bold text-sm text-white">{order.client?.name || 'Sem Nome'}</div>
+                                        <tr key={order.id} className="hover:bg-brand-background/50 transition-colors group">
+                                            <td className="px-6 py-5 align-top">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="font-bold text-sm text-brand-text">{order.client?.name || 'Sem Nome'}</div>
                                                     <div className="text-xs text-brand-muted mb-1">{order.client?.email || ''}</div>
-                                                    <div className="flex items-center gap-1.5 text-[10px] text-brand-muted font-medium bg-[#0A0A0B] w-fit px-2 py-1 rounded border border-white/5">
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-brand-muted font-medium bg-brand-background w-fit px-2 py-1 rounded-md border border-brand-border">
                                                         <Calendar className="w-3 h-3" /> {formatDate(order.createdAt)}
                                                     </div>
                                                 </div>
                                             </td>
                                             
-                                            <td className="px-5 py-4 align-top">
+                                            <td className="px-6 py-5 align-top">
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex items-center gap-1.5 text-xs text-brand-neon font-bold">
                                                         <UserCircle className="w-4 h-4" /> {order.seller?.name || 'Aguardando Atendente'}
@@ -378,16 +381,16 @@ export function Orders() {
                                                 </div>
                                             </td>
 
-                                            <td className="px-5 py-4 align-top">
+                                            <td className="px-6 py-5 align-top">
                                                 <span className="font-black text-[15px] text-[#25D366]">
                                                     {formatCurrency(order.expectedValue)}
                                                 </span>
                                             </td>
 
-                                            <td className="px-5 py-4 align-top">
-                                                <div className="w-40 mx-auto">
+                                            <td className="px-6 py-5 align-top">
+                                                <div className="w-44 mx-auto">
                                                     {updatingId === order.id ? (
-                                                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-brand-neon bg-brand-neon/10 py-2.5 rounded-lg border border-brand-neon/20">
+                                                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-brand-neon bg-brand-neon/10 py-2.5 rounded-xl border border-brand-neon/20">
                                                             <Loader2 className="w-4 h-4 animate-spin" /> Atualizando...
                                                         </div>
                                                     ) : (
@@ -400,12 +403,12 @@ export function Orders() {
                                                 </div>
                                             </td>
 
-                                            <td className="px-5 py-4 align-top text-right">
+                                            <td className="px-6 py-5 align-top text-right">
                                                 <div className="flex flex-col gap-2 items-end">
                                                     <button 
                                                         disabled={actionLoadingId === `pdf-${order.id}`}
                                                         onClick={() => handleGenerateContract(order)}
-                                                        className="flex items-center gap-2 text-xs font-bold bg-[#0A0A0B] border border-brand-border/40 hover:border-brand-neon hover:text-brand-neon text-white px-3 py-2 rounded-lg transition-colors w-40 justify-center disabled:opacity-50"
+                                                        className="flex items-center justify-center gap-2 text-xs font-bold bg-brand-background border border-brand-border hover:border-brand-neon hover:text-brand-neon text-brand-text px-3 py-2 rounded-xl transition-colors w-40 disabled:opacity-50"
                                                     >
                                                         {actionLoadingId === `pdf-${order.id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} 
                                                         Abrir Contrato
@@ -413,10 +416,10 @@ export function Orders() {
                                                     <button 
                                                         disabled={order.status !== 'WON' || actionLoadingId === `chat-${order.id}`}
                                                         onClick={() => handleExportChat(order)}
-                                                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-lg transition-colors w-40 justify-center border ${
+                                                        className={`flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition-colors w-40 border ${
                                                             order.status === 'WON' 
                                                             ? 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/30 hover:bg-[#25D366]/20' 
-                                                            : 'bg-transparent text-brand-muted border-white/5 cursor-not-allowed opacity-50'
+                                                            : 'bg-transparent text-brand-muted border-brand-border cursor-not-allowed opacity-50'
                                                         }`}
                                                         title={order.status !== 'WON' ? "Disponível apenas para pedidos concluídos" : "Baixar histórico de conversas"}
                                                     >
@@ -435,81 +438,83 @@ export function Orders() {
             </div>
 
             {/* ========================================================= */}
-            {/* MOBILE LAYOUT (APP PATTERN NATIVO)                        */}
+            {/* MOBILE LAYOUT                                             */}
             {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col w-full pb-[100px] bg-[#0A0A0B] h-full overflow-y-auto">
+            <div className="flex lg:hidden flex-col w-full pb-[100px] h-full overflow-y-auto gap-4">
                 
-                <div className="flex items-center justify-between mb-4 p-4 pb-0">
+                <div className="flex items-center justify-between mt-2">
                     <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                            <ShoppingCart className="w-5 h-5 text-brand-neon" /> Pedidos CRM
+                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
+                            Pedidos CRM
                         </h1>
-                        <p className="text-[11px] text-brand-muted mt-0.5">Gerenciamento de tickets e contratos</p>
+                        <p className="text-[11px] text-brand-muted mt-0.5 font-medium">Gerenciamento de tickets e contratos</p>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3 mb-4 px-4 relative z-50">
+                <div className="flex flex-col gap-3 relative z-50">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
                         <input
                             placeholder="Buscar cliente, vendedor ou painel..."
-                            className="w-full bg-[#111113] border border-white/5 rounded-2xl pl-11 pr-4 py-3.5 text-[13px] text-white focus:outline-none focus:border-brand-neon transition-colors shadow-inner"
+                            className="w-full bg-brand-surface border border-brand-border rounded-[16px] pl-11 pr-4 py-3.5 text-[13px] text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <CustomSelect
-                        options={filterOptions}
-                        value={statusFilter}
-                        onChange={setStatusFilter}
-                        placeholder="Filtrar por Status"
-                    />
+                    <div className="w-full bg-brand-surface rounded-[16px] shadow-sm border border-brand-border">
+                        <CustomSelect
+                            options={filterOptions}
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            placeholder="Filtrar por Status"
+                        />
+                    </div>
                 </div>
 
-                <div className="flex flex-col gap-4 px-4">
+                <div className="flex flex-col gap-4 mt-2">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-10">
                             <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-3" />
                             <span className="text-xs text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
                         </div>
                     ) : filteredOrders.length === 0 ? (
-                        <div className="bg-[#111113]/50 border border-brand-border/20 rounded-2xl p-8 flex flex-col items-center text-center mt-2">
-                            <ReceiptText className="w-10 h-10 text-brand-border mb-3" />
-                            <h3 className="text-sm font-bold text-white mb-1">Nenhum pedido</h3>
+                        <div className="bg-brand-surface border border-brand-border rounded-[24px] p-8 flex flex-col items-center text-center shadow-sm">
+                            <ReceiptText className="w-10 h-10 text-brand-muted mb-3 opacity-50" />
+                            <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum pedido</h3>
                             <p className="text-xs text-brand-muted">Não encontramos registros com estes filtros.</p>
                         </div>
                     ) : (
                         filteredOrders.map((order) => (
-                            <div key={order.id} className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md relative">
+                            <div key={order.id} className="bg-brand-surface border border-brand-border rounded-[24px] p-5 flex flex-col shadow-sm relative">
                                 
                                 {/* Topo: Status e Valor */}
-                                <div className="flex justify-between items-center border-b border-white/5 pb-3 mb-3">
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#0A0A0B] px-2.5 py-1.5 rounded-lg border border-white/5">
+                                <div className="flex justify-between items-center border-b border-brand-border pb-3 mb-4">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-text bg-brand-background px-3 py-1.5 rounded-lg border border-brand-border shadow-sm">
                                         {getStatusIcon(order.status)} 
                                         {statusOptions.find(o => o.value === order.status)?.label || order.status}
                                     </div>
-                                    <span className="font-black text-lg text-[#25D366]">{formatCurrency(order.expectedValue)}</span>
+                                    <span className="font-black text-xl text-[#25D366] tracking-tight">{formatCurrency(order.expectedValue)}</span>
                                 </div>
 
                                 {/* Meio: Cliente e Atendente */}
-                                <div className="flex flex-col gap-3 mb-4">
+                                <div className="flex flex-col gap-4 mb-5">
                                     <div className="flex flex-col">
                                         <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mb-0.5">Cliente</span>
-                                        <span className="font-bold text-white text-[14px]">{order.client?.name || 'Não informado'}</span>
-                                        <span className="text-xs text-brand-muted flex items-center gap-1 mt-1">
-                                            <Calendar className="w-3 h-3" /> {formatDate(order.createdAt)}
+                                        <span className="font-bold text-brand-text text-[15px]">{order.client?.name || 'Não informado'}</span>
+                                        <span className="text-xs text-brand-muted flex items-center gap-1.5 mt-1.5 font-medium">
+                                            <Calendar className="w-3.5 h-3.5" /> {formatDate(order.createdAt)}
                                         </span>
                                     </div>
-                                    <div className="flex flex-col bg-[#0A0A0B] p-2.5 rounded-xl border border-white/5">
-                                        <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
-                                            <UserCircle className="w-3 h-3" /> Atendimento
+                                    <div className="flex flex-col bg-brand-background p-3.5 rounded-xl border border-brand-border shadow-sm">
+                                        <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest mb-1.5 flex items-center gap-1">
+                                            <UserCircle className="w-3.5 h-3.5" /> Atendimento
                                         </span>
-                                        <span className="text-[13px] font-bold text-brand-neon">{order.seller?.name || 'Aguardando Atendente'}</span>
+                                        <span className="text-sm font-bold text-brand-neon">{order.seller?.name || 'Aguardando Atendente'}</span>
                                     </div>
                                 </div>
 
                                 {/* Ações */}
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-3 border-t border-brand-border pt-4">
                                     {updatingId === order.id ? (
                                         <div className="w-full flex items-center justify-center gap-2 text-xs font-bold text-brand-neon bg-brand-neon/10 py-3 rounded-xl border border-brand-neon/20">
                                             <Loader2 className="w-4 h-4 animate-spin" /> Atualizando...
@@ -522,21 +527,21 @@ export function Orders() {
                                         />
                                     )}
 
-                                    <div className="grid grid-cols-2 gap-2 mt-1">
+                                    <div className="grid grid-cols-2 gap-3 mt-1">
                                         <button 
                                             disabled={actionLoadingId === `pdf-${order.id}`}
                                             onClick={() => handleGenerateContract(order)}
-                                            className="flex items-center justify-center gap-1.5 text-xs font-bold bg-[#0A0A0B] border border-white/10 text-white py-3 rounded-xl transition-colors active:bg-brand-surface disabled:opacity-50"
+                                            className="flex items-center justify-center gap-1.5 text-[11px] font-bold bg-brand-background border border-brand-border text-brand-text py-3 rounded-xl transition-colors active:border-brand-neon disabled:opacity-50 shadow-sm"
                                         >
                                             {actionLoadingId === `pdf-${order.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Contrato
                                         </button>
                                         <button 
                                             disabled={order.status !== 'WON' || actionLoadingId === `chat-${order.id}`}
                                             onClick={() => handleExportChat(order)}
-                                            className={`flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-colors border ${
+                                            className={`flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-colors border shadow-sm ${
                                                 order.status === 'WON' 
                                                 ? 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/30 active:bg-[#25D366]/20' 
-                                                : 'bg-[#0A0A0B] text-brand-muted border-white/5 opacity-50'
+                                                : 'bg-brand-background text-brand-muted border-brand-border opacity-50 cursor-not-allowed'
                                             }`}
                                         >
                                             {actionLoadingId === `chat-${order.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />} Exportar

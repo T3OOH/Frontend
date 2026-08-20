@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
 import { 
     Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, 
     Zap, MapPin, Maximize, Minimize, Compass, Shield, MonitorPlay,
-    Ticket, CalendarDays, Tag, CheckCircle2, MessageCircle, LayoutGrid
+    CalendarDays, Tag, CheckCircle2, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,7 +18,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext'; 
 
 export function Map() {
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { cart, toggleInCart, isInCart, clearCart } = useCart();
     const { addToast } = useToast();
@@ -72,7 +71,7 @@ export function Map() {
 
     // Efeito para travar o scroll da página quando em Fullscreen ou no Checkout
     useEffect(() => {
-        if (isFullscreen || isCheckoutOpen) {
+        if (isFullscreen || isCheckoutOpen || !!selectedPanelId) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
@@ -80,7 +79,7 @@ export function Map() {
         return () => {
             document.body.style.overflow = '';
         };
-    }, [isFullscreen, isCheckoutOpen]);
+    }, [isFullscreen, isCheckoutOpen, selectedPanelId]);
 
     useEffect(() => {
         if (user && !checkoutForm.name) {
@@ -122,16 +121,21 @@ export function Map() {
                 
                 const validPanels = data
                     .filter((p: any) => p.status === 'AVAILABLE' && p.id)
-                    .map((p: any) => ({
-                        ...p,
-                        id: p.id,
-                        name: p.name || 'Sem Nome',
-                        city: p.city || 'Desconhecida',
-                        state: p.state || '',
-                        lat: Number(p.lat) || 0, 
-                        lng: Number(p.lng) || 0,
-                        price: Number(p.price) || 0 
-                    })) as Panel[];
+                    .map((p: any) => {
+                        // Garantia anti-NaN para o Leaflet não quebrar
+                        const lat = Number(p.lat);
+                        const lng = Number(p.lng);
+                        return {
+                            ...p,
+                            id: p.id,
+                            name: p.name || 'Sem Nome',
+                            city: p.city || 'Desconhecida',
+                            state: p.state || '',
+                            lat: isNaN(lat) || lat === 0 ? -16.6868911 : lat, 
+                            lng: isNaN(lng) || lng === 0 ? -49.2647943 : lng,
+                            price: Number(p.price) || 0 
+                        };
+                    }) as Panel[];
                     
                 setPanels(validPanels);
             } catch (error) {
@@ -175,10 +179,12 @@ export function Map() {
         const livePanel = panels.find(p => p.id === cartItem.id);
         const impactToSum = livePanel ? livePanel.impacts : cartItem.impacts;
         const strVal = String(impactToSum || '').toLowerCase();
+        
         let n = Number(strVal.replace(/\D/g, ''));
         if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
         else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
         else if (strVal.includes('bi')) n *= 1000000000;
+        
         return acc + n;
     }, 0);
 
@@ -187,15 +193,18 @@ export function Map() {
         return acc + (Number(livePanel ? livePanel.price : cartItem.price) || 0);
     }, 0);
 
-    const volumeDiscount = cart.length > 1 ? baseMonthly * 0.10 : 0;
-    const subtotalMonthly = baseMonthly - volumeDiscount;
-
-    const totalContractValue = subtotalMonthly * months;
-    const couponDiscount = appliedCoupon ? totalContractValue * appliedCoupon.discount : 0;
-    const finalTotalValue = totalContractValue - couponDiscount;
-    const finalMonthlyValue = finalTotalValue / months;
+    let termDiscountPercent = 0;
+    if (months >= 12) termDiscountPercent = 0.30;
+    else if (months >= 6) termDiscountPercent = 0.20;
+    else if (months >= 3) termDiscountPercent = 0.15;
 
     const totalWithoutAnyDiscount = baseMonthly * months;
+    const totalTermDiscount = totalWithoutAnyDiscount * termDiscountPercent;
+    const subtotalAfterTerm = totalWithoutAnyDiscount - totalTermDiscount;
+
+    const couponDiscount = appliedCoupon ? subtotalAfterTerm * appliedCoupon.discount : 0;
+    const finalTotalValue = subtotalAfterTerm - couponDiscount;
+    const finalMonthlyValue = finalTotalValue / months;
     const totalEconomy = totalWithoutAnyDiscount - finalTotalValue;
 
     const handleApplyCoupon = () => {
@@ -209,7 +218,9 @@ export function Map() {
         }
     };
 
-    const handleCRMSubmit = async (e: React.FormEvent) => {
+    const SELLERS_PHONES = ['5562999999999', '5562888888888']; 
+
+    const handleWhatsAppSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
@@ -223,13 +234,14 @@ export function Map() {
             }));
 
             let extraNotes = checkoutForm.message;
-            if (appliedCoupon || volumeDiscount > 0) {
-                extraNotes += `\n\n[NOTAS DE DESCONTO]:`;
-                if (appliedCoupon) extraNotes += ` Cupom ${appliedCoupon.code} (${appliedCoupon.discount * 100}% OFF).`;
-                if (volumeDiscount > 0) extraNotes += ` Desconto de volume aplicado.`;
+            if (appliedCoupon || termDiscountPercent > 0) {
+                extraNotes += `\n\n[Descontos Aplicados]:\n`;
+                if (appliedCoupon) extraNotes += `- Cupom ${appliedCoupon.code} (${appliedCoupon.discount * 100}% OFF).\n`;
+                if (termDiscountPercent > 0) extraNotes += `- Plano de ${months}x (${termDiscountPercent * 100}% OFF).`;
             }
 
-            const payload = {
+            // Salva no banco de dados CRM silenciosamente
+            api.post('/crm/deals/checkout', {
                 clientDetails: {
                     name: checkoutForm.name,
                     email: checkoutForm.email,
@@ -241,21 +253,39 @@ export function Map() {
                 originalValue: totalWithoutAnyDiscount,
                 expectedValue: finalTotalValue,
                 items: structuredItems,
-                source: 'INTERACTIVE_MAP'
-            };
+                source: 'INTERACTIVE_MAP_WA'
+            }).catch(e => console.error("Erro ao salvar no CRM", e));
 
-            await api.post('/crm/deals/checkout', payload);
+            // Distribuição simples entre telefones de vendedores
+            const lastIndex = parseInt(localStorage.getItem('@t3:lastSeller') || '0', 10);
+            const nextIndex = (lastIndex + 1) % SELLERS_PHONES.length;
+            localStorage.setItem('@t3:lastSeller', nextIndex.toString());
+            const targetPhone = SELLERS_PHONES[nextIndex];
 
-            addToast('Pedido enviado com sucesso! Nosso comercial entrará em contato.', 'success');
+            // Monta a mensagem para o WhatsApp
+            let text = `*Novo Pedido de Orçamento - T3 OOH*\n\n`;
+            text += `*Cliente:* ${checkoutForm.name}\n`;
+            text += `*Empresa:* ${checkoutForm.company || 'Não informada'}\n\n`;
+            text += `*Painéis Selecionados (${cart.length}):*\n`;
+            cart.forEach(p => { text += `- ${p.name} (${p.city})\n`; });
+            text += `\n*Duração:* ${months} meses\n`;
+            text += `*Investimento Mensal:* ${formatCurrency(finalMonthlyValue)}\n`;
+            text += `*Valor Total da Campanha:* ${formatCurrency(finalTotalValue)}\n`;
+            
+            if (checkoutForm.message) text += `\n*Observações:* ${checkoutForm.message}\n`;
+
+            const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`;
+            
+            addToast('Redirecionando para o WhatsApp do nosso Comercial...', 'success');
             clearCart();
             setIsCheckoutOpen(false);
             setCheckoutStep('cart');
             setCheckoutForm({ name: '', email: '', phone: '', company: '', message: '' });
-            navigate('/dashboard');
+            
+            window.open(waUrl, '_blank');
         } catch (err: any) {
             console.error("Erro no Checkout:", err);
-            const errorMsg = err.response?.data?.details?.[0]?.message || err.response?.data?.error || 'Erro ao processar pedido. Verifique os dados informados.';
-            addToast(errorMsg, 'error');
+            addToast('Erro ao processar pedido. Tente novamente.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -357,7 +387,7 @@ export function Map() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {filteredPanels.map((panel) => {
                                 const inCart = isInCart(panel.id);
                                 const isSelected = selectedPanelId === panel.id; 
@@ -480,7 +510,7 @@ export function Map() {
 
                         {/* Cards Horizontais dos Painéis (Design Compacto Horizontal) */}
                         <div className="w-full pointer-events-auto">
-                            <div className="flex gap-3 overflow-x-auto snap-x custom-scrollbar px-4 pb-2">
+                            <div className="flex gap-3 overflow-x-auto snap-x px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {filteredPanels.map(panel => {
                                     const inCart = isInCart(panel.id);
                                     const isSelected = selectedPanelId === panel.id;
@@ -558,8 +588,9 @@ export function Map() {
                 </div>
             )}
 
+
             {/* ========================================================= */}
-            {/* CHECKOUT MODAL (UNIFICADO COM SERVICES)                     */}
+            {/* CHECKOUT MODAL (CARRINHO E ENVIO WHATSAPP)                  */}
             {/* ========================================================= */}
             
             <AnimatePresence>
@@ -574,7 +605,7 @@ export function Map() {
                                 {checkoutStep === 'cart' ? (
                                     <><ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> Resumo do Pedido</>
                                 ) : (
-                                    <><Send className="w-5 h-5 text-[#FF5E00]" /> Finalizar Pedido CRM</>
+                                    <><Send className="w-5 h-5 text-[#25D366]" /> Enviar Orçamento</>
                                 )}
                             </h2>
                             <button onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5">
@@ -583,7 +614,7 @@ export function Map() {
                         </div>
 
                         {/* BODY DINÂMICO */}
-                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
+                        <div className="flex-1 overflow-y-auto p-5 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {checkoutStep === 'cart' ? (
                                 cart.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-60">
@@ -609,7 +640,7 @@ export function Map() {
                                     </div>
                                 )
                             ) : (
-                                <form onSubmit={handleCRMSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
+                                <form onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
                                     <div className="bg-[#111113] rounded-[16px] p-5 border border-white/5">
                                         <div className="flex justify-between items-center mb-4">
                                             <span className="text-[10px] text-brand-muted font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Painéis no Carrinho</span>
@@ -698,12 +729,8 @@ export function Map() {
                                                 </div>
                                             </div>
                                         </div>
+                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Desconto de <b>{termDiscountPercent * 100}%</b> pelo prazo aplicado!</p>}
                                         {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
-                                    </div>
-
-                                    <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
-                                        <p className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Impacto Total</p>
-                                        <p className="text-xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts || 0)}</p>
                                     </div>
 
                                     <div className="flex items-center justify-between">
@@ -713,14 +740,6 @@ export function Map() {
                                             <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
                                             <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
                                         </div>
-
-                                        {totalEconomy > 0 && (
-                                            <div className="flex flex-col items-end">
-                                                <span className="bg-[#25D366]/10 text-[#25D366] text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border border-[#25D366]/20">
-                                                    Economia de {formatCurrency(totalEconomy)}
-                                                </span>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
 
@@ -730,19 +749,19 @@ export function Map() {
                                     isLoading={isSubmitting}
                                     className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
                                 >
-                                    <MessageCircle className="w-5 h-5 mr-2" /> Finalizar Cotação
+                                    Avançar
                                 </Button>
                             </div>
                         ) : (
                             <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-3 z-20 relative">
                                 <button onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
                                 <Button
-                                    onClick={handleCRMSubmit}
+                                    onClick={handleWhatsAppSubmit}
                                     disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
-                                    className="w-full bg-[#FF5E00] hover:brightness-110 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(255,94,0,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                                    className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
                                 >
-                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Ticket className="w-5 h-5" />}
-                                    Gerar Ticket Comercial CRM
+                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                    Enviar via WhatsApp
                                 </Button>
                             </div>
                         )}

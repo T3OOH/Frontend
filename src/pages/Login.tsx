@@ -1,17 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/Button';
+import { Mail, Lock, ArrowLeft, Send, Loader2 } from 'lucide-react';
 import { Input } from '@/components/Input';
 import { loginSchema, LoginFormData } from '@/schemas/login.schema';
 import { authService } from '@/services/auth.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
-
-// Importação do componente reCAPTCHA
 import ReCAPTCHA from 'react-google-recaptcha';
 
 export function Login() {
@@ -19,21 +16,11 @@ export function Login() {
     const { signIn, isAuthenticated } = useAuth(); 
     const toast = useToast();
 
-    // Estado para armazenar o token gerado pelo reCAPTCHA
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-
+    // Redireciona se já estiver logado
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/', { replace: true });
-        }
+        if (isAuthenticated) navigate('/', { replace: true });
     }, [isAuthenticated, navigate]);
 
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
@@ -41,23 +28,19 @@ export function Login() {
     });
 
     const onSubmit = async (data: LoginFormData) => { 
-        // Validação: Impede o envio se o Captcha não foi resolvido
         if (!captchaToken) {
             toast.error('Por favor, confirme que você não é um robô.');
             return;
         }
 
         try {
-            // Envia os dados do formulário + o token do Captcha
             const response = await authService.login({ ...data, captchaToken } as any);
             signIn(response.token, response.user);
-            toast.success('Você está logado!');
+            toast.success('Login realizado com sucesso!');
         } catch (error: any) {
             const backendError = error.response?.data;
-            console.error("Erro detalhado do login:", backendError || error);
-            
             if (backendError?.details) {
-                toast.error(`Erro de Validação: ${backendError.details[0].message}`);
+                toast.error(`Erro: ${backendError.details[0].message}`);
             } else if (backendError?.error) {
                 toast.error(`Erro: ${backendError.error}`);
             } else {
@@ -67,211 +50,98 @@ export function Login() {
     };
 
     return (
-        <div className="h-[100dvh] w-full flex bg-[#0A0A0B] relative overflow-hidden">
+        <div className="relative min-h-[100dvh] w-full flex items-center bg-[#0A0A0B] overflow-x-hidden">
             
-            {!isMobile ? (
-                /* ========================================================= */
-                /* DESKTOP LAYOUT (ATUALIZADO PADRÃO PREMIUM)                */
-                /* ========================================================= */
-                <>
-                    <div className="flex w-[45%] xl:w-[40%] flex-col relative z-10 justify-center border-r border-white/5 bg-[#0A0A0B]">
-                        {/* Efeito de Fundo */}
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-neon/5 rounded-full blur-[100px] pointer-events-none" />
+            {/* BACKGROUND IMERSIVO */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <img 
+                    src="/cidadet3 2.png" 
+                    alt="Background Cidade" 
+                    className="w-full h-full object-cover opacity-30 mix-blend-luminosity" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-[#0A0A0B]/90 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/40 to-transparent" />
+            </div>
 
-                        {/* Botão Voltar Premium */}
-                        <div className="absolute top-8 left-8 lg:left-12 z-20">
-                            <Link to="/" className="flex items-center gap-3 text-white group transition-all">
-                                <div className="w-10 h-10 rounded-full bg-[#111113] flex items-center justify-center border border-white/5 shadow-lg group-hover:border-brand-neon/40 group-hover:bg-brand-neon/10 transition-all duration-300">
-                                    <ArrowLeft className="w-4 h-4 text-brand-muted group-hover:text-brand-neon transition-colors" />
-                                </div>
-                                <span className="font-bold text-[13px] text-brand-muted tracking-wide group-hover:text-white transition-colors">Voltar ao Início</span>
-                            </Link>
-                        </div>
-
-                        {/* Card de Login Premium */}
-                        <div className="w-full max-w-[420px] mx-auto relative z-10 px-6">
-                            <div className="bg-[#111113]/90 backdrop-blur-2xl p-10 rounded-[32px] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col">
-                                
-                                <div className="mb-10 text-center flex flex-col items-center">
-                                    <motion.img 
-                                        src="/t3d 2.png" 
-                                        alt="Logo T3" 
-                                        className="h-20 w-auto mb-6 object-contain drop-shadow-[0_0_15px_rgba(255,94,0,0.15)]"
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.5 }}
-                                    />
-                                    <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Acesso ao Sistema</h2>
-                                    <p className="text-brand-muted text-[13px] leading-relaxed">
-                                        Insira suas credenciais corporativas para acessar e gerenciar o circuito de painéis.
-                                    </p>
-                                </div>
-
-                                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
-                                    <div className="space-y-4">
-                                        <Input 
-                                            label="E-mail Corporativo" 
-                                            type="email" 
-                                            placeholder="exemplo@t3ooh.com.br" 
-                                            leftIcon={<Mail className="w-4 h-4 text-brand-muted" />} 
-                                            error={errors.email?.message} 
-                                            {...register('email')} 
-                                            className="bg-[#0A0A0B] border-white/5 h-12 text-sm focus:border-brand-neon/50"
-                                            autoComplete="off"
-                                        />
-                                        <div className="space-y-1 relative">
-                                            <Input 
-                                                label="Senha" 
-                                                type="password" 
-                                                placeholder="••••••••" 
-                                                leftIcon={<Lock className="w-4 h-4 text-brand-muted" />} 
-                                                error={errors.password?.message} 
-                                                {...register('password')} 
-                                                className="bg-[#0A0A0B] border-white/5 h-12 text-sm focus:border-brand-neon/50"
-                                                autoComplete="new-password"
-                                            />
-                                            <div className="flex justify-end pt-1">
-                                                <Link to="#" className="text-xs font-semibold text-brand-muted hover:text-brand-neon transition-all">Esqueceu a senha?</Link>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* CAIXA DO RECAPTCHA NO DESKTOP */}
-                                    <div className="flex justify-center pt-3 pb-1">
-                                        <div className="rounded-xl overflow-hidden shadow-lg border border-white/5">
-                                            <ReCAPTCHA
-                                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""}
-                                                onChange={(token) => setCaptchaToken(token)}
-                                                theme="dark"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Button 
-                                        type="submit" 
-                                        size="lg" 
-                                        className="w-full mt-2 uppercase tracking-widest text-[13px] h-14 rounded-2xl font-black shadow-[0_10px_25px_rgba(255,94,0,0.3)] border-none bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] transition-transform active:scale-[0.98]" 
-                                        isLoading={isSubmitting} 
-                                        rightIcon={<LogIn className="w-4 h-4 text-[#0A0A0B]" />}
-                                    >
-                                        Entrar
-                                    </Button>
-
-                                    <div className="text-center pt-6 mt-6 border-t border-white/5">
-                                        <p className="text-[13px] text-brand-muted">
-                                            Não tem uma conta? <Link to="/cadastro" className="font-bold text-white hover:text-brand-neon transition-colors underline decoration-brand-border/50">Cadastre-se</Link>
-                                        </p>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-1 relative z-0 overflow-hidden">
-                        <img src="/cidadet3 2.png" alt="Cidade" className="absolute inset-0 w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-[#0A0A0B]/40 mix-blend-multiply" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-[#0A0A0B]/80 to-transparent w-full" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/20 to-transparent" />
-                        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-[#0A0A0B] to-transparent" />
-                        
-                        <div className="absolute bottom-16 left-16 max-w-lg z-10">
-                            <div className="bg-[#111113]/85 backdrop-blur-2xl p-8 rounded-3xl border border-white/5 shadow-2xl border-l-4 border-l-brand-neon">
-                                <h3 className="text-2xl font-black text-white mb-3 tracking-tight">Impacto visual ininterrupto.</h3>
-                                <p className="text-brand-muted text-[13px] leading-relaxed">Gerencie a exibição da sua marca nos pontos de maior fluxo da cidade com métricas auditáveis em tempo real. Uma plataforma completa de OOH.</p>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            ) : (
-                /* ========================================================= */
-                /* MOBILE LAYOUT                                             */
-                /* ========================================================= */
-                <div className="flex flex-col w-full h-full relative z-20 bg-[#0A0A0B]">
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-24 lg:py-0 flex flex-col lg:flex-row lg:items-center justify-between gap-16 lg:gap-24 h-full min-h-screen">
+                
+                {/* COLUNA ESQUERDA: LOGO GIGANTE E TÍTULO */}
+                <div className="w-full lg:w-[45%] flex flex-col justify-center">
+                    <motion.img 
+                        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, ease: "easeOut" }}
+                        src="/t3d 2.png" 
+                        alt="T3 OOH Logo Gigante" 
+                        className="w-[60%] md:w-[70%] max-w-[400px] h-auto object-contain drop-shadow-[0_0_40px_rgba(255,94,0,0.3)] origin-left mb-8"
+                    />
                     
-                    <div className="sticky top-0 z-50 bg-[#0A0A0B]/95 backdrop-blur-xl border-b border-brand-border/20 px-4 py-3 flex items-center justify-between shadow-sm pt-[env(safe-area-inset-top,12px)]">
-                        <Link to="/" className="flex items-center gap-3 text-white active:opacity-70 transition-opacity">
-                            <div className="w-9 h-9 rounded-full bg-[#111113] flex items-center justify-center border border-brand-border/40 shadow-sm">
-                                <ArrowLeft className="w-5 h-5 text-white" />
-                            </div>
-                            <span className="font-bold text-[15px] tracking-wide">Voltar</span>
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+                        className="text-5xl lg:text-7xl font-black text-white tracking-tight leading-[1] mb-10"
+                    >
+                        Fazer Login
+                    </motion.h1>
+
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                        <Link to="/" className="inline-flex items-center justify-center px-8 py-5 border border-white/20 text-white hover:bg-white/5 hover:border-white/40 uppercase tracking-widest text-xs font-bold transition-all">
+                            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar ao Início
                         </Link>
-                        <img src="/t3d 2.png" alt="T3 Logo" className="h-6 w-auto object-contain drop-shadow-[0_0_10px_rgba(255,94,0,0.3)]" />
-                    </div>
+                    </motion.div>
+                </div>
 
-                    <div className="flex-1 overflow-y-auto px-5 pt-8 pb-[120px] custom-scrollbar">
+                {/* COLUNA DIREITA: FORMULÁRIO "NAKED" */}
+                <div className="w-full lg:w-[50%] flex flex-col justify-center">
+                    <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-6" autoComplete="off">
                         
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-white tracking-tight mb-2 leading-tight">
-                                Acesso ao Sistema
-                            </h2>
-                            <p className="text-brand-muted text-[13px] leading-relaxed">
-                                Insira suas credenciais corporativas para acessar e gerenciar o circuito de painéis.
-                            </p>
-                        </div>
-
-                        <form id="mobile-login-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">E-mail Corporativo *</label>
                             <Input 
-                                label="E-mail Corporativo" 
                                 type="email" 
-                                placeholder="exemplo@t3ooh.com.br" 
-                                leftIcon={<Mail className="w-4 h-4 text-brand-muted" />} 
+                                placeholder="seu@empresa.com.br" 
+                                leftIcon={<Mail className="w-4 h-4 text-white/40" />} 
                                 error={errors.email?.message} 
                                 {...register('email')} 
-                                className="bg-[#111113] h-12 text-sm"
-                                autoComplete="off"
+                                className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
+                                autoComplete="email"
                             />
-                            
-                            <div className="space-y-1 relative">
-                                <Input 
-                                    label="Senha" 
-                                    type="password" 
-                                    placeholder="••••••••" 
-                                    leftIcon={<Lock className="w-4 h-4 text-brand-muted" />} 
-                                    error={errors.password?.message} 
-                                    {...register('password')} 
-                                    className="bg-[#111113] h-12 text-sm"
-                                    autoComplete="new-password"
-                                />
-                                <div className="flex justify-end pt-2">
-                                    <Link to="#" className="text-xs font-medium text-brand-muted hover:text-brand-neon transition-all">Esqueceu a senha?</Link>
-                                </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 relative">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Senha *</label>
+                            <Input 
+                                type="password" 
+                                placeholder="••••••••" 
+                                leftIcon={<Lock className="w-4 h-4 text-white/40" />} 
+                                error={errors.password?.message} 
+                                {...register('password')} 
+                                className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
+                                autoComplete="current-password"
+                            />
+                            <div className="flex justify-end pt-1">
+                                <Link to="#" className="text-[11px] font-bold text-[#8F8F91] hover:text-white transition-all uppercase tracking-widest">Esqueceu a senha?</Link>
                             </div>
+                        </div>
 
-                            {/* CAIXA DO RECAPTCHA NO MOBILE */}
-                            <div className="flex justify-center pt-4 pb-2">
-                                <div className="rounded-xl overflow-hidden shadow-lg border border-white/5">
-                                    <ReCAPTCHA
-                                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""}
-                                        onChange={(token) => setCaptchaToken(token)}
-                                        theme="dark"
-                                    />
-                                </div>
-                            </div>
+                        <div className="rounded-xl overflow-hidden mt-2 w-fit">
+                            <ReCAPTCHA sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""} onChange={(token) => setCaptchaToken(token)} theme="dark" />
+                        </div>
 
-                            <div className="text-center pt-4 mt-2">
-                                <p className="text-sm text-brand-muted">
-                                    Não tem uma conta? <Link to="/cadastro" className="font-bold text-white hover:text-brand-neon transition-colors underline decoration-brand-border">Cadastre-se</Link>
-                                </p>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-50 pb-safe">
-                        <Button
-                            type="submit"
-                            form="mobile-login-form" 
-                            size="lg"
-                            className="w-full bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-14 rounded-2xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] active:scale-[0.98] transition-all border-none"
-                            isLoading={isSubmitting}
-                            rightIcon={<LogIn className="w-4 h-4 text-[#0A0A0B]" />}
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting}
+                            className="w-full bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-16 rounded-none transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99]"
                         >
-                            Entrar
-                        </Button>
-                    </div>
-                </div>
-            )}
+                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar no Sistema <Send className="w-4 h-4" /></>}
+                        </button>
 
+                        <div className="text-center pt-2">
+                            <p className="text-[12px] text-[#8F8F91] uppercase tracking-widest font-bold">
+                                Não tem uma conta? <Link to="/cadastro" className="text-white hover:text-[#FF5E00] transition-colors underline decoration-white/20">Cadastre-se</Link>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
         </div>
     );
 }

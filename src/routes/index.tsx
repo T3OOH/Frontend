@@ -3,11 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { CartProvider } from '@/contexts/CartContext'; 
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { MainLayout } from '@/layouts/MainLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { CrmLayout } from '@/layouts/CrmLayout'; 
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
-import { ScrollToTop } from '@/components/ScrollToTop'; // <-- IMPORTADO AQUI
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 // ==========================================
 // CODE SPLITTING 
@@ -19,6 +20,7 @@ const Services = lazy(() => import('@/pages/Services').then(m => ({ default: m.S
 const Map = lazy(() => import('@/pages/Map').then(m => ({ default: m.Map })));
 const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })));
 const Register = lazy(() => import('@/pages/Register').then(m => ({ default: m.Register })));
+const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info }))); // <-- ADICIONADO AQUI
 
 const Overview = lazy(() => import('@/pages/dashboard/Overview').then(m => ({ default: m.Overview })));
 const Panels = lazy(() => import('@/pages/dashboard/Panels').then(m => ({ default: m.Panels })));
@@ -31,7 +33,7 @@ const OrdersList = lazy(() => import('@/pages/dashboard/Orders').then(m => ({ de
 const CrmOverview = lazy(() => import('@/pages/crm/CrmOverview').then(m => ({ default: m.CrmOverview })));
 const CrmPipeline = lazy(() => import('@/pages/crm/CrmPipeline').then(m => ({ default: m.CrmPipeline })));
 const CrmClients = lazy(() => import('@/pages/crm/CrmClients').then(m => ({ default: m.CrmClients })));
-const CrmChat = lazy(() => import('@/pages/crm/CrmChat').then(m => ({ default: m.CrmChat })));
+const CrmProposals = lazy(() => import('@/pages/crm/CrmProposals').then(m => ({ default: m.CrmProposals })));
 const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ default: m.CrmAgenda })));
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
 
@@ -73,74 +75,74 @@ function PrivateRoute({ allowedRoles }: { allowedRoles?: string[] }) {
 
 export function AppRoutes() {
     return (
-        <ToastProvider>
-            <AuthProvider>
-                <CartProvider>
-                    <BrowserRouter>
-                        {/* 
-                          * COMPONENTE INVISÍVEL PARA SCROLL AUTOMÁTICO
-                          * Garante que toda troca de rota comece no topo da página
-                          */}
-                        <ScrollToTop />
+        <ThemeProvider>
+            <ToastProvider>
+                <AuthProvider>
+                    <CartProvider>
+                        <BrowserRouter>
+                            {/* 
+                              * COMPONENTE INVISÍVEL PARA SCROLL AUTOMÁTICO
+                              * Garante que toda troca de rota comece no topo da página
+                              */}
+                            <ScrollToTop />
 
-                        <Routes>
-                            {/* ROTAS PÚBLICAS */}
-                            <Route path="/" element={<MainLayout />}>
-                                <Route index element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
-                                <Route path="contato" element={<Suspense fallback={<PageLoader />}><Contact /></Suspense>} />
-                                <Route path="servicos" element={<Suspense fallback={<PageLoader />}><Services /></Suspense>} />
-                                <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
-                            </Route>
-
-                            {/* ROTAS DE AUTENTICAÇÃO */}
-                            <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
-                            <Route path="/cadastro" element={<Suspense fallback={<PageLoader />}><Register /></Suspense>} />
-
-                            {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
-                            <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
-                                <Route path="/dashboard" element={<DashboardLayout />}>
-                                    <Route index element={<Suspense fallback={<PageLoader />}><Overview /></Suspense>} />
-                                    <Route path="paineis" element={<Suspense fallback={<PageLoader />}><Panels /></Suspense>} />
-                                    <Route path="paineis/novo" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
-                                    <Route path="paineis/editar/:panelId" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
-                                    <Route path="mapa" element={<Suspense fallback={<MapLoader />}><DashboardMap /></Suspense>} />
-                                    <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
-                                    <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
-                                </Route>
-                            </Route>
-
-                            {/* ROTAS RESTRITAS (CRM / COMERCIAL) */}
-                            <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER', 'COMERCIAL']} />}>
-                                <Route path="/crm" element={<CrmLayout />}>
-                                    <Route index element={<Suspense fallback={<PageLoader />}><CrmOverview /></Suspense>} />
-                                    <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><CrmPipeline /></Suspense>} />
-                                    <Route path="clientes" element={<Suspense fallback={<PageLoader />}><CrmClients /></Suspense>} />
-                                    <Route path="chat" element={<Suspense fallback={<PageLoader />}><CrmChat /></Suspense>} />
-                                    <Route path="agenda" element={<Suspense fallback={<PageLoader />}><CrmAgenda /></Suspense>} />
-                                    <Route path="cupons" element={<Suspense fallback={<PageLoader />}><CrmCoupons /></Suspense>} />
-                                </Route>
-                            </Route>
-
-                            {/* ROTAS RESTRITAS GERAIS (Qualquer usuário autenticado) */}
-                            <Route element={<PrivateRoute />}>
+                            <Routes>
+                                {/* ROTAS PÚBLICAS */}
                                 <Route path="/" element={<MainLayout />}>
-                                    <Route path="perfil" element={<Suspense fallback={<PageLoader />}><UserProfile /></Suspense>} />
+                                    <Route index element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
+                                    <Route path="contato" element={<Suspense fallback={<PageLoader />}><Contact /></Suspense>} />
+                                    <Route path="servicos" element={<Suspense fallback={<PageLoader />}><Services /></Suspense>} />
+                                    <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
+                                    <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} /> {/* <-- ADICIONADO AQUI */}
                                 </Route>
-                            </Route>
 
-                        </Routes>
+                                {/* ROTAS DE AUTENTICAÇÃO */}
+                                <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
+                                <Route path="/cadastro" element={<Suspense fallback={<PageLoader />}><Register /></Suspense>} />
 
-                        {/* 
-                          * Componente Global de Retorno ao Topo (Botão visual).
-                          * Posicionado fora do escopo do <Routes> para garantir que 
-                          * permaneça injetado na árvore do DOM independente da navegação,
-                          * gerenciando sua própria renderização baseada no scroll.
-                          */}
-                        <ScrollToTopButton />
+                                {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
+                                <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
+                                    <Route path="/dashboard" element={<DashboardLayout />}>
+                                        <Route index element={<Suspense fallback={<PageLoader />}><Overview /></Suspense>} />
+                                        <Route path="paineis" element={<Suspense fallback={<PageLoader />}><Panels /></Suspense>} />
+                                        <Route path="paineis/novo" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
+                                        <Route path="paineis/editar/:panelId" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
+                                        <Route path="mapa" element={<Suspense fallback={<MapLoader />}><DashboardMap /></Suspense>} />
+                                        <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
+                                        <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
+                                    </Route>
+                                </Route>
 
-                    </BrowserRouter>
-                </CartProvider>
-            </AuthProvider>
-        </ToastProvider>
+                                {/* ROTAS RESTRITAS (CRM / COMERCIAL) */}
+                                <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER', 'COMERCIAL']} />}>
+                                    <Route path="/crm" element={<CrmLayout />}>
+                                        <Route index element={<Suspense fallback={<PageLoader />}><CrmOverview /></Suspense>} />
+                                        <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><CrmPipeline /></Suspense>} />
+                                        <Route path="clientes" element={<Suspense fallback={<PageLoader />}><CrmClients /></Suspense>} />
+                                        <Route path="propostas" element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
+                                        <Route path="agenda" element={<Suspense fallback={<PageLoader />}><CrmAgenda /></Suspense>} />
+                                        <Route path="cupons" element={<Suspense fallback={<PageLoader />}><CrmCoupons /></Suspense>} />
+                                    </Route>
+                                </Route>
+
+                                {/* ROTAS RESTRITAS GERAIS (Qualquer usuário autenticado) */}
+                                <Route element={<PrivateRoute />}>
+                                    <Route path="/" element={<MainLayout />}>
+                                        <Route path="perfil" element={<Suspense fallback={<PageLoader />}><UserProfile /></Suspense>} />
+                                    </Route>
+                                </Route>
+
+                            </Routes>
+
+                            {/* 
+                              * Componente Global de Retorno ao Topo (Botão visual).
+                              */}
+                            <ScrollToTopButton />
+
+                        </BrowserRouter>
+                    </CartProvider>
+                </AuthProvider>
+            </ToastProvider>
+        </ThemeProvider> 
     );
 }

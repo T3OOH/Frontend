@@ -24,19 +24,19 @@ export function Button({
     ...props
 }: ButtonProps) {
 
-    // Alterado para rounded-lg (quadrado com cantos suaves, padrão de sistemas sérios)
-    const baseStyles = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed";
+    // Xenith UI: Bordas mais redondas (rounded-xl) e fonte bold para destaque
+    const baseStyles = "inline-flex items-center justify-center font-bold rounded-xl transition-all duration-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed";
 
     const variants = {
-        primary: "bg-brand-neon text-white hover:bg-brand-neonHover shadow-neon border border-transparent",
-        secondary: "bg-brand-surface border border-brand-border text-brand-text hover:bg-brand-surface/80",
-        ghost: "bg-transparent text-brand-text hover:bg-brand-surface",
+        primary: "bg-brand-neon text-white hover:bg-brand-neonHover shadow-sm hover:shadow-[0_0_20px_rgba(255,94,0,0.3)] border border-transparent",
+        secondary: "bg-brand-surface border border-brand-border text-brand-text hover:bg-brand-background hover:border-brand-neon/50 hover:text-brand-neon shadow-sm",
+        ghost: "bg-transparent text-brand-muted hover:text-brand-text hover:bg-brand-surface",
     };
 
     const sizes = {
-        sm: "text-sm px-4 py-2 gap-2",
-        md: "text-base px-6 py-3 gap-2",
-        lg: "text-lg px-8 py-4 gap-3",
+        sm: "text-xs px-4 py-2 gap-2",
+        md: "text-sm px-6 py-3 gap-2.5",
+        lg: "text-base px-8 py-4 gap-3",
     };
 
     return (
@@ -47,10 +47,14 @@ export function Button({
             disabled={disabled || isLoading}
             {...props}
         >
-            {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-            {!isLoading && leftIcon && leftIcon}
-            {children}
-            {!isLoading && rightIcon && rightIcon}
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+            
+            {!isLoading && leftIcon && <span className="shrink-0 flex items-center">{leftIcon}</span>}
+            
+            {/* Adicionando Flexbox aqui previne que ícones e textos quebrem a linha no futuro */}
+            <span className="truncate flex items-center justify-center gap-2">{children}</span>
+            
+            {!isLoading && rightIcon && <span className="shrink-0 flex items-center">{rightIcon}</span>}
         </motion.button>
     );
 }
