@@ -1,45 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ArrowRight, LogIn, LayoutDashboard, LogOut, Briefcase, User as UserIcon, ChevronRight } from 'lucide-react';
+import { 
+    Menu, X, ArrowRight, LogIn, LayoutDashboard, LogOut, 
+    Briefcase, User as UserIcon, ChevronRight 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { panelsService } from '@/services/panels.service';
 
-const navLinks = [
+// ==========================================
+// NAVIGATION CONFIGURATION
+// ==========================================
+interface NavLink {
+    name: string;
+    path: string;
+}
+
+const navLinks: NavLink[] = [
     { name: 'Início', path: '/' },
     { name: 'Mapa de Painéis', path: '/mapa' },
     { name: 'Serviços', path: '/servicos' },
     { name: 'Contato', path: '/contato' },
     { name: 'Sobre Nós', path: '/sobre' },
+    { name: 'T3 Solution', path: '/solution' },
 ];
 
 export function Header() {
-    const [isOpen, setIsOpen] = useState(false); // Menu Mobile
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); // Dropdown do Usuário Desktop
+    // State Management
+    const [isOpen, setIsOpen] = useState(false);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     
+    // Hooks & References
     const location = useLocation();
     const navigate = useNavigate();
     const userMenuRef = useRef<HTMLDivElement>(null);
-    
     const { isAuthenticated, user, signOut } = useAuth(); 
 
-    // Detecta o scroll para alterar a intensidade do degradê
+    // Scroll Observer for Dynamic Header Background
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Fecha os menus ao trocar de rota
+    // Route Change Observer: Resets overlay menus state
     useEffect(() => {
         setIsOpen(false);
         setIsUserMenuOpen(false);
     }, [location.pathname]);
 
-    // Trava o scroll do fundo apenas quando o menu mobile estiver aberto
+    // Body Scroll Lock for Mobile Menu Overlay
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -51,7 +64,7 @@ export function Header() {
         };
     }, [isOpen]);
 
-    // Fecha o dropdown do usuário ao clicar fora dele
+    // Click Outside Listener for User Dropdown
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -62,6 +75,7 @@ export function Header() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Role display normalization
     const getRoleDisplayName = (role?: string) => {
         switch (role) {
             case 'ADMIN':
@@ -72,12 +86,14 @@ export function Header() {
         }
     };
 
+    // Current Route contextualization
     const getRouteName = (path: string) => {
         if (path === '/') return 'Início';
         if (path.startsWith('/mapa')) return 'Mapa Interativo';
         if (path.startsWith('/servicos')) return 'Painéis OOH';
         if (path.startsWith('/contato')) return 'Contato';
         if (path.startsWith('/sobre')) return 'Sobre Nós';
+        if (path.startsWith('/solution')) return 'T3 Solution';
         if (path.startsWith('/login')) return 'Acesso';
         if (path.startsWith('/cadastro')) return 'Cadastro';
         if (path.startsWith('/perfil')) return 'Meu Perfil';
@@ -92,7 +108,7 @@ export function Header() {
         <>
             <header className="fixed top-0 inset-x-0 z-[500]">
                 
-                {/* DEGRADÊ PERFEITO E MACIO */}
+                {/* Dynamic Gradient Overlay */}
                 <div 
                     className={cn(
                         "absolute inset-x-0 top-0 h-[140px] md:h-[160px] pointer-events-none transition-opacity duration-500",
@@ -103,7 +119,7 @@ export function Header() {
 
                 <div className="relative max-w-7xl mx-auto px-4 md:px-6 h-[72px] md:h-[90px] flex items-center justify-between gap-4">
 
-                    {/* Lado Esquerdo - Logo T3 */}
+                    {/* Left Section: Brand Logo */}
                     <div className="flex-1 flex justify-start items-center">
                         <Link to="/" className="group flex items-center relative z-50">
                             <motion.img 
@@ -117,7 +133,7 @@ export function Header() {
                         </Link>
                     </div>
 
-                    {/* CENTRO MOBILE (PÍLULA DE STATUS) */}
+                    {/* Mobile Center Section: Contextual Route Badge */}
                     <div className="md:hidden flex flex-[2] justify-center items-center pointer-events-none">
                         <AnimatePresence mode="wait">
                             <motion.div 
@@ -136,10 +152,11 @@ export function Header() {
                         </AnimatePresence>
                     </div>
 
-                    {/* DESKTOP LAYOUT (Navegação Perfeitamente Centralizada) */}
+                    {/* Desktop Center Section: Primary Navigation */}
                     <nav className="hidden md:flex flex-none items-center justify-center gap-8">
                         {navLinks.map((link) => {
                             const isActive = location.pathname === link.path;
+
                             return (
                                 <Link
                                     key={link.path}
@@ -164,7 +181,7 @@ export function Header() {
                         })}
                     </nav>
 
-                    {/* Lado Direito - Ações & Avatar Minimalista */}
+                    {/* Right Section: Actions & User Avatar */}
                     <div className="hidden md:flex flex-1 items-center justify-end gap-3 relative z-50">
                         
                         {!isAuthenticated ? (
@@ -180,21 +197,21 @@ export function Header() {
                             </Link>
                         ) : (
                             <div className="relative" ref={userMenuRef}>
-                                {/* BOTÃO AVATAR "BOLINHA" PADRONIZADO (w-10 h-10) */}
+                                {/* Standardized Avatar Button */}
                                 <button
                                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                                     className={cn(
                                         "w-10 h-10 rounded-full bg-[#111113]/80 border flex items-center justify-center shadow-sm backdrop-blur-md transition-all active:scale-95 group",
                                         isUserMenuOpen ? "border-[#FF5E00] shadow-[0_0_15px_rgba(255,94,0,0.2)]" : "border-white/10 hover:border-[#FF5E00]/50"
                                     )}
-                                    aria-label="Menu do Usuário"
+                                    aria-label="User Context Menu"
                                 >
                                     <span className="text-[#FF5E00] font-black text-sm group-hover:scale-110 transition-transform">
                                         {user?.name?.charAt(0).toUpperCase()}
                                     </span>
                                 </button>
 
-                                {/* DROPDOWN (TELINHA DO HEADER) */}
+                                {/* User Dropdown Overlay */}
                                 <AnimatePresence>
                                     {isUserMenuOpen && (
                                         <motion.div
@@ -204,7 +221,6 @@ export function Header() {
                                             transition={{ duration: 0.2, ease: "easeOut" }}
                                             className="absolute right-0 top-[calc(100%+12px)] w-64 bg-[#111113]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col"
                                         >
-                                            {/* Cabeçalho do Dropdown: Ícone e Nome em baixo */}
                                             <div className="p-6 border-b border-white/5 bg-gradient-to-b from-[#FF5E00]/5 to-transparent flex flex-col items-center text-center">
                                                 <div className="w-14 h-14 rounded-full bg-[#0A0A0B] border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xl mb-3 shadow-[0_0_15px_rgba(255,94,0,0.15)]">
                                                     {user?.name?.charAt(0).toUpperCase()}
@@ -215,7 +231,6 @@ export function Header() {
                                                 </p>
                                             </div>
                                             
-                                            {/* Lista de Botões */}
                                             <div className="p-2 flex flex-col gap-1">
                                                 {(userRole === 'ADMIN' || userRole === 'MANAGER') && (
                                                     <button onClick={() => { setIsUserMenuOpen(false); navigate('/dashboard'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-[#8F8F91] hover:text-[#FF5E00] hover:bg-[#FF5E00]/10 transition-all text-left">
@@ -245,7 +260,7 @@ export function Header() {
                             </div>
                         )}
 
-                        {/* Botão de Orçamento PADRONIZADO (h-10) */}
+                        {/* CTA Budget Requirement */}
                         {(!isAuthenticated || userRole === 'USER') && (
                             <Button 
                                 size="sm" 
@@ -259,13 +274,13 @@ export function Header() {
                         )}
                     </div>
 
-                    {/* MOBILE MENU TRIGGER (Hambúrguer ou Avatar) */}
+                    {/* Mobile Section: Menu Trigger */}
                     <div className="md:hidden flex flex-1 justify-end relative z-[60]">
                         <button
                             type="button"
                             className="p-2 -mr-2 text-white hover:text-[#FF5E00] transition-colors relative"
                             onClick={() => setIsOpen(!isOpen)}
-                            aria-label="Alternar menu"
+                            aria-label="Toggle Navigation"
                         >
                             {!isOpen && isAuthenticated ? (
                                 <div className="w-8 h-8 rounded-full bg-[#FF5E00]/10 border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xs shadow-md">
@@ -281,7 +296,7 @@ export function Header() {
                 </div>
             </header>
 
-            {/* OVERLAY DE MENU MOBILE ESTILO APLICATIVO */}
+            {/* MOBILE NAVIGATION OVERLAY */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -293,7 +308,7 @@ export function Header() {
                     >
                         <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar">
                             
-                            {/* Card de Usuário ou CTA de Login */}
+                            {/* User Authentication Card or Login CTA */}
                             {isAuthenticated ? (
                                 <div 
                                     className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex items-center gap-4 shadow-xl mb-8 active:scale-95 transition-transform" 
@@ -321,11 +336,12 @@ export function Header() {
                                 </div>
                             )}
 
-                            {/* Menu de Navegação em Blocos */}
+                            {/* Block Navigation Menu */}
                             <div className="flex flex-col gap-2 mb-8">
                                 <h4 className="text-[10px] font-black uppercase text-brand-muted tracking-widest pl-2 mb-2">Explorar</h4>
                                 {navLinks.map((link) => {
                                     const isActive = location.pathname === link.path;
+
                                     return (
                                         <Link
                                             key={link.path}
@@ -343,7 +359,7 @@ export function Header() {
                                 })}
                             </div>
 
-                            {/* Logout Bottom */}
+                            {/* Authentication Exit Handler */}
                             {isAuthenticated && (
                                 <div className="mt-auto pb-safe">
                                     <button 

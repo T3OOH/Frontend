@@ -1,104 +1,76 @@
 import { useState, useRef, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check } from 'lucide-react';
 
 interface Option {
     value: string;
     label: string;
 }
 
-export interface CustomSelectProps {
+interface CustomSelectProps {
     options: Option[];
     value: string;
-    onChange: (value: string) => void;
+    onChange: (val: string) => void;
     placeholder?: string;
     icon?: React.ReactNode;
-    disabled?: boolean;
+    maxHeight?: string; // Propriedade nova para controlar o scroll
 }
 
-export function CustomSelect({ 
-    options, 
-    value, 
-    onChange, 
-    placeholder = "Selecione...", 
-    icon,
-    disabled = false 
-}: CustomSelectProps) {
+export function CustomSelect({ options, value, onChange, placeholder, icon, maxHeight = "max-h-[220px]" }: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (ref.current && !ref.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const selectedOption = options.find(opt => opt.value === value);
 
-    // Fecha o dropdown ao clicar fora
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     return (
-        <div className={`relative w-full text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} ref={containerRef}>
-            {/* BOTÃO DO SELECT */}
+        <div className="relative w-full" ref={ref}>
             <button
                 type="button"
-                disabled={disabled}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between bg-brand-background border rounded-xl px-4 py-3 transition-all duration-200 outline-none backdrop-blur-md
-                    ${disabled 
-                        ? 'border-brand-border text-brand-muted/70 pointer-events-none' 
-                        : isOpen 
-                            ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] text-brand-text' 
-                            : 'border-brand-border text-brand-text hover:border-brand-neon/50'
-                    }
-                `}
+                className="w-full flex items-center justify-between bg-[#0A0A0B] border border-white/10 rounded-md px-4 py-3.5 text-sm text-white focus:border-[#FF5E00] outline-none transition-colors shadow-inner"
             >
-                <div className="flex items-center gap-3 overflow-hidden">
-                    {icon && <span className={`${isOpen && !disabled ? 'text-brand-neon' : 'text-brand-muted'}`}>{icon}</span>}
-                    <span className="truncate font-medium">
-                        {selectedOption ? selectedOption.label : placeholder}
-                    </span>
+                <div className="flex items-center gap-2 truncate">
+                    {icon && <span className="text-[#8F8F91] shrink-0">{icon}</span>}
+                    <span className="truncate font-medium">{selectedOption ? selectedOption.label : placeholder}</span>
                 </div>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen && !disabled ? 'rotate-180 text-brand-neon' : 'text-brand-muted'}`} />
+                <ChevronDown className={`w-4 h-4 text-[#8F8F91] transition-transform ${isOpen ? 'rotate-180' : ''} shrink-0`} />
             </button>
 
-            {/* LISTA SUSPENSA (DROPDOWN) */}
             <AnimatePresence>
-                {isOpen && !disabled && (
+                {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-50 w-full mt-2 bg-brand-surface border border-brand-border rounded-xl shadow-xl overflow-hidden backdrop-blur-xl"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        // Z-index altíssimo para sobrepor tudo ao redor
+                        className="absolute left-0 right-0 mt-2 bg-[#111113] border border-white/10 rounded-md shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[99999] overflow-hidden"
                     >
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1.5">
-                            {options.map((option) => {
-                                const isSelected = option.value === value;
-                                return (
-                                    <button
-                                        key={option.value}
-                                        type="button"
-                                        onClick={() => {
-                                            onChange(option.value);
-                                            setIsOpen(false);
-                                        }}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-left font-medium
-                                            ${isSelected 
-                                                ? 'bg-brand-neon/10 text-brand-neon font-bold' 
-                                                : 'text-brand-muted hover:bg-brand-background hover:text-brand-text'
-                                            }
-                                        `}
-                                    >
-                                        <span className="truncate">{option.label}</span>
-                                        {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        {/* Aplica a altura dinâmica (Ex: max-h-[132px] mostrará exatos 3 itens) */}
+                        <ul className={`${maxHeight} overflow-y-auto custom-scrollbar`}>
+                            {options.map(opt => (
+                                <li
+                                    key={opt.value}
+                                    onClick={() => {
+                                        onChange(opt.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`px-4 py-3 text-sm cursor-pointer transition-colors flex items-center ${value === opt.value ? 'text-[#0A0A0B] font-black tracking-widest uppercase bg-[#FF5E00]' : 'text-[#8F8F91] font-medium hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    {opt.label}
+                                </li>
+                            ))}
+                        </ul>
                     </motion.div>
                 )}
             </AnimatePresence>

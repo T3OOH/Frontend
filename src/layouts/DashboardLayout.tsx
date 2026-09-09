@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext'; // Importando nosso gerenciador
+import { useTheme } from '@/contexts/ThemeContext';
 import {
     LayoutDashboard, Map as MapIcon, List, LogOut, Globe, Menu, X,
-    Users, ShoppingCart, ReceiptText, Sun, Moon
+    Users, ShoppingCart, ReceiptText, Sun, Moon, Images, 
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -38,10 +38,8 @@ export function DashboardLayout() {
     const getLinkStyle = (path: string, exact: boolean = false) => {
         const isActive = exact ? location.pathname === path : location.pathname.includes(path);
         if (isActive) {
-            // Estilo Xenith: Fundo invertido (Preto no claro, Branco no escuro) para o link ativo
             return 'bg-brand-text text-brand-surface font-bold shadow-md';
         }
-        // Link Inativo: Discreto, muda de cor no hover
         return 'text-brand-muted hover:bg-brand-background hover:text-brand-text font-medium';
     };
 
@@ -78,6 +76,11 @@ export function DashboardLayout() {
                         <MapIcon className="w-[18px] h-[18px]" /> Mapa de Cobertura
                     </Link>
 
+                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Produtos & Soluções</span>
+                    <Link to="/dashboard/solution" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/solution')}`}>
+                        <Images className="w-[18px] h-[18px]" /> Gestão T3 Solution
+                    </Link>
+
                     <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Administração</span>
                     <Link to="/dashboard/usuarios" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/usuarios')}`}>
                         <Users className="w-[18px] h-[18px]" /> Equipe
@@ -91,7 +94,6 @@ export function DashboardLayout() {
                 {/* BOTTOM AREA: PERFIL E ALAVANCA DE TEMA */}
                 <div className="p-5 border-t border-brand-border/30 bg-brand-surface shrink-0 flex flex-col gap-3">
 
-                    {/* Alavanca de Tema (Switch Claro/Escuro) */}
                     <div className="flex items-center justify-between px-3 py-2 bg-brand-background rounded-full border border-brand-border">
                         <span className="text-xs font-bold text-brand-muted ml-1">Tema</span>
                         <button
@@ -109,7 +111,6 @@ export function DashboardLayout() {
                         </button>
                     </div>
 
-                    {/* Perfil e Saída */}
                     <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-3 overflow-hidden">
                             <div className="w-9 h-9 rounded-full bg-brand-neon/10 text-brand-neon font-black text-sm flex items-center justify-center shrink-0">
@@ -135,9 +136,6 @@ export function DashboardLayout() {
             {/* ÁREA CENTRAL DESKTOP (CONTEÚDO)                           */}
             {/* ========================================================= */}
             <main className="hidden lg:flex flex-1 flex-col h-screen overflow-hidden relative">
-                {/* Cabeçalho Flutuante Opcional (se quiser barra superior) */}
-                {/* <header className="h-16 bg-brand-surface/50 backdrop-blur-md border-b border-brand-border/30 flex items-center px-8 z-10 shrink-0"></header> */}
-
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     <Outlet />
                 </div>
@@ -200,10 +198,26 @@ export function DashboardLayout() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        {/* O conteúdo do menu mobile pode seguir a mesma lógica de classes semânticas. */}
-                        {/* Como a estrutura é idêntica, as cores de fundo (bg-brand-surface, text-brand-text) garantirão a responsividade do tema. */}
-                        <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar">
-                            <div className="mt-auto pb-safe">
+                        
+                        <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar gap-4">
+                            
+                            <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/mapa" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
+                                <MapIcon className="w-5 h-5 text-brand-neon" /> Mapa de Cobertura
+                            </Link>
+
+                            <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/solution" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
+                                <Images className="w-5 h-5 text-brand-neon" /> Gestão T3 Solution
+                            </Link>
+                            
+                            <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/usuarios" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
+                                <Users className="w-5 h-5 text-brand-neon" /> Gerenciar Equipe
+                            </Link>
+
+                            <Link onClick={() => setIsMobileMenuOpen(false)} to="/crm" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
+                                <ReceiptText className="w-5 h-5 text-brand-neon" /> Central CRM
+                            </Link>
+
+                            <div className="mt-auto pb-safe pt-8">
                                 <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 font-bold text-sm active:bg-red-500/20 transition-all">
                                     <LogOut className="w-4 h-4" /> Sair do Sistema
                                 </button>

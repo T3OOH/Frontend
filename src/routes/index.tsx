@@ -11,25 +11,30 @@ import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { ScrollToTop } from '@/components/ScrollToTop';
 
 // ==========================================
-// CODE SPLITTING 
-// Separacao de pacotes de JavaScript (chunks)
+// MODULE IMPORTS (CODE SPLITTING)
+// Lazy loading das rotas para otimização de bundle
 // ==========================================
+
+// Public Views
 const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
 const Contact = lazy(() => import('@/pages/Contact').then(m => ({ default: m.Contact })));
 const Services = lazy(() => import('@/pages/Services').then(m => ({ default: m.Services })));
 const Map = lazy(() => import('@/pages/Map').then(m => ({ default: m.Map })));
 const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })));
 const Register = lazy(() => import('@/pages/Register').then(m => ({ default: m.Register })));
-const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info }))); // <-- ADICIONADO AQUI
+const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info })));
+const Solution = lazy(() => import('@/pages/Solution').then(m => ({ default: m.Solution })));
 
+// Dashboard Views (Admin & Manager)
 const Overview = lazy(() => import('@/pages/dashboard/Overview').then(m => ({ default: m.Overview })));
 const Panels = lazy(() => import('@/pages/dashboard/Panels').then(m => ({ default: m.Panels })));
 const PanelForm = lazy(() => import('@/pages/dashboard/PanelForm').then(m => ({ default: m.PanelForm })));
 const DashboardMap = lazy(() => import('@/pages/dashboard/DashboardMap').then(m => ({ default: m.DashboardMap })));
 const UsersList = lazy(() => import('@/pages/dashboard/Users').then(m => ({ default: m.Users })));
 const OrdersList = lazy(() => import('@/pages/dashboard/Orders').then(m => ({ default: m.Orders })));
+const SolutionManager = lazy(() => import('@/pages/dashboard/SolutionManager').then(m => ({ default: m.SolutionManager })));
 
-// Telas do CRM
+// CRM Views (Commercial)
 const CrmOverview = lazy(() => import('@/pages/crm/CrmOverview').then(m => ({ default: m.CrmOverview })));
 const CrmPipeline = lazy(() => import('@/pages/crm/CrmPipeline').then(m => ({ default: m.CrmPipeline })));
 const CrmClients = lazy(() => import('@/pages/crm/CrmClients').then(m => ({ default: m.CrmClients })));
@@ -37,11 +42,11 @@ const CrmProposals = lazy(() => import('@/pages/crm/CrmProposals').then(m => ({ 
 const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ default: m.CrmAgenda })));
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
 
-// Telas do Cliente (Perfil)
+// User Views
 const UserProfile = lazy(() => import('@/pages/UserProfile').then(m => ({ default: m.UserProfile })));
 
 // ==========================================
-// COMPONENTES DE LOADING
+// LOADING FALLBACKS
 // ==========================================
 const PageLoader = () => (
     <div className="w-full h-[calc(100vh-5rem)] flex items-center justify-center bg-[#0A0A0B]">
@@ -57,7 +62,8 @@ const MapLoader = () => (
 );
 
 // ==========================================
-// CONTROLE DE ACESSO
+// ACCESS CONTROL (GUARDS)
+// Validação baseada em contexto de autenticação e RBAC
 // ==========================================
 function PrivateRoute({ allowedRoles }: { allowedRoles?: string[] }) {
     const { isAuthenticated, user } = useAuth();
@@ -81,8 +87,8 @@ export function AppRoutes() {
                     <CartProvider>
                         <BrowserRouter>
                             {/* 
-                              * COMPONENTE INVISÍVEL PARA SCROLL AUTOMÁTICO
-                              * Garante que toda troca de rota comece no topo da página
+                              * INVISIBLE SCROLL HANDLER 
+                              * Intercepta mudanças de rota e reseta a posição de scroll da janela para top 0
                               */}
                             <ScrollToTop />
 
@@ -93,7 +99,8 @@ export function AppRoutes() {
                                     <Route path="contato" element={<Suspense fallback={<PageLoader />}><Contact /></Suspense>} />
                                     <Route path="servicos" element={<Suspense fallback={<PageLoader />}><Services /></Suspense>} />
                                     <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
-                                    <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} /> {/* <-- ADICIONADO AQUI */}
+                                    <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} />
+                                    <Route path="solution" element={<Suspense fallback={<PageLoader />}><Solution /></Suspense>} />
                                 </Route>
 
                                 {/* ROTAS DE AUTENTICAÇÃO */}
@@ -110,6 +117,7 @@ export function AppRoutes() {
                                         <Route path="mapa" element={<Suspense fallback={<MapLoader />}><DashboardMap /></Suspense>} />
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
+                                        <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
                                     </Route>
                                 </Route>
 
@@ -119,13 +127,25 @@ export function AppRoutes() {
                                         <Route index element={<Suspense fallback={<PageLoader />}><CrmOverview /></Suspense>} />
                                         <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><CrmPipeline /></Suspense>} />
                                         <Route path="clientes" element={<Suspense fallback={<PageLoader />}><CrmClients /></Suspense>} />
+                                        
+                                        {/* Dynamic Proposal Routes */}
                                         <Route path="propostas" element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
+                                        <Route path="proposta/:id" element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
+                                        
                                         <Route path="agenda" element={<Suspense fallback={<PageLoader />}><CrmAgenda /></Suspense>} />
                                         <Route path="cupons" element={<Suspense fallback={<PageLoader />}><CrmCoupons /></Suspense>} />
                                     </Route>
+
+                                    {/* COMPATIBILITY ROUTE
+                                      * Captura eventuais links absolutos de modulos paralelos (/dashboard/crm/proposta/:id)
+                                      * Montando apropriadamente com o contexto do CrmLayout
+                                      */}
+                                    <Route path="/dashboard/crm/proposta/:id" element={<CrmLayout />}>
+                                        <Route index element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
+                                    </Route>
                                 </Route>
 
-                                {/* ROTAS RESTRITAS GERAIS (Qualquer usuário autenticado) */}
+                                {/* ROTAS AUTENTICADAS GENÉRICAS */}
                                 <Route element={<PrivateRoute />}>
                                     <Route path="/" element={<MainLayout />}>
                                         <Route path="perfil" element={<Suspense fallback={<PageLoader />}><UserProfile /></Suspense>} />
@@ -134,9 +154,7 @@ export function AppRoutes() {
 
                             </Routes>
 
-                            {/* 
-                              * Componente Global de Retorno ao Topo (Botão visual).
-                              */}
+                            {/* Global Action Component for Scroll Management */}
                             <ScrollToTopButton />
 
                         </BrowserRouter>

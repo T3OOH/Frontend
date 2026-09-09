@@ -11,18 +11,28 @@ import { motion } from 'framer-motion';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { z } from 'zod';
 
+// ==========================================
+// SCHEMA DE VALIDAÇÃO (Com regras de segurança)
+// ==========================================
 const registerSchema = z.object({
     personType: z.enum(['PF', 'PJ']),
-    name: z.string().min(3, 'Mínimo de 3 caracteres'),
-    document: z.string().min(11, 'Documento inválido'),
-    email: z.string().email('E-mail inválido'),
-    phone: z.string().min(10, 'WhatsApp inválido'),
+    name: z.string().min(3, 'Mínimo de 3 caracteres').trim(),
+    document: z.string().min(14, 'Documento inválido'), // Valida o tamanho mínimo com a máscara
+    email: z.string().email('E-mail inválido').trim().toLowerCase(),
+    phone: z.string().min(14, 'WhatsApp inválido'),
     companyName: z.string().optional(),
-    password: z.string().min(6, 'Mínimo de 6 caracteres'),
+    password: z.string()
+        .min(8, 'Mínimo de 8 caracteres')
+        .regex(/[A-Z]/, 'Pelo menos uma letra maiúscula')
+        .regex(/[a-z]/, 'Pelo menos uma letra minúscula')
+        .regex(/[0-9]/, 'Pelo menos um número'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+// ==========================================
+// MÁSCARAS DE INPUT
+// ==========================================
 const maskPhone = (value: string) => {
     let v = value.replace(/\D/g, ""); 
     if (v.length > 11) v = v.substring(0, 11); 
@@ -61,7 +71,7 @@ export function Register() {
     const [documentType, setDocumentType] = useState<'PF' | 'PJ'>('PF');
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
-    // Redireciona se já estiver logado (e resolve o erro de useEffect não utilizado)
+    // Redireciona se já estiver logado
     useEffect(() => {
         if (isAuthenticated) navigate('/', { replace: true });
     }, [isAuthenticated, navigate]);
@@ -80,20 +90,51 @@ export function Register() {
         setValue('document', ''); 
     };
 
+    // ==========================================
+    // SUBMIT COM SANITIZAÇÃO
+    // ==========================================
     const onSubmit = async (data: RegisterFormData) => {
         if (!captchaToken) {
             toast.error('Por favor, confirme que você não é um robô.');
             return;
         }
 
-        if (documentType === 'PJ' && !data.companyName?.trim()) {
+        // Validação estrita da Razão Social para PJ
+        if (documentType === 'PJ' && (!data.companyName || !data.companyName.trim())) {
             toast.error('Para contas empresariais, a Razão Social é obrigatória.');
             return;
         }
 
+        // SANITIZAÇÃO: Remove máscaras antes de enviar ao banco
+        const cleanDocument = data.document.replace(/\D/g, '');
+        const cleanPhone = data.phone.replace(/\D/g, '');
+
+        // Validação de segurança de tamanho real
+        if (documentType === 'PF' && cleanDocument.length !== 11) {
+            toast.error('O CPF deve ter exatamente 11 números válidos.');
+            return;
+        }
+        if (documentType === 'PJ' && cleanDocument.length !== 14) {
+            toast.error('O CNPJ deve ter exatamente 14 números válidos.');
+            return;
+        }
+
         try {
-            const payload = { ...data, captchaToken, role: documentType === 'PJ' ? 'COMPANY' : 'USER' };
+            // Payload 100% explícito baseado na model User do Prisma
+            const payload = {
+                name: data.name,
+                email: data.email,
+                password: data.password,
+                phone: cleanPhone,
+                document: cleanDocument,
+                personType: data.personType,
+                companyName: documentType === 'PJ' ? data.companyName?.trim() : undefined,
+                role: documentType === 'PJ' ? 'COMPANY' : 'USER',
+                captchaToken
+            };
+
             await authService.register(payload as any);
+            
             setIsSuccess(true);
             toast.success("Cadastro realizado com sucesso! Aguarde a liberação.");
             setTimeout(() => { navigate('/login'); }, 3000);
@@ -157,7 +198,7 @@ export function Register() {
                             </div>
                             <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Cadastro Concluído!</h3>
                             <p className="text-sm text-white/70 leading-relaxed">
-                                Seus dados foram enviados para análise. Assim que um administrador aprovar, você terá acesso total à plataforma.<br/><br/>
+                                Seus dados foram salvos com segurança. Assim que um administrador aprovar, você terá acesso total à plataforma.<br/><br/>
                                 Redirecionando para a tela de login...
                             </p>
                         </motion.div>
@@ -266,7 +307,7 @@ export function Register() {
                                 </div>
 
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Senha *</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Senha Segura *</label>
                                     <Input
                                         type="password"
                                         placeholder="••••••••"
@@ -281,7 +322,7 @@ export function Register() {
 
                             {/* RECAPTCHA E BOTÃO */}
                             <div className="flex flex-col sm:flex-row items-center gap-5 pt-4 mt-2">
-                                <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0">
+                                <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0 bg-[#0A0A0B]">
                                     <ReCAPTCHA
                                         sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""}
                                         onChange={(token) => setCaptchaToken(token)}
@@ -291,7 +332,7 @@ export function Register() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full flex-1 bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-16 rounded-none transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99]"
+                                    className="w-full flex-1 bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-[78px] sm:h-16 rounded-none transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99] disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Criar Conta <Send className="w-4 h-4" /></>}
                                 </button>
