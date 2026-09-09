@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import './map-custom.css'; 
+import './map-custom.css';
 import { Activity, Maximize } from 'lucide-react';
 
 interface Panel {
@@ -51,11 +51,10 @@ const selectedMarker = L.divIcon({
     iconAnchor: [24, 24],
 });
 
-// Filtro blindado anti-NaN
 const parseSafeCoord = (value: any, fallback: number): number => {
     if (value === null || value === undefined || value === '') return fallback;
     const parsed = parseFloat(String(value).replace(',', '.'));
-    if (isNaN(parsed) || parsed === 0) return fallback; 
+    if (isNaN(parsed) || parsed === 0) return fallback;
     return parsed;
 };
 
@@ -67,7 +66,7 @@ function MapController({ selectedPanelId, panels }: { selectedPanelId?: string |
         if (!map) return;
         const timer = setTimeout(() => {
             map.invalidateSize();
-        }, 400); 
+        }, 400);
         return () => clearTimeout(timer);
     }, [map, selectedPanelId]);
 
@@ -77,14 +76,14 @@ function MapController({ selectedPanelId, panels }: { selectedPanelId?: string |
         const panel = panels.find(p => p.id === selectedPanelId);
         if (!panel) return;
 
-        const safeLat = parseSafeCoord(panel.lat, -16.6868911); 
+        const safeLat = parseSafeCoord(panel.lat, -16.6868911);
         const safeLng = parseSafeCoord(panel.lng, -49.2647943);
 
         const timer = setTimeout(() => {
-            map.flyTo([safeLat, safeLng], 16, { 
-                animate: true, 
+            map.flyTo([safeLat, safeLng], 16, {
+                animate: true,
                 duration: 1.3,
-                easeLinearity: 0.25 
+                easeLinearity: 0.25
             });
         }, 50);
 
@@ -97,7 +96,7 @@ function MapController({ selectedPanelId, panels }: { selectedPanelId?: string |
 export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps) {
     const markerRefs = useRef<Record<string, L.Marker | null>>({});
 
-    // Abre o popup do Leaflet (Imagem 2) automaticamente
+    // Abre o popup automaticamente
     useEffect(() => {
         if (selectedPanelId && markerRefs.current[selectedPanelId]) {
             const marker = markerRefs.current[selectedPanelId];
@@ -123,89 +122,93 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
     const defaultCenter: [number, number] = [-16.6869, -49.2648];
 
     return (
-        <MapContainer
-            center={defaultCenter}
-            zoom={13}
-            minZoom={3} 
-            maxBounds={worldBounds} 
-            maxBoundsViscosity={1.0} 
-            className="w-full h-full outline-none z-0"
-            zoomControl={false}
-        >
-            <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-            />
+        <div className="w-full h-full relative">
+            <MapContainer
+                center={defaultCenter}
+                zoom={13}
+                minZoom={3}
+                maxBounds={worldBounds}
+                maxBoundsViscosity={1.0}
+                // Filtro Balanceado: Inverte para escuro, tira a cor (grayscale), ajusta o brilho e dá um leve contraste
+                className="w-full h-full outline-none z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-10 [&_.leaflet-layer]:contrast-125"
+                zoomControl={false}
+            >
+                {/* Mantendo o OpenStreetMap gratuito como solicitado */}
+                <TileLayer
+                    noWrap={true}
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
 
-            <MapController selectedPanelId={selectedPanelId} panels={panels} />
+                <MapController selectedPanelId={selectedPanelId} panels={panels} />
 
-            {panels.map((panel) => {
-                const safeLat = parseSafeCoord(panel.lat, -16.6868911);
-                const safeLng = parseSafeCoord(panel.lng, -49.2647943);
+                {panels.map((panel) => {
+                    const safeLat = parseSafeCoord(panel.lat, -16.6868911);
+                    const safeLng = parseSafeCoord(panel.lng, -49.2647943);
 
-                const statusInfo = getStatusDisplay(panel.status);
-                const isSelected = panel.id === selectedPanelId;
+                    const statusInfo = getStatusDisplay(panel.status);
+                    const isSelected = panel.id === selectedPanelId;
 
-                return (
-                    <Marker
-                        key={panel.id}
-                        position={[safeLat, safeLng]}
-                        icon={isSelected ? selectedMarker : customMarker}
-                        zIndexOffset={isSelected ? 1000 : 0}
-                        ref={(r) => {
-                            // Salva a referência deste pino
-                            if (r) markerRefs.current[panel.id] = r;
-                        }}
-                    >
-                        <Popup className="custom-popup" closeButton={true}>
-                            <div className="flex flex-col relative w-full">
+                    return (
+                        <Marker
+                            key={panel.id}
+                            position={[safeLat, safeLng]}
+                            icon={isSelected ? selectedMarker : customMarker}
+                            zIndexOffset={isSelected ? 1000 : 0}
+                            ref={(r) => {
+                                if (r) markerRefs.current[panel.id] = r;
+                            }}
+                        >
+                            <Popup className="custom-popup" closeButton={true}>
+                                <div className="flex flex-col relative w-full">
 
-                                <div className="relative h-36 w-full shrink-0">
-                                    <img
-                                        src={panel.images?.[0] || '/placeholder.jpg'}
-                                        alt={panel.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/40 to-transparent" />
-                                </div>
-
-                                <div className="px-5 pb-5 pt-0 flex flex-col gap-3 relative z-10 -mt-6">
-                                    <div>
-                                        <h3 className="font-extrabold text-white text-base leading-tight mb-2 drop-shadow-md pr-6">
-                                            {panel.name}
-                                        </h3>
-                                        <div className="flex items-center gap-2 bg-[#0A0A0B]/80 border border-white/5 px-2.5 py-1.5 rounded-lg w-fit backdrop-blur-sm">
-                                            <span className={`w-2 h-2 rounded-full ${statusInfo.dot} shadow-[0_0_8px_currentColor] animate-pulse`} />
-                                            <span className={`text-[9px] font-black uppercase tracking-widest ${statusInfo.color}`}>
-                                                {statusInfo.text}
-                                            </span>
-                                        </div>
+                                    <div className="relative h-36 w-full shrink-0">
+                                        <img
+                                            src={panel.images?.[0] || '/placeholder.jpg'}
+                                            alt={panel.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/40 to-transparent" />
                                     </div>
 
-                                    <hr className="border-white/5" />
-
-                                    <div className="grid grid-cols-2 gap-2 mt-1">
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
-                                                <Activity className="w-3 h-3 text-[#FF5E00]" />
-                                                Impacto/dia
-                                            </span>
-                                            <span className="text-sm font-black text-white">{panel.impacts || '0'}</span>
+                                    <div className="px-5 pb-5 pt-0 flex flex-col gap-3 relative z-10 -mt-6">
+                                        <div>
+                                            <h3 className="font-extrabold text-white text-base leading-tight mb-2 drop-shadow-md pr-6">
+                                                {panel.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 bg-[#0A0A0B]/80 border border-white/5 px-2.5 py-1.5 rounded-lg w-fit backdrop-blur-sm">
+                                                <span className={`w-2 h-2 rounded-full ${statusInfo.dot} shadow-[0_0_8px_currentColor] animate-pulse`} />
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${statusInfo.color}`}>
+                                                    {statusInfo.text}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
-                                                <Maximize className="w-3 h-3 text-[#FF5E00]" />
-                                                Formato
-                                            </span>
-                                            <span className="text-sm font-black text-white">{panel.size || 'N/A'}</span>
+
+                                        <hr className="border-white/5" />
+
+                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
+                                                    <Activity className="w-3 h-3 text-[#FF5E00]" />
+                                                    Impacto/dia
+                                                </span>
+                                                <span className="text-sm font-black text-white">{panel.impacts || '0'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
+                                                    <Maximize className="w-3 h-3 text-[#FF5E00]" />
+                                                    Formato
+                                                </span>
+                                                <span className="text-sm font-black text-white">{panel.size || 'N/A'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </Popup>
-                    </Marker>
-                );
-            })}
-        </MapContainer>
+                            </Popup>
+                        </Marker>
+                    );
+                })}
+            </MapContainer>
+        </div>
     );
 }

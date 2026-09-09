@@ -32,11 +32,19 @@ function MapClickHandler({ setPosition }: { setPosition: (pos: [number, number])
     return null;
 }
 
+// Atualizado com a trava de segurança contra crashes
 function MapCenterUpdater({ position }: { position: [number, number] }) {
     const map = useMap();
     useEffect(() => {
-        if (position) {
-            map.flyTo(position, 15, { duration: 1.5 });
+        if (position && typeof position[0] === 'number' && typeof position[1] === 'number') {
+            try {
+                const size = map.getSize();
+                if (size.x > 0 && size.y > 0) {
+                    map.setView(position, 15, { animate: true });
+                }
+            } catch (e) {
+                // Previne crash
+            }
         }
     }, [position, map]);
     return null;
@@ -44,14 +52,14 @@ function MapCenterUpdater({ position }: { position: [number, number] }) {
 
 export function PanelEdit() {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>(); // Pega o ID da URL
+    const { id } = useParams<{ id: string }>();
 
     const [isLoadingInitial, setIsLoadingInitial] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     // Estados do formulário
     const [panelName, setPanelName] = useState('');
-    const [panelStatus, setPanelStatus] = useState('Disponível');
+    const [panelStatus, setPanelStatus] = useState('AVAILABLE');
     const [panelSize, setPanelSize] = useState('');
     const [panelPx, setPanelPx] = useState('');
     const [panelImpacts, setPanelImpacts] = useState('');
@@ -59,16 +67,15 @@ export function PanelEdit() {
 
     const [googleUrl, setGoogleUrl] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null); // Para mostrar a foto atual
+    const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
-    // 1. Busca os dados do painel ao carregar a tela
+    // Busca os dados do painel ao carregar a tela
     useEffect(() => {
         const fetchPanelData = async () => {
             if (!id) return;
             try {
                 const data = await panelsService.getPanelById(id);
 
-                // Preenche os estados com os dados do banco
                 setPanelName(data.name);
                 setPanelStatus(data.status);
                 setPanelSize(data.size);
@@ -112,13 +119,11 @@ export function PanelEdit() {
         try {
             let uploadedUrls: string[] = existingImageUrl ? [existingImageUrl] : [];
 
-            // Se o usuário selecionou uma NOVA imagem, faz o upload e substitui a antiga
             if (imageFile) {
                 const imageUrl = await uploadImage(imageFile);
                 uploadedUrls = [imageUrl];
             }
 
-            // Monta os dados atualizados
             const updatedPanel = {
                 name: panelName,
                 lat: position[0],
@@ -130,7 +135,6 @@ export function PanelEdit() {
                 images: uploadedUrls,
             };
 
-            // Salva no banco usando a função de UPDATE
             await panelsService.updatePanel(id, {
                 ...updatedPanel,
                 status: updatedPanel.status as PanelStatus
@@ -230,9 +234,9 @@ export function PanelEdit() {
                                 onChange={(e) => setPanelStatus(e.target.value)}
                                 className="w-full bg-brand-surface border border-brand-border rounded-lg px-5 py-3.5 text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-neon transition-all duration-300"
                             >
-                                <option value="Disponível">Disponível</option>
-                                <option value="Ocupado">Ocupado</option>
-                                <option value="Manutenção">Em Manutenção</option>
+                                <option value="AVAILABLE">Disponível</option>
+                                <option value="OCCUPIED">Ocupado</option>
+                                <option value="MAINTENANCE">Em Manutenção</option>
                             </select>
                         </div>
                     </div>
@@ -296,15 +300,19 @@ export function PanelEdit() {
                             </div>
                         </div>
 
-                        <div className="w-full h-[500px] lg:col-span-2 rounded-xl overflow-hidden border border-brand-border relative z-0">
+                        {/* MAPA CORRIGIDO: Removido o filtro conflitante da div pai */}
+                        <div className="w-full h-[500px] lg:col-span-2 rounded-xl overflow-hidden border border-brand-border bg-[#0A0A0B] relative z-0">
                             <MapContainer
                                 center={position}
                                 zoom={15}
-                                className="w-full h-full outline-none"
-                                style={{ height: '100%', width: '100%', backgroundColor: '#000000' }}
+                                className="w-full h-full outline-none absolute inset-0 z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-10 [&_.leaflet-layer]:contrast-125"
                                 zoomControl={false}
                             >
-                                <TileLayer noWrap={true} url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                <TileLayer
+                                    noWrap={true}
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                />
                                 <Marker position={position} icon={neonMarker} />
                                 <MapClickHandler setPosition={setPosition} />
                                 <MapCenterUpdater position={position} />

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -37,4 +37,129 @@
   ::-webkit-scrollbar-thumb:hover { @apply bg-brand-neon; }
 }
 
-/* ... mantenha o restante do seu index.css (components e utilities) intacto ... */
+@layer utilities {
+  /* ========================================================= */
+  /* COMPONENTE: LIGHT TUNNEL (Fundo Animado 3D)               */
+  /* ========================================================= */
+  .light-tunnel-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none; /* Garante que os cliques passem direto pro mapa e botões */
+  }
+
+  /* ========================================================= */
+  /* COMPONENTE: ACCORDION GALLERY (Carrossel Interativo)      */
+  /* ========================================================= */
+  .accordion-gallery {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    width: 100%;
+    max-width: 100%;
+    perspective: 1400px;
+    perspective-origin: 50% 50%;
+    height: 380px;
+  }
+
+  .ag-panel {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 24px;
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+    outline: none;
+    transform-style: preserve-3d;
+    transform-origin: center center;
+    background: #0A0A0B;
+    box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+    will-change: flex-grow, transform;
+    -webkit-tap-highlight-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: border-color 0.3s ease;
+  }
+
+  .ag-panel:hover {
+    border-color: rgba(255, 94, 0, 0.4);
+  }
+
+  .ag-panel__frame {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .ag-panel__media {
+    --ag-gray: 1;
+    --ag-dim: 0.35;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150%;
+    height: 100%;
+    filter: grayscale(var(--ag-gray));
+    will-change: transform, filter;
+  }
+
+  .ag-panel__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .ag-panel__overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, rgba(10, 10, 11, 0.4) 40%, rgba(10, 10, 11, 0.95) 100%);
+    transition: opacity 0.4s ease;
+  }
+
+  .ag-panel__content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  .ag-panel--active .ag-panel__content {
+    pointer-events: auto;
+  }
+
+  @media (max-width: 1024px) {
+    .accordion-gallery {
+      flex-direction: column;
+      perspective: none;
+      height: 600px !important;
+    }
+    .ag-panel {
+      transform: none !important;
+    }
+    .accordion-gallery .ag-panel__media {
+      width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ag-panel,
+    .ag-panel__media {
+      will-change: auto;
+    }
+  }
+}

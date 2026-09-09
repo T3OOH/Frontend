@@ -298,15 +298,15 @@ export function Map() {
             : "flex-1 w-full flex bg-[#0A0A0B] relative overflow-hidden min-h-[calc(100vh-5rem)]"
         }>
             
-            {/* --- MAPA BACKGROUND --- */}
-            <div className="absolute inset-0 z-0 bg-brand-black">
+            {/* --- MAPA BACKGROUND COM FILTRO DARK MODE --- */}
+            <div className="absolute inset-0 z-0 bg-brand-black [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
                 {isLoading ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B]/80 backdrop-blur-sm">
                         <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
                         <p className="text-sm font-medium tracking-wide text-brand-muted uppercase">Sincronizando Circuito...</p>
                     </div>
                 ) : (
-                    <InteractiveMap panels={panels} selectedPanelId={selectedPanelId} />
+                    <InteractiveMap panels={panels as any[]} selectedPanelId={selectedPanelId} />
                 )}
             </div>
 
@@ -431,6 +431,7 @@ export function Map() {
                                         </div>
                                         
                                         <Button
+                                            type="button"
                                             variant={inCart ? 'secondary' : 'primary'}
                                             className="w-full text-xs py-2 h-auto"
                                             onClick={() => toggleInCart(panel)}
@@ -445,7 +446,7 @@ export function Map() {
                         <AnimatePresence>
                             {cart.length > 0 && (
                                 <motion.div className="p-4 border-t border-brand-border/40 flex-shrink-0">
-                                    <Button onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-sm font-bold bg-brand-neon hover:bg-[#e05300] text-black shadow-[0_0_20px_rgba(255,94,0,0.3)]">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-sm font-bold bg-brand-neon hover:bg-[#e05300] text-black shadow-[0_0_20px_rgba(255,94,0,0.3)]">
                                         <ShoppingCart className="w-5 h-5 mr-2" /> Solicitar Orçamento ({cart.length})
                                     </Button>
                                 </motion.div>
@@ -472,7 +473,7 @@ export function Map() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
-                                <button onClick={() => setSearchTerm('')} className="p-1.5 text-brand-muted hover:text-white flex-shrink-0 bg-brand-surface/50 rounded-full">
+                                <button type="button" onClick={() => setSearchTerm('')} className="p-1.5 text-brand-muted hover:text-white flex-shrink-0 bg-brand-surface/50 rounded-full">
                                     <X className="w-4 h-4" />
                                 </button>
                             )}
@@ -480,6 +481,7 @@ export function Map() {
 
                         {/* Botão Fullscreen Mobile */}
                         <button
+                            type="button"
                             onClick={() => setIsFullscreen(!isFullscreen)}
                             className="flex-shrink-0 flex items-center justify-center w-[44px] h-[44px] bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.6)] text-white hover:text-[#FF5E00] transition-all"
                             title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
@@ -500,7 +502,7 @@ export function Map() {
                                     exit={{ y: 20, opacity: 0, scale: 0.9 }}
                                     className="pointer-events-auto mb-4"
                                 >
-                                    <Button onClick={() => setIsCheckoutOpen(true)} className="rounded-full bg-brand-neon text-[#0A0A0B] font-black py-3 px-6 shadow-[0_10px_30px_rgba(255,94,0,0.4)] text-[13px] flex justify-center items-center gap-2 border border-transparent">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="rounded-full bg-brand-neon text-[#0A0A0B] font-black py-3 px-6 shadow-[0_10px_30px_rgba(255,94,0,0.4)] text-[13px] flex justify-center items-center gap-2 border border-transparent">
                                         <ShoppingCart className="w-4 h-4" />
                                         Ver Carrinho ({cart.length})
                                     </Button>
@@ -546,6 +548,7 @@ export function Map() {
                                                     
                                                     {/* Botão de Carrinho (Ícone) Reduzido para despoluir */}
                                                     <button 
+                                                        type="button"
                                                         onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
                                                         className={`w-7 h-7 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${
                                                             inCart 
@@ -608,7 +611,7 @@ export function Map() {
                                     <><Send className="w-5 h-5 text-[#25D366]" /> Enviar Orçamento</>
                                 )}
                             </h2>
-                            <button onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5">
+                            <button type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -632,7 +635,7 @@ export function Map() {
                                                     <p className="text-xs text-brand-muted mb-3"><MapPin className="w-3 h-3 inline-block -mt-0.5" /> {p.city}</p>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-sm font-bold text-[#25D366]">{formatCurrency(Number(p.price))}</span>
-                                                        <button onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-wider hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-3 py-1.5 rounded-md transition-colors">Remover</button>
+                                                        <button type="button" onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-wider hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-3 py-1.5 rounded-md transition-colors">Remover</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -640,7 +643,7 @@ export function Map() {
                                     </div>
                                 )
                             ) : (
-                                <form onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
+                                <form id="crm-checkout-form" onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
                                     <div className="bg-[#111113] rounded-[16px] p-5 border border-white/5">
                                         <div className="flex justify-between items-center mb-4">
                                             <span className="text-[10px] text-brand-muted font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Painéis no Carrinho</span>
@@ -722,41 +725,43 @@ export function Map() {
                                                         disabled={appliedCoupon !== null}
                                                     />
                                                     {appliedCoupon ? (
-                                                        <Button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4" /></Button>
+                                                        <Button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4" /></Button>
                                                     ) : (
-                                                        <Button onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4" /></Button>
+                                                        <Button type="button" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4" /></Button>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Desconto de <b>{termDiscountPercent * 100}%</b> pelo prazo aplicado!</p>}
-                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
                                     </div>
+                                    {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Desconto de <b>{termDiscountPercent * 100}%</b> pelo prazo aplicado!</p>}
+                                    {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
+                                </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</span>
-                                            {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}/mês</span>}
-                                            <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
-                                            <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
-                                        </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</span>
+                                        {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}/mês</span>}
+                                        <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
+                                        <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
                                     </div>
                                 </div>
 
                                 <Button
+                                    type="button"
                                     disabled={cart.length === 0 || isSubmitting}
                                     onClick={() => setCheckoutStep('crm')}
                                     isLoading={isSubmitting}
-                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
+                                    className="w-full mt-4 bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
                                 >
                                     Avançar
                                 </Button>
                             </div>
                         ) : (
                             <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-3 z-20 relative">
-                                <button onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
+                                <button type="button" onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
                                 <Button
-                                    onClick={handleWhatsAppSubmit}
+                                    type="submit"
+                                    form="crm-checkout-form"
                                     disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
                                     className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
                                 >

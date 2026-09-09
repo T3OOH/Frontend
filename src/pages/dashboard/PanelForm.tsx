@@ -23,8 +23,6 @@ const neonMarker = L.divIcon({
 
 /**
  * Intercepta cliques diretos no canvas do mapa.
- * Utiliza o hook useMapEvents do React-Leaflet para capturar as coordenadas (lat, lng)
- * do evento de clique e atualizar o estado local de posicionamento do pino.
  */
 function MapClickHandler({ setPosition }: { setPosition: (pos: [number, number]) => void }) {
     useMapEvents({ click(e) { setPosition([e.latlng.lat, e.latlng.lng]); } });
@@ -32,19 +30,26 @@ function MapClickHandler({ setPosition }: { setPosition: (pos: [number, number])
 }
 
 /**
- * Atualiza o centro visual do mapa programaticamente quando as propriedades lat/lng mudam.
- * Implementa validacao estrita de tipos para evitar o lancamento de excecoes do Leaflet 
- * (Invalid LatLng object: NaN, NaN) causadas por renderizacoes precoces sem dados.
+ * Atualiza o centro visual do mapa programaticamente.
+ * Implementa validação estrita para ignorar mapas ocultos (responsivos) e evitar crashes do Leaflet.
  */
 function MapCenterUpdater({ lat, lng }: { lat: number; lng: number }) {
     const map = useMap();
-    
+
     useEffect(() => {
         if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
-            map.flyTo([lat, lng], 15);
+            try {
+                // Trava de segurança: só move o mapa se ele estiver visível na tela (tamanho > 0)
+                const size = map.getSize();
+                if (size.x > 0 && size.y > 0) {
+                    map.setView([lat, lng], 15, { animate: true }); // setView é muito mais estável que flyTo
+                }
+            } catch (e) {
+                // Previne qualquer crash interno do Leaflet
+            }
         }
     }, [lat, lng, map]);
-    
+
     return null;
 }
 
@@ -58,6 +63,11 @@ export function PanelForm() {
     const [initialData, setInitialData] = useState<any>(null);
 
     const [position, setPosition] = useState<[number, number]>([-16.6869, -49.2648]);
+
+    // Estados independentes para os inputs de Lat e Lng
+    const [latInput, setLatInput] = useState<string>('-16.6869');
+    const [lngInput, setLngInput] = useState<string>('-49.2648');
+
     const [googleUrl, setGoogleUrl] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -67,9 +77,25 @@ export function PanelForm() {
     const [status, setStatus] = useState<string>('AVAILABLE');
 
     /**
-     * Efeito responsavel por buscar os dados do painel caso a rota possua um panelId (Modo Edicao).
-     * Popula os estados locais com as informacoes retornadas pelo backend.
+     * Sincroniza os inputs de texto com as coordenadas reais.
      */
+    useEffect(() => {
+        setLatInput(position[0].toString());
+        setLngInput(position[1].toString());
+    }, [position]);
+
+    const handleLatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setLatInput(e.target.value);
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val)) setPosition([val, position[1]]);
+    };
+
+    const handleLngChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setLngInput(e.target.value);
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val)) setPosition([position[0], val]);
+    };
+
     useEffect(() => {
         if (isEditing && panelId) {
             const fetchPanel = async () => {
@@ -91,23 +117,29 @@ export function PanelForm() {
         }
     }, [panelId, isEditing, navigate, toast]);
 
-    /**
-     * Analisa links do Google Maps colados pelo usuario.
-     * Utiliza Expressoes Regulares (Regex) para extrair latitude e longitude da URL
-     * e atualizar o estado do mapa de forma automatizada.
-     */
     const handleGoogleLinkPaste = (e: React.ChangeEvent<HTMLInputElement>) => {
         const url = e.target.value;
         setGoogleUrl(url);
-        const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (match) setPosition([parseFloat(match[1]), parseFloat(match[2])]);
+
+        if (!url.trim()) return;
+
+        if (url.includes('maps.app.goo.gl') || url.includes('g.page')) {
+            toast.error("Links encurtados não funcionam. Cole o link completo do navegador ou digite as coordenadas.");
+            return;
+        }
+
+        const match = url.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
+
+        if (match) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            setPosition([lat, lng]);
+            toast.success("Localização atualizada no mapa!");
+        } else if (url.includes('google.com/maps')) {
+            toast.info("Não conseguimos encontrar as coordenadas neste formato de link.");
+        }
     };
 
-    /**
-     * Gerencia a selecao de arquivos de imagem via input type="file".
-     * Armazena o ponteiro do arquivo em memoria (para upload) e gera um Blob URL
-     * transitorio para renderizar o preview na interface do usuario.
-     */
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -116,13 +148,6 @@ export function PanelForm() {
         }
     };
 
-    /**
-     * Orquestra a construcao do payload e a submissao dos dados do formulario.
-     * 1. Faz o bypass do default form action.
-     * 2. Realiza o upload assincrono da imagem caso haja um novo arquivo alocado.
-     * 3. Sanitiza e converte campos numericos, especificamente mascaras de moeda (virgula para ponto).
-     * 4. Dispara a requisicao HTTP apropriada (POST para criar, PUT/PATCH para atualizar).
-     */
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
@@ -189,10 +214,8 @@ export function PanelForm() {
 
     return (
         <div className="w-full h-full flex flex-col relative">
-            
-            {/* ========================================================= */}
-            {/* DESKTOP LAYOUT                                              */}
-            {/* ========================================================= */}
+
+            {/* DESKTOP LAYOUT */}
             <div className="hidden lg:block max-w-[1400px] mx-auto w-full pb-12">
                 <div className="flex items-center gap-4 mb-6">
                     <Link to="/dashboard/paineis">
@@ -281,12 +304,48 @@ export function PanelForm() {
                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                 <LinkIcon className="h-4 w-4 text-brand-muted" />
                             </div>
-                            <input type="text" placeholder="Cole o link do Google Maps aqui..." value={googleUrl} onChange={handleGoogleLinkPaste} className="w-full bg-brand-black/50 border border-brand-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-brand-text focus:border-brand-neon focus:outline-none transition-colors" />
+                            <input type="text" placeholder="Cole o link completo do Google Maps ou as coordenadas..." value={googleUrl} onChange={handleGoogleLinkPaste} className="w-full bg-brand-black/50 border border-brand-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-brand-text focus:border-brand-neon focus:outline-none transition-colors" />
                         </div>
 
-                        <div className="flex-1 w-full rounded-lg overflow-hidden border border-brand-border bg-black relative min-h-[400px] z-0">
-                            <MapContainer center={position} zoom={14} minZoom={3} maxBounds={worldBounds} maxBoundsViscosity={1.0} className="w-full h-full outline-none absolute inset-0" zoomControl={true}>
-                                <TileLayer noWrap={true} url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                        <div className="grid grid-cols-2 gap-4 mb-4 shrink-0">
+                            <Input
+                                name="lat"
+                                label="Latitude"
+                                type="number"
+                                step="any"
+                                value={latInput}
+                                onChange={handleLatChange}
+                                placeholder="-16.6869"
+                                required
+                            />
+                            <Input
+                                name="lng"
+                                label="Longitude"
+                                type="number"
+                                step="any"
+                                value={lngInput}
+                                onChange={handleLngChange}
+                                placeholder="-49.2648"
+                                required
+                            />
+                        </div>
+
+                        {/* MAPA DESKTOP MODIFICADO: OpenStreetMap + Tailwind CSS Filters para Dark Mode */}
+                        <div className="flex-1 w-full rounded-lg overflow-hidden border border-brand-border bg-[#0A0A0B] relative min-h-[400px] z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
+                            <MapContainer
+                                center={position}
+                                zoom={14}
+                                minZoom={3}
+                                maxBounds={worldBounds}
+                                maxBoundsViscosity={1.0}
+                                className="w-full h-full outline-none absolute inset-0 z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-10 [&_.leaflet-layer]:contrast-125"
+                                zoomControl={true}
+                            >
+                                <TileLayer
+                                    noWrap={true}
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                />
                                 <Marker position={position} icon={neonMarker} />
                                 <MapClickHandler setPosition={setPosition} />
                                 <MapCenterUpdater lat={position[0]} lng={position[1]} />
@@ -296,11 +355,9 @@ export function PanelForm() {
                 </form>
             </div>
 
-            {/* ========================================================= */}
-            {/* MOBILE LAYOUT (APP PATTERN NATIVO)                          */}
-            {/* ========================================================= */}
+            {/* MOBILE LAYOUT */}
             <div className="flex lg:hidden flex-col w-full relative">
-                
+
                 <div className="flex items-center gap-3 mb-6 shrink-0">
                     <Link to="/dashboard/paineis">
                         <button className="p-2 bg-[#111113] border border-white/5 rounded-full shadow-md active:scale-95 transition-transform text-white">
@@ -314,7 +371,7 @@ export function PanelForm() {
                 </div>
 
                 <form id="mobile-panel-form" onSubmit={handleSave} className="flex flex-col gap-6">
-                    
+
                     <div className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md">
                         <h2 className="text-[13px] font-bold text-white flex items-center gap-2 mb-3">
                             <ImageIcon className="w-4 h-4 text-brand-neon" /> Imagem do Ponto
@@ -368,23 +425,53 @@ export function PanelForm() {
                         <h2 className="text-[13px] font-bold text-white flex items-center gap-2 pb-3">
                             <MapPin className="w-4 h-4 text-brand-neon" /> Posicionamento no Mapa
                         </h2>
-                        
+
                         <div className="relative mb-4">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <LinkIcon className="h-4 w-4 text-brand-muted" />
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="Cole o link do Google Maps..." 
-                                value={googleUrl} 
-                                onChange={handleGoogleLinkPaste} 
-                                className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl pl-9 pr-3 py-3 text-xs text-brand-text focus:border-brand-neon focus:outline-none transition-colors shadow-inner" 
+                            <input
+                                type="text"
+                                placeholder="Cole o link completo do Google Maps ou as coordenadas..."
+                                value={googleUrl}
+                                onChange={handleGoogleLinkPaste}
+                                className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl pl-9 pr-3 py-3 text-xs text-brand-text focus:border-brand-neon focus:outline-none transition-colors shadow-inner"
                             />
                         </div>
 
-                        <div className="w-full h-[300px] rounded-xl overflow-hidden border border-brand-border/40 bg-black relative z-0">
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <Input
+                                name="lat"
+                                label="Latitude *"
+                                type="number"
+                                step="any"
+                                value={latInput}
+                                onChange={handleLatChange}
+                                placeholder="-16.6869"
+                                required
+                                className="bg-[#0A0A0B]"
+                            />
+                            <Input
+                                name="lng"
+                                label="Longitude *"
+                                type="number"
+                                step="any"
+                                value={lngInput}
+                                onChange={handleLngChange}
+                                placeholder="-49.2648"
+                                required
+                                className="bg-[#0A0A0B]"
+                            />
+                        </div>
+
+                        {/* MAPA MOBILE MODIFICADO: OpenStreetMap + Tailwind CSS Filters para Dark Mode */}
+                        <div className="w-full h-[300px] rounded-xl overflow-hidden border border-brand-border/40 bg-[#0A0A0B] relative z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
                             <MapContainer center={position} zoom={15} minZoom={3} maxBounds={worldBounds} maxBoundsViscosity={1.0} className="w-full h-full outline-none absolute inset-0" zoomControl={false}>
-                                <TileLayer noWrap={true} url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                <TileLayer
+                                    noWrap={true}
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                />
                                 <Marker position={position} icon={neonMarker} />
                                 <MapClickHandler setPosition={setPosition} />
                                 <MapCenterUpdater lat={position[0]} lng={position[1]} />
@@ -395,28 +482,21 @@ export function PanelForm() {
 
                 </form>
 
-                {/* 
-                  Espacador invisivel (Spacer) colocado estrategicamente apos o formulario. 
-                  Sua funcao e criar area util de scroll garantindo que o ultimo elemento visual 
-                  (neste caso, o card do mapa) suba completamente para cima da Bottom Action Bar.
-                  Altura = Altura da Action Bar (88px) + Altura do Menu Global (aprox 72px) + margem de seguranca.
-                */}
                 <div className="h-[200px] w-full shrink-0 pointer-events-none" aria-hidden="true" />
 
-                {/* BOTTOM ACTION BAR (Posicionada com bottom-[72px] para ficar acima da nav global do layout) */}
                 <div className="fixed bottom-[72px] left-0 right-0 p-4 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] z-[90] pb-safe flex gap-3">
                     <Link to="/dashboard/paineis" className="w-1/3">
-                        <Button 
-                            variant="secondary" 
+                        <Button
+                            variant="secondary"
                             className="w-full h-14 bg-[#111113] border-white/10 text-brand-muted hover:text-white rounded-2xl text-[13px] font-bold"
                         >
                             Cancelar
                         </Button>
                     </Link>
-                    <Button 
-                        type="submit" 
+                    <Button
+                        type="submit"
                         form="mobile-panel-form"
-                        disabled={isSaving} 
+                        disabled={isSaving}
                         className="w-2/3 h-14 bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] rounded-2xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] active:scale-[0.98] transition-all border-none"
                     >
                         {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}

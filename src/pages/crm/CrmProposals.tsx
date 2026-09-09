@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
     FileText, Search, MapPin, CalendarDays, User as UserIcon, 
-    Loader2, Download, MonitorPlay, CheckCircle2, Percent, Tag, Settings, CreditCard
+    Loader2, Download, MonitorPlay, CheckCircle2, Percent, Tag, Settings, CreditCard, ArrowLeft
 } from 'lucide-react';
 import { 
     Document, Page, Text, View, StyleSheet, Image, PDFViewer, pdf 
 } from '@react-pdf/renderer';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { api } from '@/lib/axios';
 import { panelsService, PanelData } from '@/services/panels.service';
 import { crmService } from '@/services/crm.service';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -180,6 +182,8 @@ const ProposalDocument = ({ client, panels, months, totals, date, sellerName }: 
 type TabType = 'dados' | 'paineis' | 'financeiro' | 'preview';
 
 export function CrmProposals() {
+    const { id: orderId } = useParams(); // ID do pacote de pedidos (Se vier do CRM Overview)
+    const navigate = useNavigate();
     const { user } = useAuth();
     const { addToast } = useToast();
     
@@ -189,6 +193,7 @@ export function CrmProposals() {
     const [clients, setClients] = useState<any[]>([]);
     const [panels, setPanels] = useState<PanelWithPrice[]>([]);
     
+    const [loadedOrder, setLoadedOrder] = useState<any>(null); // Armazena o pedido do site
     const [selectedClientId, setSelectedClientId] = useState('');
     const [selectedPanelIds, setSelectedPanelIds] = useState<string[]>([]);
     const [months, setMonths] = useState(1);
@@ -196,15 +201,41 @@ export function CrmProposals() {
     const [individualDiscounts, setIndividualDiscounts] = useState<Record<string, number>>({});
     const [globalDiscount, setGlobalDiscount] = useState<number | ''>('');
 
+    // =========================================================
+    // BUSCA DE DADOS E CARREGAMENTO DO PEDIDO
+    // =========================================================
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [clientsData, panelsData] = await Promise.all([
-                    crmService.getClients(),
-                    panelsService.getAllPanels()
+                setIsLoading(true);
+                const [clientsData, panelsData, ordersRes] = await Promise.all([
+                    crmService.getClients().catch(() => []),
+                    panelsService.getAllPanels().catch(() => []),
+                    orderId ? api.get('/orders').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
                 ]);
+                
                 setClients(clientsData);
                 setPanels(panelsData.filter(p => p.status === 'AVAILABLE') as PanelWithPrice[]);
+
+                // Se viemos da tela de CRM Overview, carregamos os dados do Pacote (Order)
+                if (orderId && ordersRes.data) {
+                    const order = ordersRes.data.find((o: any) => o.id === orderId);
+                    if (order) {
+                        setLoadedOrder(order);
+                        
+                        // Extrai a duração em meses
+                        const startDate = order.startDate ? new Date(order.startDate) : new Date();
+                        const endDate = order.endDate ? new Date(order.endDate) : new Date();
+                        const diffDays = Math.ceil(Math.abs(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)); 
+                        const calculatedMonths = Math.max(1, Math.round(diffDays / 30));
+                        setMonths(calculatedMonths);
+
+                        // Seleciona os painéis automaticamente
+                        if (order.items && Array.isArray(order.items)) {
+                            setSelectedPanelIds(order.items.map((i: any) => i.panelId));
+                        }
+                    }
+                }
             } catch (error) {
                 addToast('Erro ao carregar dados do CRM e Catálogo.', 'error');
             } finally {
@@ -212,10 +243,26 @@ export function CrmProposals() {
             }
         };
         fetchInitialData();
-    }, []);
+    }, [orderId]);
 
-    const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
+    // O Cliente Atual: ou o do Pedido carregado ou o selecionado na lista (Criação Manual)
+    const currentClient = useMemo(() => {
+        if (loadedOrder) {
+            return {
+                name: loadedOrder.user?.name || 'Cliente Site',
+                company: loadedOrder.company?.corporateName || loadedOrder.user?.companyName,
+                email: loadedOrder.user?.email,
+                phone: loadedOrder.user?.phone,
+                whatsapp: loadedOrder.user?.phone,
+                document: loadedOrder.user?.document
+            };
+        }
+        return clients.find(c => c.id === selectedClientId) || null;
+    }, [loadedOrder, clients, selectedClientId]);
     
+    // =========================================================
+    // CÁLCULOS E TOTALIZADORES
+    // =========================================================
     const calculatedPanels = useMemo(() => {
         const selected = panels.filter(p => selectedPanelIds.includes(p.id));
         return selected.map(p => {
@@ -261,6 +308,9 @@ export function CrmProposals() {
         }));
     }, []);
 
+    // =========================================================
+    // HANDLERS
+    // =========================================================
     const handleTogglePanel = (id: string) => {
         setSelectedPanelIds(prev => {
             if (prev.includes(id)) {
@@ -279,7 +329,7 @@ export function CrmProposals() {
     };
 
     const handleDownloadPDF = async () => {
-        if (!selectedClient || calculatedPanels.length === 0) {
+        if (!currentClient || calculatedPanels.length === 0) {
             addToast('Selecione um cliente e pelo menos um painel para gerar a proposta.', 'error');
             return false;
         }
@@ -287,7 +337,7 @@ export function CrmProposals() {
         try {
             const blob = await pdf(
                 <ProposalDocument 
-                    client={selectedClient} 
+                    client={currentClient} 
                     panels={calculatedPanels} 
                     months={months} 
                     totals={totals}
@@ -299,7 +349,7 @@ export function CrmProposals() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Proposta_T3_OOH_${selectedClient.name.replace(/\s+/g, '_')}.pdf`;
+            link.download = `Proposta_T3_OOH_${currentClient.name.replace(/\s+/g, '_')}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -314,14 +364,14 @@ export function CrmProposals() {
     };
 
     const handleSendWhatsApp = async () => {
-        if (!selectedClient) {
-            addToast('Selecione um cliente primeiro.', 'error');
+        if (!currentClient) {
+            addToast('O cliente não foi selecionado ou não existe.', 'error');
             return;
         }
         
-        const phone = selectedClient.whatsapp || selectedClient.phone;
+        const phone = currentClient.whatsapp || currentClient.phone;
         if (!phone) {
-            addToast('O cliente selecionado não possui um número de WhatsApp cadastrado.', 'error');
+            addToast('O cliente não possui um número de WhatsApp cadastrado.', 'error');
             return;
         }
 
@@ -333,16 +383,27 @@ export function CrmProposals() {
                 cleanPhone = '55' + cleanPhone;
             }
             
-            const firstName = selectedClient.name.split(' ')[0];
+            const firstName = currentClient.name.split(' ')[0];
             const sellerName = user?.name || 'Comercial';
             
-            const text = `Olá, *${firstName}*! Tudo bem?\n\nAqui é *${sellerName}* da *T3 OOH*.\n\nConforme conversamos, estou enviando a nossa proposta comercial detalhada para a sua campanha.\n\nQualquer dúvida, sigo à disposição!`;
+            const text = `Olá, *${firstName}*! Tudo bem?\n\nAqui é *${sellerName}* da *T3 OOH*.\n\nConforme sua solicitação em nosso site, preparamos uma proposta comercial personalizada para a sua campanha.\n\nEstou enviando o arquivo PDF com todos os detalhes e valores aplicados. Qualquer dúvida, sigo totalmente à disposição!`;
             
             const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
             
+            // Se veio de um pacote do site, atualiza o status para "Em Venda" (APPROVED)
+            if (loadedOrder) {
+                try {
+                    await api.patch(`/orders/${loadedOrder.id}`, { status: 'APPROVED' });
+                } catch (e) {
+                    console.error("Não foi possível atualizar o status do pacote no banco.");
+                }
+            }
+
             setTimeout(() => {
                 window.open(waUrl, '_blank');
                 addToast('WhatsApp aberto! Agora é só anexar o PDF baixado na conversa.', 'success');
+                // Se finalizou com o pedido, volta pro CRM
+                if(loadedOrder) navigate('/dashboard/crm');
             }, 800);
         }
     };
@@ -356,28 +417,35 @@ export function CrmProposals() {
     }
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden pb-4 gap-4 md:gap-6 relative">
+        <div className="flex flex-col h-full w-full overflow-hidden pb-4 gap-4 md:gap-6 relative max-w-7xl mx-auto">
             
             {/* CABEÇALHO */}
-            <div className="flex flex-row items-center justify-between gap-4 shrink-0">
-                <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                        <FileText className="w-5 h-5 md:w-6 md:h-6 text-brand-neon" /> 
-                        <span className="hidden sm:inline">Gerador de </span>Propostas
-                    </h1>
-                    <p className="hidden md:block text-xs md:text-sm text-brand-muted mt-1 font-medium">Monte propostas comerciais interativas e gere PDFs automáticos.</p>
+            <div className="flex flex-row items-center justify-between gap-4 shrink-0 px-4 lg:px-0">
+                <div className="flex items-center gap-3">
+                    {loadedOrder && (
+                        <button onClick={() => navigate('/dashboard/crm')} className="p-2 bg-brand-surface/30 border border-brand-border/40 hover:bg-brand-surface rounded-full transition-colors text-brand-muted hover:text-white">
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                    )}
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
+                            <FileText className="w-5 h-5 md:w-6 md:h-6 text-brand-neon" /> 
+                            <span className="hidden sm:inline">Gerador de </span>Propostas
+                        </h1>
+                        <p className="hidden md:block text-xs md:text-sm text-brand-muted mt-1 font-medium">Monte propostas comerciais interativas e gere PDFs automáticos.</p>
+                    </div>
                 </div>
                 <Button 
                     onClick={handleDownloadPDF} 
-                    disabled={!selectedClient || calculatedPanels.length === 0}
-                    className="bg-[#25D366] hover:brightness-110 text-white border-none font-bold uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 px-4 md:px-5"
+                    disabled={!currentClient || calculatedPanels.length === 0}
+                    className="bg-[#25D366] hover:brightness-110 text-[#0A0A0B] border-none font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 md:h-12 px-4 md:px-6 rounded-xl"
                 >
-                    <Download className="w-4 h-4" /> <span className="hidden sm:inline">Baixar </span>PDF
+                    <Download className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">Baixar </span>PDF
                 </Button>
             </div>
 
             {/* ÁREA DE CONTEÚDO */}
-            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 min-h-0">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 min-h-0 px-4 lg:px-0">
                 
                 {/* COLUNA ESQUERDA: WIZARD DE ABAS */}
                 <div className={`w-full lg:w-[420px] flex flex-col relative z-10 shrink-0 ${activeTab === 'preview' ? 'flex-none' : 'flex-1 min-h-0 lg:h-full'}`}>
@@ -386,26 +454,26 @@ export function CrmProposals() {
                     <div className="flex bg-brand-surface p-1.5 rounded-[16px] border border-brand-border mb-4 shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 transition-colors">
                         <button 
                             onClick={() => setActiveTab('dados')}
-                            className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'dados' ? 'bg-brand-neon text-white shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
+                            className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'dados' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
                         >
                             <Settings className="w-3.5 h-3.5" /> <span className="hidden sm:inline">1.</span> Config
                         </button>
                         <button 
                             onClick={() => setActiveTab('paineis')}
-                            className={`min-w-[100px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'paineis' ? 'bg-brand-neon text-white shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
+                            className={`min-w-[100px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'paineis' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
                         >
                             <MapPin className="w-3.5 h-3.5" /> <span className="hidden sm:inline">2.</span> Telões
-                            {selectedPanelIds.length > 0 && <span className={`ml-1 px-1.5 rounded-full text-[9px] ${activeTab === 'paineis' ? 'bg-white/20 text-white' : 'bg-brand-background text-brand-neon border border-brand-border'}`}>{selectedPanelIds.length}</span>}
+                            {selectedPanelIds.length > 0 && <span className={`ml-1 px-1.5 rounded-full text-[9px] ${activeTab === 'paineis' ? 'bg-black/20 text-black' : 'bg-brand-background text-brand-neon border border-brand-border'}`}>{selectedPanelIds.length}</span>}
                         </button>
                         <button 
                             onClick={() => setActiveTab('financeiro')}
-                            className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'financeiro' ? 'bg-brand-neon text-white shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
+                            className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'financeiro' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
                         >
                             <CreditCard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">3.</span> Fechar
                         </button>
                         <button 
                             onClick={() => setActiveTab('preview')}
-                            className={`lg:hidden min-w-[100px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'preview' ? 'bg-brand-neon text-white shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
+                            className={`lg:hidden min-w-[100px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'preview' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
                         >
                             <Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">4.</span> Preview
                         </button>
@@ -424,14 +492,30 @@ export function CrmProposals() {
                                 >
                                     <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <UserIcon className="w-4 h-4 text-brand-neon" /> Selecionar Cliente
+                                            <UserIcon className="w-4 h-4 text-brand-neon" /> Cliente da Proposta
                                         </h2>
-                                        <CustomSelect
-                                            options={clientOptions}
-                                            value={selectedClientId}
-                                            onChange={(val: string) => setSelectedClientId(val)}
-                                            placeholder="Buscar cliente na base..."
-                                        />
+                                        
+                                        {/* Se tiver vindo de um pacote, mostra os dados diretos. Se não, mostra o select */}
+                                        {loadedOrder ? (
+                                            <div className="bg-brand-background border border-brand-neon/30 p-5 rounded-xl shadow-inner">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className="text-base font-bold text-brand-neon">{currentClient?.name}</span>
+                                                    <span className="text-[11px] uppercase tracking-wider font-bold text-brand-muted flex items-center gap-2">
+                                                        {currentClient?.company || 'Pessoa Física / Sem Empresa'}
+                                                    </span>
+                                                    <span className="text-xs text-brand-muted mt-2 font-medium bg-brand-surface px-3 py-2 rounded-lg border border-brand-border/50">
+                                                        {currentClient?.phone} • {currentClient?.email || 'Sem email'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <CustomSelect
+                                                options={clientOptions}
+                                                value={selectedClientId}
+                                                onChange={(val: string) => setSelectedClientId(val)}
+                                                placeholder="Buscar cliente na base..."
+                                            />
+                                        )}
                                     </div>
 
                                     <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
@@ -504,7 +588,7 @@ export function CrmProposals() {
                                                         </div>
                                                         <div className="flex items-center justify-center px-1">
                                                             <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shadow-inner ${
-                                                                isSelected ? 'bg-brand-neon border-brand-neon text-white' : 'border-brand-border bg-brand-surface'
+                                                                isSelected ? 'bg-brand-neon border-brand-neon text-[#0A0A0B]' : 'border-brand-border bg-brand-surface'
                                                             }`}>
                                                                 {isSelected && <CheckCircle2 className="w-4 h-4 md:w-4 md:h-4" />}
                                                             </div>
@@ -598,8 +682,8 @@ export function CrmProposals() {
                                     <div className="flex flex-col gap-3 mt-auto pt-2 shrink-0">
                                         <Button 
                                             onClick={handleSendWhatsApp} 
-                                            disabled={!selectedClient || calculatedPanels.length === 0}
-                                            className="w-full bg-[#25D366] hover:brightness-110 text-white h-14 uppercase tracking-widest text-[12px] font-black border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
+                                            disabled={!currentClient || calculatedPanels.length === 0}
+                                            className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] h-14 uppercase tracking-widest text-[12px] font-black border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
                                         >
                                             Enviar Proposta
                                         </Button>
@@ -620,7 +704,7 @@ export function CrmProposals() {
                         <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
                             <Search className="w-4 h-4 text-brand-neon" /> Pré-visualização da Proposta
                         </span>
-                        {(!selectedClient || calculatedPanels.length === 0) && (
+                        {(!currentClient || calculatedPanels.length === 0) && (
                             <span className="text-[10px] text-red-500 bg-red-500/10 px-3 py-1.5 rounded-md border border-red-500/20 font-bold">
                                 Configure a proposta primeiro.
                             </span>
@@ -628,10 +712,10 @@ export function CrmProposals() {
                     </div>
                     
                     <div className="flex-1 w-full h-full bg-brand-background">
-                        {selectedClient && calculatedPanels.length > 0 ? (
+                        {currentClient && calculatedPanels.length > 0 ? (
                             <PDFViewer width="100%" height="100%" className="border-none">
                                 <ProposalDocument 
-                                    client={selectedClient} 
+                                    client={currentClient} 
                                     panels={calculatedPanels} 
                                     months={months} 
                                     totals={totals}

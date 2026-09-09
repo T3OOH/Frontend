@@ -1,11 +1,3 @@
-// =========================================================================
-// DOCUMENTAÇÃO TÉCNICA: CART CONTEXT (GLOBAL STATE)
-// Padrão: State Container / Provider Pattern
-// Responsabilidade: Gerenciar o estado do carrinho transversalmente na aplicação.
-// Inclui persistência via LocalStorage para resiliência de UX (evita perda
-// de carrinho em reloads acidentais).
-// =========================================================================
-
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 
 export interface Panel {
@@ -13,14 +5,14 @@ export interface Panel {
     name: string;
     city: string;
     state: string;
-    status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+    status?: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | string;
     price?: number | string;
-    impacts: string;    // Obrigatório como string
+    impacts?: string | number;
     images?: string[];
-    size: string;       // Obrigatório para o InteractiveMap
-    px: string;         // Obrigatório para o InteractiveMap
-    lat: number;
-    lng: number;
+    size?: string;
+    px?: string;
+    lat?: number;
+    lng?: number;
     [key: string]: any;
 }
 
