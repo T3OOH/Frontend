@@ -9,7 +9,7 @@ export default function AccordionGallery({ panels }: { panels: any[] }) {
     if (!panels || panels.length === 0) return null;
 
     return (
-        <div className="flex w-full h-[400px] gap-2 overflow-hidden rounded-[24px]">
+        <div className="flex w-full h-[400px] gap-2 overflow-hidden rounded-[5px]">
             {panels.map((panel, idx) => {
                 const isActive = hoveredIndex === idx;
 
@@ -19,7 +19,7 @@ export default function AccordionGallery({ panels }: { panels: any[] }) {
                         onHoverStart={() => setHoveredIndex(idx)}
                         onClick={() => setHoveredIndex(idx)} // Suporte para Touch (Mobile)
                         layout
-                        className={`relative h-full rounded-[20px] overflow-hidden cursor-pointer transition-all duration-500 ease-out border bg-[#111113] ${
+                        className={`relative h-full rounded-[5px] overflow-hidden cursor-pointer transition-all duration-500 ease-out border bg-[#111113] ${
                             isActive ? 'border-[#FF5E00]/50 flex-[4] shadow-[0_0_30px_rgba(255,94,0,0.15)]' : 'border-white/10 flex-1 opacity-70 hover:opacity-100'
                         }`}
                     >

@@ -329,7 +329,7 @@ export function Services() {
             <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
 
             {/* HEADER E FILTROS */}
-            <div className="flex flex-col max-w-[1400px] mx-auto px-6 relative z-10 w-full pt-28 pb-16">
+            <div className="flex flex-col max-w-[1400px] mx-auto px-6 relative z-10 w-full pt-10 pb-16">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div>
                         <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight flex items-center gap-3">
