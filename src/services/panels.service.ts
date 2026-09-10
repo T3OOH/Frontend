@@ -7,7 +7,6 @@ export const panelStatusLabel: Record<PanelStatus, string> = {
     OCCUPIED: 'Ocupado',
     MAINTENANCE: 'Em manutenção',
 };
-
 export interface PanelData {
     id: string;
     name: string;
@@ -18,6 +17,8 @@ export interface PanelData {
     px: string;
     impacts: string;
     images: string[];
+    price?: number | null;
+    categoryId?: string | null; 
     city?: string | null;
     state?: string | null;
     address?: string | null;
@@ -80,10 +81,15 @@ export const panelsService = {
     }
 };
 
-export async function uploadImage(file: File): Promise<string> {
+// Atualizado para suportar a criação de pastas organizadas no Supabase
+export async function uploadImage(file: File, folderId?: string): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post('/upload', formData);
+    // Envia o folderId via Query Params para o backend interceptar
+    const response = await api.post('/upload', formData, {
+        params: { folderId }
+    });
+    
     return response.data.url;
 }

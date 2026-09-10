@@ -33,6 +33,8 @@ const DashboardMap = lazy(() => import('@/pages/dashboard/DashboardMap').then(m 
 const UsersList = lazy(() => import('@/pages/dashboard/Users').then(m => ({ default: m.Users })));
 const OrdersList = lazy(() => import('@/pages/dashboard/Orders').then(m => ({ default: m.Orders })));
 const SolutionManager = lazy(() => import('@/pages/dashboard/SolutionManager').then(m => ({ default: m.SolutionManager })));
+// NOVA ROTA INSTITUCIONAL AQUI
+const DashboardInfo = lazy(() => import('@/pages/dashboard/DashboardInfo').then(m => ({ default: m.DashboardInfo })));
 
 // CRM Views (Commercial)
 const CrmOverview = lazy(() => import('@/pages/crm/CrmOverview').then(m => ({ default: m.CrmOverview })));
@@ -118,6 +120,9 @@ export function AppRoutes() {
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
+                                        {/* A ROTA NOVA VAI AQUI DENTRO DO DASHBOARD */}
+                                        <Route path="info" element={<Suspense fallback={<PageLoader />}><DashboardInfo /></Suspense>} />
+                                        
                                     </Route>
                                 </Route>
 
