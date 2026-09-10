@@ -308,7 +308,7 @@ export function Home() {
                 {/* ========================================================= */}
                 {/* DESKTOP LAYOUT                                            */}
                 {/* ========================================================= */}
-                <div className="hidden lg:flex flex-col relative z-10 w-full pb-24 pt-[80px]">
+                <div className="hidden lg:flex flex-col relative z-10 w-full pb-24 pt-[0px]">
 
                     {/* BARRA DE PESQUISA INTELIGENTE (DESKTOP) */}
                     <div className="w-full max-w-7xl mx-auto px-6 pt-6 pb-2 relative z-[60]">
@@ -485,7 +485,7 @@ export function Home() {
                                     const discountedPrice = basePrice * 0.70;
 
                                     return (
-                                        <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="bg-[#111113] rounded-[24px] overflow-hidden border border-white/10 shadow-lg block hover:-translate-y-2 hover:border-[#FF5E00]/40 hover:shadow-[0_15px_40px_rgba(255,94,0,0.15)] transition-all duration-300 group">
+                                        <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="bg-[#111113] rounded-[5px] overflow-hidden border border-white/10 shadow-lg block hover:-translate-y-2 hover:border-[#FF5E00]/40 hover:shadow-[0_15px_40px_rgba(255,94,0,0.15)] transition-all duration-300 group">
                                             <div className="h-[200px] relative bg-black">
                                                 <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
                                                 <button

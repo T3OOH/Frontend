@@ -141,7 +141,7 @@ export function Solution() {
             {/* ========================================== */}
             {/* HERO SECTION                               */}
             {/* ========================================== */}
-            <section className="relative z-10 pt-20 pb-20 md:pb-24 px-6 max-w-[1400px] mx-auto border-b border-white/5">
+            <section className="relative z-10 pt-0 pb-20 md:pb-24 px-6 max-w-[1400px] mx-auto border-b border-white/5">
                 
                 {/* CONTAINER DA LOGO */}
                 <div className="w-full flex flex-col justify-center items-center min-h-[85vh] mb-16 pointer-events-none relative z-50">

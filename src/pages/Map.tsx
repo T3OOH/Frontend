@@ -3,8 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { InteractiveMap } from '@/features/map/InteractiveMap';
 import { 
     Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, 
-    Zap, MapPin, Maximize, Minimize, Compass, Shield, MonitorPlay,
-    CalendarDays, Tag, CheckCircle2, LayoutGrid
+    Zap, MapPin, Maximize, Minimize, Compass, Shield, MonitorPlay, Tag, CheckCircle2, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,6 +16,11 @@ import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext'; 
 
+/**
+ * Interface Component: Map Integration & Interactive Catalog
+ * Handles geo-spatial data visualization, complex state management for the shopping cart,
+ * checkout flow synchronization, and responsive UI behaviors.
+ */
 export function Map() {
     const [searchParams] = useSearchParams();
     const { cart, toggleInCart, isInCart, clearCart } = useCart();
@@ -34,12 +38,9 @@ export function Map() {
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(searchParams.get('checkout') === 'true');
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Estado para o modo Tela Cheia
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // ============================================================================
-    // ESTADOS UNIFICADOS DO CHECKOUT (CARRINHO + CRM)
-    // ============================================================================
+    // Checkout Flow State Management
     const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm'>('cart');
     const [months, setMonths] = useState(1);
     const [couponInput, setCouponInput] = useState('');
@@ -48,7 +49,10 @@ export function Map() {
         name: '', email: '', phone: '', company: '', message: '' 
     });
 
-    // Sincronização entre páginas (Map <-> Services) via LocalStorage
+    /**
+     * LocalStorage Synchronization Hook.
+     * Hydrates checkout state across component mounts and routing boundaries.
+     */
     useEffect(() => {
         const savedData = localStorage.getItem('@t3:checkoutSync');
         if (savedData) {
@@ -58,18 +62,25 @@ export function Map() {
                 if (parsed.appliedCoupon !== undefined) setAppliedCoupon(parsed.appliedCoupon);
                 if (parsed.checkoutForm) setCheckoutForm(prev => ({ ...prev, ...parsed.checkoutForm }));
             } catch (e) {
-                console.error("Erro ao ler sync do checkout:", e);
+                console.error("State Hydration Error (Checkout):", e);
             }
         }
     }, []);
 
+    /**
+     * LocalStorage Persistence Hook.
+     * Serializes checkout state to prevent data loss.
+     */
     useEffect(() => {
         localStorage.setItem('@t3:checkoutSync', JSON.stringify({
             months, appliedCoupon, checkoutForm
         }));
     }, [months, appliedCoupon, checkoutForm]);
 
-    // Efeito para travar o scroll da página quando em Fullscreen ou no Checkout
+    /**
+     * Viewport Scroll Lock Hook.
+     * Prevents underlying document scrolling when modals or fullscreen mode are active.
+     */
     useEffect(() => {
         if (isFullscreen || isCheckoutOpen || !!selectedPanelId) {
             document.body.style.overflow = 'hidden';
@@ -81,6 +92,10 @@ export function Map() {
         };
     }, [isFullscreen, isCheckoutOpen, selectedPanelId]);
 
+    /**
+     * User Authentication Hydration.
+     * Prefills the checkout form using the global authentication context.
+     */
     useEffect(() => {
         if (user && !checkoutForm.name) {
             const u = user as any; 
@@ -96,6 +111,10 @@ export function Map() {
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+    /**
+     * Impact Formatting Utility.
+     * Normalizes and scales impression metrics for display.
+     */
     const formatImpacts = (rawImpacts: string | number) => {
         if (!rawImpacts) return '0';
         const strVal = String(rawImpacts).toLowerCase();
@@ -113,6 +132,10 @@ export function Map() {
         return n.toLocaleString('pt-BR');
     };
 
+    /**
+     * Data Fetching Hook.
+     * Retrieves panel inventory and applies schema normalization to prevent map rendering errors.
+     */
     useEffect(() => {
         const fetchPanels = async () => {
             try {
@@ -122,7 +145,6 @@ export function Map() {
                 const validPanels = data
                     .filter((p: any) => p.status === 'AVAILABLE' && p.id)
                     .map((p: any) => {
-                        // Garantia anti-NaN para o Leaflet não quebrar
                         const lat = Number(p.lat);
                         const lng = Number(p.lng);
                         return {
@@ -139,7 +161,7 @@ export function Map() {
                     
                 setPanels(validPanels);
             } catch (error) {
-                console.error("[Map] Fetch Panels Error:", error);
+                console.error("API Error (Panels Fetch):", error);
             } finally {
                 setIsLoading(false);
             }
@@ -147,6 +169,9 @@ export function Map() {
         fetchPanels();
     }, []);
 
+    /**
+     * Memoized Data Structures for Filtering.
+     */
     const stateOptions = useMemo(() => {
         const states = Array.from(new Set(panels.map(p => p.state).filter(Boolean))).sort();
         return [{ value: '', label: 'Todos os Estados' }, ...states.map(st => ({ value: st as string, label: st as string }))];
@@ -165,9 +190,9 @@ export function Map() {
         return matchesSearch && matchesState && matchesCity;
     });
 
-    // ============================================================================
-    // CÁLCULOS MATEMÁTICOS UNIFICADOS DO CHECKOUT
-    // ============================================================================
+    /**
+     * Financial Aggregations and Checkout Calculations.
+     */
     const monthOptions = useMemo(() => {
         return Array.from({ length: 12 }, (_, i) => ({
             value: String(i + 1),
@@ -220,6 +245,10 @@ export function Map() {
 
     const SELLERS_PHONES = ['5562999999999', '5562888888888']; 
 
+    /**
+     * Transaction Submission Handler.
+     * Pushes deal data to CRM API and formats communication payload for WhatsApp dispatch.
+     */
     const handleWhatsAppSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -240,7 +269,6 @@ export function Map() {
                 if (termDiscountPercent > 0) extraNotes += `- Plano de ${months}x (${termDiscountPercent * 100}% OFF).`;
             }
 
-            // Salva no banco de dados CRM silenciosamente
             api.post('/crm/deals/checkout', {
                 clientDetails: {
                     name: checkoutForm.name,
@@ -254,15 +282,13 @@ export function Map() {
                 expectedValue: finalTotalValue,
                 items: structuredItems,
                 source: 'INTERACTIVE_MAP_WA'
-            }).catch(e => console.error("Erro ao salvar no CRM", e));
+            }).catch(e => console.error("API POST Error (CRM Integration):", e));
 
-            // Distribuição simples entre telefones de vendedores
             const lastIndex = parseInt(localStorage.getItem('@t3:lastSeller') || '0', 10);
             const nextIndex = (lastIndex + 1) % SELLERS_PHONES.length;
             localStorage.setItem('@t3:lastSeller', nextIndex.toString());
             const targetPhone = SELLERS_PHONES[nextIndex];
 
-            // Monta a mensagem para o WhatsApp
             let text = `*Novo Pedido de Orçamento - T3 OOH*\n\n`;
             text += `*Cliente:* ${checkoutForm.name}\n`;
             text += `*Empresa:* ${checkoutForm.company || 'Não informada'}\n\n`;
@@ -276,7 +302,7 @@ export function Map() {
 
             const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`;
             
-            addToast('Redirecionando para o WhatsApp do nosso Comercial...', 'success');
+            addToast('Redirecionando para o WhatsApp comercial...', 'success');
             clearCart();
             setIsCheckoutOpen(false);
             setCheckoutStep('cart');
@@ -284,8 +310,8 @@ export function Map() {
             
             window.open(waUrl, '_blank');
         } catch (err: any) {
-            console.error("Erro no Checkout:", err);
-            addToast('Erro ao processar pedido. Tente novamente.', 'error');
+            console.error("Checkout Exception:", err);
+            addToast('Erro ao processar pedido. Verifique os dados e tente novamente.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -298,36 +324,36 @@ export function Map() {
             : "flex-1 w-full flex bg-[#0A0A0B] relative overflow-hidden min-h-[calc(100vh-5rem)]"
         }>
             
-            {/* --- MAPA BACKGROUND COM FILTRO DARK MODE --- */}
-            <div className="absolute inset-0 z-0 bg-brand-black [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
+            {/* Map Engine Container */}
+            <div className="absolute inset-0 z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
                 {isLoading ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B]/80 backdrop-blur-sm">
-                        <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
-                        <p className="text-sm font-medium tracking-wide text-brand-muted uppercase">Sincronizando Circuito...</p>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B]/90">
+                        <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin mb-4" />
+                        <p className="text-xs font-bold tracking-widest text-[#8F8F91] uppercase">Sincronizando Circuito...</p>
                     </div>
                 ) : (
                     <InteractiveMap panels={panels as any[]} selectedPanelId={selectedPanelId} />
                 )}
             </div>
 
-            {/* --- BOTÃO FULLSCREEN (SOMENTE DESKTOP) --- */}
+            {/* Desktop Fullscreen Toggle */}
             {!isCheckoutOpen && (
                 <div className="hidden md:flex absolute top-6 right-6 z-[400] pointer-events-auto">
                     <button
                         onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="p-3 bg-[#111113]/90 backdrop-blur-md border border-white/10 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.6)] text-white hover:text-[#FF5E00] hover:border-[#FF5E00]/50 transition-all"
+                        className="p-3 bg-[#111113] border border-white/10 rounded-sm shadow-md text-white hover:text-[#FF5E00] transition-colors"
                         title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
                     >
-                        {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                     </button>
                 </div>
             )}
 
             {/* ========================================================= */}
-            {/* DESKTOP LAYOUT                                            */}
+            {/* VIEWPORT: DESKTOP                                         */}
             {/* ========================================================= */}
             
-            {/* Botão Flutuante Desktop */}
+            {/* Desktop Sidebar Toggle Trigger */}
             <AnimatePresence>
                 {!isSidebarOpen && !isCheckoutOpen && (
                     <motion.button
@@ -336,37 +362,37 @@ export function Map() {
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: -50, opacity: 0 }}
                         onClick={() => setIsSidebarOpen(true)}
-                        className="hidden md:flex absolute top-6 left-6 z-[100] bg-[#0A0A0B]/85 backdrop-blur-xl border border-brand-border/40 px-5 py-3 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.9)] hover:border-brand-neon transition-all items-center gap-3 group cursor-pointer"
+                        className="hidden md:flex absolute top-6 left-6 z-[100] bg-[#111113] border border-white/10 px-4 py-3 rounded-sm shadow-md hover:border-[#FF5E00]/50 transition-colors items-center gap-3 group cursor-pointer"
                     >
-                        <Search className="w-5 h-5 text-brand-neon group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-bold text-white tracking-wide">Buscar Painéis</span>
+                        <Search className="w-4 h-4 text-[#FF5E00]" />
+                        <span className="text-[11px] font-bold text-white uppercase tracking-widest">Buscar Painéis</span>
                     </motion.button>
                 )}
             </AnimatePresence>
 
-            {/* Sidebar Desktop (Busca) */}
+            {/* Desktop Navigation Sidebar */}
             <AnimatePresence initial={false}>
                 {isSidebarOpen && !isCheckoutOpen && (
-                    <motion.div initial={{ x: '-120%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-120%', opacity: 0 }} className="hidden md:flex absolute top-4 left-4 bottom-4 w-96 bg-[#0A0A0B]/85 backdrop-blur-2xl border border-brand-border/40 z-40 flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-brand-border/30 bg-brand-surface/10 flex-shrink-0">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-white tracking-tight">Pontos Disponíveis</h2>
-                                <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 bg-brand-surface/50 border border-brand-border/40 hover:text-brand-neon rounded-lg text-brand-muted transition-all">
+                    <motion.div initial={{ x: '-100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0 }} transition={{ type: "tween", duration: 0.2 }} className="hidden md:flex absolute top-0 left-0 bottom-0 w-[400px] bg-[#0A0A0B] border-r border-white/10 z-40 flex-col shadow-2xl">
+                        <div className="p-6 border-b border-white/5 bg-[#111113] flex-shrink-0">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-sm font-black text-white uppercase tracking-widest">Inventário de Mídia</h2>
+                                <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 hover:bg-white/5 border border-transparent hover:border-white/10 rounded-sm text-[#8F8F91] transition-colors">
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-4">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8F8F91] z-10" />
                                     <Input
-                                        placeholder="Buscar por avenida..."
+                                        placeholder="Buscar por avenida ou localização..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-9"
+                                        className="pl-9 bg-[#0A0A0B] border-white/10 text-[13px]"
                                     />
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-3">
                                     <div className="w-1/2">
                                         <CustomSelect
                                             options={stateOptions}
@@ -395,36 +421,37 @@ export function Map() {
                                 return (
                                     <div 
                                         key={panel.id} 
-                                        className={`flex flex-col p-3.5 rounded-xl border mb-3 transition-all duration-300 ${
+                                        className={`flex flex-col p-4 rounded-sm border mb-3 transition-colors duration-200 cursor-pointer ${
                                             isSelected 
-                                            ? 'bg-brand-neon/10 border-brand-neon shadow-[0_0_20px_rgba(255,94,0,0.15)] scale-[1.02]' 
-                                            : 'bg-brand-surface/20 border-brand-border/30 hover:bg-brand-surface/40'
+                                            ? 'bg-[#FF5E00]/5 border-[#FF5E00]/50' 
+                                            : 'bg-[#111113] border-white/5 hover:border-white/20'
                                         }`}
+                                        onClick={() => setSelectedPanelId(panel.id)}
                                     >
-                                        <div className="flex gap-3 cursor-pointer mb-3" onClick={() => setSelectedPanelId(panel.id)}>
-                                            <div className={`w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border relative transition-colors ${isSelected ? 'border-brand-neon' : 'border-brand-border/50'}`}>
-                                                <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover" />
+                                        <div className="flex gap-4 mb-4">
+                                            <div className="w-20 h-20 rounded-sm overflow-hidden flex-shrink-0 bg-black">
+                                                <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-90" />
                                             </div>
                                             
                                             <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                                                <h4 className={`text-sm font-bold leading-tight line-clamp-2 transition-colors ${isSelected ? 'text-brand-neon' : 'text-white'}`}>
+                                                <h4 className="text-[13px] font-bold text-white leading-tight line-clamp-2">
                                                     {panel.name}
                                                 </h4>
                                                 
                                                 <div className="flex flex-col gap-1 mt-auto">
                                                     <div className="flex items-center gap-1.5 w-full">
-                                                        <Zap className="w-4 h-4 text-[#FF5E00] flex-shrink-0 fill-[#FF5E00]" />
-                                                        <span className="text-[17px] font-black text-[#FF5E00] tracking-tighter truncate">
+                                                        <Zap className="w-3.5 h-3.5 text-[#FF5E00]" />
+                                                        <span className="text-sm font-black text-[#FF5E00] truncate">
                                                             {formatImpacts(panel.impacts || 0)}
                                                         </span>
-                                                        <span className="text-[8px] text-[#FF5E00]/80 uppercase font-black leading-tight ml-auto text-right">
+                                                        <span className="text-[8px] text-[#8F8F91] uppercase font-bold leading-tight ml-auto text-right">
                                                             Impactos<br/>Diários
                                                         </span>
                                                     </div>
                                                     
-                                                    <div className="flex items-center justify-between border-t border-brand-border/30 pt-1.5 mt-0.5">
-                                                        <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest">Investimento</span>
-                                                        <span className="text-xs font-semibold text-brand-muted">{formatCurrency(Number(panel.price) || 0)}</span>
+                                                    <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
+                                                        <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-widest">Investimento</span>
+                                                        <span className="text-xs font-black text-white">{formatCurrency(Number(panel.price) || 0)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -433,21 +460,21 @@ export function Map() {
                                         <Button
                                             type="button"
                                             variant={inCart ? 'secondary' : 'primary'}
-                                            className="w-full text-xs py-2 h-auto"
-                                            onClick={() => toggleInCart(panel)}
+                                            className={`w-full text-[11px] uppercase tracking-widest font-bold py-2.5 rounded-sm h-auto border ${inCart ? 'bg-white/5 border-white/10 text-white' : 'bg-[#111113] border-white/10 text-[#8F8F91] hover:text-[#FF5E00] hover:border-[#FF5E00]/50'}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
                                         >
-                                            {inCart ? <><Check className="w-3.5 h-3.5 mr-1" /> Selecionado</> : 'Adicionar ao Orçamento'}
+                                            {inCart ? <><Check className="w-3 h-3 mr-1" /> Selecionado</> : 'Adicionar ao Orçamento'}
                                         </Button>
                                     </div>
-                                )
+                                );
                             })}
                         </div>
 
                         <AnimatePresence>
                             {cart.length > 0 && (
-                                <motion.div className="p-4 border-t border-brand-border/40 flex-shrink-0">
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-sm font-bold bg-brand-neon hover:bg-[#e05300] text-black shadow-[0_0_20px_rgba(255,94,0,0.3)]">
-                                        <ShoppingCart className="w-5 h-5 mr-2" /> Solicitar Orçamento ({cart.length})
+                                <motion.div className="p-5 border-t border-white/5 bg-[#111113] shrink-0">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-[11px] uppercase tracking-widest font-black bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] rounded-sm border-none">
+                                        <ShoppingCart className="w-4 h-4 mr-2" /> Avançar ({cart.length})
                                     </Button>
                                 </motion.div>
                             )}
@@ -457,60 +484,56 @@ export function Map() {
             </AnimatePresence>
 
             {/* ========================================================= */}
-            {/* MOBILE LAYOUT (VISÃO LIMPA DE APLICATIVO)                   */}
+            {/* VIEWPORT: MOBILE                                          */}
             {/* ========================================================= */}
             
             {!isCheckoutOpen && (
                 <>
-                    {/* Barra de Pesquisa Superior Flutuante + Botão Fullscreen */}
+                    {/* Mobile Floating Search & Controls */}
                     <div className="md:hidden absolute top-4 left-4 right-4 z-[400] pointer-events-auto flex items-center gap-2">
-                        <div className="flex-1 bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full px-4 py-[11px] shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-3 transition-all focus-within:border-brand-neon/50">
-                            <Search className="w-5 h-5 text-brand-neon flex-shrink-0" />
+                        <div className="flex-1 bg-[#111113] border border-white/10 rounded-sm px-4 py-2.5 shadow-md flex items-center gap-3">
+                            <Search className="w-4 h-4 text-[#FF5E00] shrink-0" />
                             <input 
-                                className="bg-transparent border-none text-white w-full focus:outline-none text-[13px] placeholder-brand-muted"
-                                placeholder="Buscar avenida ou região..."
+                                className="bg-transparent border-none text-white w-full focus:outline-none text-xs placeholder-[#8F8F91]"
+                                placeholder="Buscar região..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
-                                <button type="button" onClick={() => setSearchTerm('')} className="p-1.5 text-brand-muted hover:text-white flex-shrink-0 bg-brand-surface/50 rounded-full">
+                                <button type="button" onClick={() => setSearchTerm('')} className="p-1 text-[#8F8F91] hover:text-white shrink-0">
                                     <X className="w-4 h-4" />
                                 </button>
                             )}
                         </div>
 
-                        {/* Botão Fullscreen Mobile */}
                         <button
                             type="button"
                             onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="flex-shrink-0 flex items-center justify-center w-[44px] h-[44px] bg-[#111113]/95 backdrop-blur-xl border border-brand-border/40 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.6)] text-white hover:text-[#FF5E00] transition-all"
-                            title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
+                            className="shrink-0 flex items-center justify-center w-[40px] h-[40px] bg-[#111113] border border-white/10 rounded-sm shadow-md text-white hover:text-[#FF5E00] transition-colors"
                         >
-                            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                         </button>
                     </div>
 
-                    {/* Container Inferior (Pílula de Carrinho + Cards Compactos) */}
-                    <div className={`md:hidden absolute left-0 right-0 z-[400] pointer-events-none flex flex-col items-center justify-end pb-2 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
+                    {/* Mobile Floating Bottom Context */}
+                    <div className={`md:hidden absolute left-0 right-0 z-[400] pointer-events-none flex flex-col items-center justify-end pb-3 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
                         
-                        {/* Botão de Solicitar Orçamento (Estilo Pill) */}
                         <AnimatePresence>
                             {cart.length > 0 && (
                                 <motion.div 
-                                    initial={{ y: 20, opacity: 0, scale: 0.9 }} 
-                                    animate={{ y: 0, opacity: 1, scale: 1 }} 
-                                    exit={{ y: 20, opacity: 0, scale: 0.9 }}
-                                    className="pointer-events-auto mb-4"
+                                    initial={{ y: 20, opacity: 0 }} 
+                                    animate={{ y: 0, opacity: 1 }} 
+                                    exit={{ y: 20, opacity: 0 }}
+                                    className="pointer-events-auto mb-4 px-4 w-full"
                                 >
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="rounded-full bg-brand-neon text-[#0A0A0B] font-black py-3 px-6 shadow-[0_10px_30px_rgba(255,94,0,0.4)] text-[13px] flex justify-center items-center gap-2 border border-transparent">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full rounded-sm bg-[#25D366] text-[#0A0A0B] font-black py-3.5 shadow-lg text-[11px] uppercase tracking-widest flex justify-center items-center gap-2 border-none">
                                         <ShoppingCart className="w-4 h-4" />
-                                        Ver Carrinho ({cart.length})
+                                        Processar Orçamento ({cart.length})
                                     </Button>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        {/* Cards Horizontais dos Painéis (Design Compacto Horizontal) */}
                         <div className="w-full pointer-events-auto">
                             <div className="flex gap-3 overflow-x-auto snap-x px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {filteredPanels.map(panel => {
@@ -521,42 +544,36 @@ export function Map() {
                                         <div 
                                             key={panel.id}
                                             onClick={() => setSelectedPanelId(panel.id)}
-                                            className={`snap-start flex-shrink-0 w-[290px] h-[110px] bg-[#111113]/95 backdrop-blur-xl rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-row ${
-                                                isSelected ? 'border-brand-neon shadow-[0_0_15px_rgba(255,94,0,0.15)] scale-[1.02]' : 'border-white/10'
+                                            className={`snap-start flex-shrink-0 w-[280px] bg-[#111113] rounded-sm overflow-hidden border transition-colors shadow-md flex flex-row ${
+                                                isSelected ? 'border-[#FF5E00]/50 bg-[#FF5E00]/5' : 'border-white/10'
                                             }`}
                                         >
-                                            {/* Imagem Pequena Esquerda */}
-                                            <div className="w-[100px] h-full bg-black relative flex-shrink-0">
+                                            <div className="w-[90px] h-full bg-black relative shrink-0">
                                                 <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90" alt={panel.name} />
-                                                <div className="absolute top-1.5 left-1.5 bg-[#0A0A0B]/80 backdrop-blur-md px-1.5 py-0.5 rounded border border-white/10 flex items-center gap-1">
-                                                    <Zap className="w-2.5 h-2.5 text-brand-neon" />
-                                                    <span className="text-[9px] font-black text-white tracking-widest">{formatImpacts(panel.impacts || 0)}</span>
+                                                <div className="absolute top-1 left-1 bg-[#0A0A0B]/90 px-1.5 py-0.5 rounded-sm border border-white/5 flex items-center gap-1">
+                                                    <Zap className="w-2.5 h-2.5 text-[#FF5E00]" />
+                                                    <span className="text-[8px] font-black text-white">{formatImpacts(panel.impacts || 0)}</span>
                                                 </div>
                                             </div>
 
-                                            {/* Informações Direita */}
                                             <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
                                                 <div>
-                                                    <h4 className="text-[13px] font-bold text-white line-clamp-2 leading-tight mb-1 pr-1">{panel.name}</h4>
-                                                    <p className="text-[10px] text-brand-muted flex items-center gap-1 truncate">
-                                                        <MapPin className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{panel.city}</span>
+                                                    <h4 className="text-xs font-bold text-white line-clamp-1 mb-0.5">{panel.name}</h4>
+                                                    <p className="text-[9px] text-[#8F8F91] flex items-center gap-1 truncate font-bold uppercase tracking-wider">
+                                                        <MapPin className="w-2.5 h-2.5 shrink-0" /> {panel.city}
                                                     </p>
                                                 </div>
                                                 
-                                                <div className="flex justify-between items-center mt-1 border-t border-brand-border/20 pt-1.5">
-                                                    <span className="text-sm font-black text-brand-neon tracking-tight">{formatCurrency(Number(panel.price) || 0)}</span>
-                                                    
-                                                    {/* Botão de Carrinho (Ícone) Reduzido para despoluir */}
+                                                <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
+                                                    <span className="text-xs font-black text-white">{formatCurrency(Number(panel.price) || 0)}</span>
                                                     <button 
                                                         type="button"
                                                         onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
-                                                        className={`w-7 h-7 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${
-                                                            inCart 
-                                                            ? 'bg-red-500/10 border-red-500/30 text-red-500' 
-                                                            : 'bg-brand-neon text-black'
+                                                        className={`w-6 h-6 rounded-sm flex items-center justify-center border transition-colors shrink-0 ${
+                                                            inCart ? 'bg-white/10 border-white/20 text-white' : 'bg-[#0A0A0B] border-white/10 text-[#8F8F91] hover:text-[#FF5E00]'
                                                         }`}
                                                     >
-                                                        {inCart ? <X className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                                                        {inCart ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
                                                     </button>
                                                 </div>
                                             </div>
@@ -569,73 +586,73 @@ export function Map() {
                 </>
             )}
 
-            {/* Bottom Navigation Nativa (Oculta se Checkout Aberto ou em Fullscreen) */}
+            {/* Mobile Bottom Navigation */}
             {!isCheckoutOpen && !isFullscreen && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 z-[500] px-6 py-3 flex justify-between items-center pb-safe">
-                    <Link to="/" className="flex flex-col items-center gap-1 text-brand-muted hover:text-white transition-colors">
-                        <Compass className="w-5 h-5" />
-                        <span className="text-[9px] font-medium">Explorar</span>
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B] border-t border-white/5 z-[500] px-6 py-3 flex justify-between items-center pb-safe">
+                    <Link to="/" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
+                        <Compass className="w-4 h-4" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Início</span>
                     </Link>
-                    <Link to="/mapa" className="flex flex-col items-center gap-1 text-brand-neon">
-                        <MapPin className="w-5 h-5" />
-                        <span className="text-[9px] font-bold">Mapa</span>
+                    <Link to="/mapa" className="flex flex-col items-center gap-1 text-[#FF5E00]">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Mapa</span>
                     </Link>
-                    <Link to="/servicos" className="flex flex-col items-center gap-1 text-brand-muted hover:text-white transition-colors">
-                        <MonitorPlay className="w-5 h-5" />
-                        <span className="text-[9px] font-medium">Painéis</span>
+                    <Link to="/servicos" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
+                        <MonitorPlay className="w-4 h-4" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Painéis</span>
                     </Link>
-                    <Link to="/contato" className="flex flex-col items-center gap-1 text-brand-muted hover:text-white transition-colors">
-                        <Shield className="w-5 h-5" />
-                        <span className="text-[9px] font-medium">Contato</span>
+                    <Link to="/contato" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
+                        <Shield className="w-4 h-4" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Contato</span>
                     </Link>
                 </div>
             )}
 
 
             {/* ========================================================= */}
-            {/* CHECKOUT MODAL (CARRINHO E ENVIO WHATSAPP)                  */}
+            {/* CHECKOUT MODAL (DRAWER)                                   */}
             {/* ========================================================= */}
             
             <AnimatePresence>
                 {isCheckoutOpen && (
                     <motion.div 
-                        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'tween', duration: 0.2 }}
                         className="fixed inset-y-0 right-0 h-full w-full md:w-[480px] bg-[#0A0A0B] border-l border-white/10 z-[99999] flex flex-col shadow-2xl"
                     >
-                        {/* HEADER DINÂMICO */}
-                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0 pt-[env(safe-area-inset-top,20px)] z-20 relative">
-                            <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
+                        {/* Header */}
+                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0 pt-[env(safe-area-inset-top,20px)]">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-3">
                                 {checkoutStep === 'cart' ? (
-                                    <><ShoppingCart className="w-5 h-5 text-[#FF5E00]" /> Resumo do Pedido</>
+                                    <><ShoppingCart className="w-4 h-4 text-[#FF5E00]" /> Resumo do Pedido</>
                                 ) : (
-                                    <><Send className="w-5 h-5 text-[#25D366]" /> Enviar Orçamento</>
+                                    <><Send className="w-4 h-4 text-[#25D366]" /> Enviar Orçamento</>
                                 )}
                             </h2>
-                            <button type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-brand-muted hover:text-white bg-[#0A0A0B] p-2 rounded-full border border-white/5">
-                                <X className="w-5 h-5" />
+                            <button type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white bg-[#0A0A0B] p-2 rounded-sm border border-white/5 transition-colors">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        {/* BODY DINÂMICO */}
-                        <div className="flex-1 overflow-y-auto p-5 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {/* Content Body */}
+                        <div className="flex-1 overflow-y-auto p-6 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {checkoutStep === 'cart' ? (
                                 cart.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-60">
-                                        <ShoppingCart className="w-12 h-12 text-brand-muted mb-4" />
-                                        <p className="text-sm text-brand-muted">Seu carrinho de orçamentos está vazio.</p>
+                                    <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                                        <ShoppingCart className="w-10 h-10 text-[#8F8F91]/50 mb-4" />
+                                        <p className="text-xs font-bold uppercase tracking-widest text-[#8F8F91]">Carrinho Vazio</p>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-4 pb-4">
+                                    <div className="flex flex-col gap-4">
                                         {cart.map((p, i) => (
-                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-xl relative shadow-md">
-                                                <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow-md z-10">{i + 1}</div>
-                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-lg object-cover bg-black" />
+                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-sm relative">
+                                                <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-black font-black text-[10px] rounded-sm flex items-center justify-center shadow-md z-10">{i + 1}</div>
+                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-sm object-cover bg-black" />
                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <h4 className="text-sm font-bold text-white leading-tight mb-1 truncate pr-2">{p.name}</h4>
-                                                    <p className="text-xs text-brand-muted mb-3"><MapPin className="w-3 h-3 inline-block -mt-0.5" /> {p.city}</p>
+                                                    <h4 className="text-xs font-bold text-white leading-tight mb-1 truncate">{p.name}</h4>
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#8F8F91] mb-3 flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</p>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-sm font-bold text-[#25D366]">{formatCurrency(Number(p.price))}</span>
-                                                        <button type="button" onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-wider hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-3 py-1.5 rounded-md transition-colors">Remover</button>
+                                                        <span className="text-sm font-black text-white">{formatCurrency(Number(p.price))}</span>
+                                                        <button type="button" onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-widest hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-2.5 py-1.5 rounded-sm transition-colors border border-[#ff4d4d]/20">Remover</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -643,106 +660,105 @@ export function Map() {
                                     </div>
                                 )
                             ) : (
-                                <form id="crm-checkout-form" onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 animate-fade-in pb-4">
-                                    <div className="bg-[#111113] rounded-[16px] p-5 border border-white/5">
+                                <form id="crm-checkout-form" onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 pb-4">
+                                    <div className="bg-[#111113] rounded-sm p-6 border border-white/5">
                                         <div className="flex justify-between items-center mb-4">
-                                            <span className="text-[10px] text-brand-muted font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Painéis no Carrinho</span>
-                                            <span className="bg-white/10 text-white text-xs font-bold px-2 py-0.5 rounded">{cart.length} unid</span>
+                                            <span className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Oportunidade</span>
+                                            <span className="bg-white/5 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm border border-white/10">{cart.length} Pontos</span>
                                         </div>
                                         <div className="border-t border-white/5 my-4" />
                                         <div className="flex justify-between items-start">
                                             <div className="flex flex-col">
-                                                <span className="text-[9px] text-[#FF5E00] font-bold uppercase tracking-widest mb-1">Alcance Total (Diário)</span>
-                                                <span className="text-xl font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts)}</span>
+                                                <span className="text-[9px] text-[#FF5E00] font-bold uppercase tracking-widest mb-1">Alcance Diário</span>
+                                                <span className="text-lg font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts)}</span>
                                             </div>
                                             <div className="flex flex-col items-end text-right">
-                                                {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(totalWithoutAnyDiscount)}</span>}
-                                                <span className="text-[9px] text-brand-muted font-bold uppercase tracking-widest mb-1">Investimento (C/ Desconto)</span>
-                                                <span className="text-xl font-black text-[#25D366] leading-none mb-1.5">{formatCurrency(finalTotalValue)}</span>
-                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded uppercase tracking-wider">Economia: {formatCurrency(totalEconomy)}</span>}
+                                                {totalEconomy > 0 && <span className="text-[10px] text-[#8F8F91] line-through mb-0.5">{formatCurrency(totalWithoutAnyDiscount)}</span>}
+                                                <span className="text-[9px] text-[#8F8F91] font-bold uppercase tracking-widest mb-1">Valor Liquido</span>
+                                                <span className="text-lg font-black text-white leading-none mb-1.5">{formatCurrency(finalTotalValue)}</span>
+                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded-sm border border-[#25D366]/20 uppercase tracking-widest">Economia: {formatCurrency(totalEconomy)}</span>}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-col gap-4">
-                                        <h3 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest">Seus Dados de Contato</h3>
+                                        <h3 className="text-[11px] font-black text-white uppercase tracking-widest border-b border-white/5 pb-2">Detalhes de Contato</h3>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs text-brand-muted">Nome Completo *</label>
-                                            <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Nome Completo *</label>
+                                            <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-xs text-brand-muted">E-mail *</label>
-                                                <input type="email" required value={checkoutForm.email} onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">E-mail *</label>
+                                                <input type="email" required value={checkoutForm.email} onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
                                             </div>
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-xs text-brand-muted">WhatsApp *</label>
-                                                <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">WhatsApp *</label>
+                                                <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs text-brand-muted">Empresa / Agência</label>
-                                            <input type="text" value={checkoutForm.company} onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none" />
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Empresa / Marca</label>
+                                            <input type="text" value={checkoutForm.company} onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs text-brand-muted">Observações (Opcional)</label>
-                                            <textarea rows={3} placeholder="Mencione condições de pagamento, datas da campanha, etc." value={checkoutForm.message} onChange={(e) => setCheckoutForm({ ...checkoutForm, message: e.target.value })} className="bg-[#111113] border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-neon outline-none resize-none" />
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Observações (Opcional)</label>
+                                            <textarea rows={3} value={checkoutForm.message} onChange={(e) => setCheckoutForm({ ...checkoutForm, message: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none resize-none transition-colors" />
                                         </div>
                                     </div>
                                 </form>
                             )}
                         </div>
 
-                        {/* FOOTER DINÂMICO */}
+                        {/* Footer (Actions) */}
                         {checkoutStep === 'cart' ? (
-                            <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-20 relative">
-                                <div className="flex flex-col w-full mb-4">
-                                    <div className="flex flex-col gap-3 border-b border-white/5 pb-4 mb-4">
-                                        <div className="grid grid-cols-2 gap-3 items-end">
-                                            <div className="flex flex-col gap-1.5 relative z-50">
-                                                <label className="text-[9px] text-brand-muted uppercase tracking-widest font-bold">Duração da Campanha</label>
+                            <div className="bg-[#111113] p-6 border-t border-white/5 shrink-0 pb-safe">
+                                <div className="flex flex-col w-full mb-6">
+                                    <div className="flex flex-col gap-4 border-b border-white/5 pb-6 mb-6">
+                                        <div className="grid grid-cols-2 gap-4 items-end">
+                                            <div className="flex flex-col gap-2 relative z-50">
+                                                <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold">Contrato (Meses)</label>
                                                 <CustomSelect
                                                     options={monthOptions}
                                                     value={String(months)}
                                                     onChange={(val: string) => setMonths(Number(val))}
                                                     placeholder="Duração"
-                                                    icon={<CalendarDays className="w-4 h-4" />}
                                                 />
                                             </div>
-                                            <div className="flex flex-col gap-1.5 h-full">
-                                                <label className="text-[9px] text-brand-muted uppercase tracking-widest font-bold">Cupom Promocional</label>
+                                            <div className="flex flex-col gap-2 h-full">
+                                                <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold">Cupom OFF</label>
                                                 <div className="flex gap-2">
                                                     <input
                                                         type="text"
-                                                        placeholder="CUPOM"
+                                                        placeholder="CÓDIGO"
                                                         value={couponInput}
                                                         onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                                                        className="w-full bg-[#111113] border border-white/10 rounded-xl px-3 text-white text-xs font-bold focus:border-brand-neon outline-none uppercase placeholder:normal-case placeholder:font-normal h-[42px]"
+                                                        className="w-full bg-[#0A0A0B] border border-white/10 rounded-sm px-3 text-white text-xs font-bold focus:border-[#FF5E00] outline-none uppercase placeholder:normal-case placeholder:font-normal h-[42px] transition-colors"
                                                         disabled={appliedCoupon !== null}
                                                     />
                                                     {appliedCoupon ? (
-                                                        <Button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} variant="secondary" className="px-3 h-[42px] text-red-500 border-red-500/30 hover:bg-red-500/10"><X className="w-4 h-4" /></Button>
+                                                        <Button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="px-3 h-[42px] bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-sm transition-colors"><X className="w-4 h-4" /></Button>
                                                     ) : (
-                                                        <Button type="button" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/10 text-white hover:bg-brand-neon hover:text-[#0A0A0B] border-none text-xs transition-colors"><Tag className="w-4 h-4" /></Button>
+                                                        <Button type="button" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/5 text-[#8F8F91] hover:text-white border border-white/10 hover:border-white/20 rounded-sm transition-colors"><Tag className="w-4 h-4" /></Button>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
+                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Bonificação de {termDiscountPercent * 100}% aplicada</p>}
+                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Voucher ativo</p>}
                                     </div>
-                                    {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Desconto de <b>{termDiscountPercent * 100}%</b> pelo prazo aplicado!</p>}
-                                    {appliedCoupon && <p className="text-[10px] text-[#25D366] mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Cupom <b>{appliedCoupon.code}</b> aplicado!</p>}
-                                </div>
 
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-1">Investimento Mensal</span>
-                                        {totalEconomy > 0 && <span className="text-[10px] text-red-400 font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}/mês</span>}
-                                        <span className="text-2xl font-black text-[#25D366] leading-none">{formatCurrency(finalMonthlyValue)}</span>
-                                        <span className="text-[10px] text-brand-muted mt-1.5 font-medium">Total Campanha ({months}x): {formatCurrency(finalTotalValue)}</span>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-[#8F8F91] uppercase tracking-widest mb-1">Custo Operacional Mensal</span>
+                                            {totalEconomy > 0 && <span className="text-[11px] text-[#8F8F91] font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}</span>}
+                                            <span className="text-2xl font-black text-white leading-none">{formatCurrency(finalMonthlyValue)}</span>
+                                            <span className="text-[10px] text-[#8F8F91] mt-2 font-bold uppercase tracking-widest">Budget Total: {formatCurrency(finalTotalValue)}</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -750,23 +766,22 @@ export function Map() {
                                     type="button"
                                     disabled={cart.length === 0 || isSubmitting}
                                     onClick={() => setCheckoutStep('crm')}
-                                    isLoading={isSubmitting}
-                                    className="w-full mt-4 bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm"
+                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] transition-colors"
                                 >
-                                    Avançar
+                                    Avançar Etapa
                                 </Button>
                             </div>
                         ) : (
-                            <div className="bg-[#0A0A0B] p-5 lg:p-6 border-t border-white/5 shrink-0 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex flex-col gap-3 z-20 relative">
-                                <button type="button" onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-xs font-bold text-brand-muted hover:text-white uppercase tracking-widest transition-colors">Voltar para Resumo</button>
+                            <div className="bg-[#111113] p-6 border-t border-white/5 shrink-0 pb-safe flex flex-col gap-4 z-20 relative">
+                                <button type="button" onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-[10px] font-bold text-[#8F8F91] hover:text-white uppercase tracking-widest transition-colors">Voltar para Especificações</button>
                                 <Button
                                     type="submit"
                                     form="crm-checkout-form"
                                     disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
-                                    className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,211,102,0.3)] border-none uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                                 >
-                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                                    Enviar via WhatsApp
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    Finalizar e Enviar
                                 </Button>
                             </div>
                         )}
