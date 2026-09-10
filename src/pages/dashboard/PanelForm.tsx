@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, MapPin, Activity, Link as LinkIcon, Image as ImageIcon, Loader2, ArrowLeft } from 'lucide-react';
+import { MapPin, Activity, Link as LinkIcon, Image as ImageIcon, Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -9,11 +9,12 @@ import { Button } from '@/components/Button';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
 import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const neonMarker = L.divIcon({
     className: 'custom-marker',
     html: `
-      <div style="background-color: #0f0f11; border: 2px solid #FF5E00; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 94, 0, 0.6); overflow: hidden;">
+      <div style="background-color: #0f0f11; border: 2px solid #FF5E00; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 94, 0, 0.4); overflow: hidden;">
           <img src="/t3d 2.png" alt="T3" style="width: 22px; height: 22px; object-fit: contain;" />
       </div>
     `,
@@ -21,35 +22,23 @@ const neonMarker = L.divIcon({
     iconAnchor: [18, 18],
 });
 
-/**
- * Intercepta cliques diretos no canvas do mapa.
- */
 function MapClickHandler({ setPosition }: { setPosition: (pos: [number, number]) => void }) {
     useMapEvents({ click(e) { setPosition([e.latlng.lat, e.latlng.lng]); } });
     return null;
 }
 
-/**
- * Atualiza o centro visual do mapa programaticamente.
- * Implementa validação estrita para ignorar mapas ocultos (responsivos) e evitar crashes do Leaflet.
- */
 function MapCenterUpdater({ lat, lng }: { lat: number; lng: number }) {
     const map = useMap();
-
     useEffect(() => {
         if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
             try {
-                // Trava de segurança: só move o mapa se ele estiver visível na tela (tamanho > 0)
                 const size = map.getSize();
-                if (size.x > 0 && size.y > 0) {
-                    map.setView([lat, lng], 15, { animate: true }); // setView é muito mais estável que flyTo
-                }
+                if (size.x > 0 && size.y > 0) map.setView([lat, lng], 15, { animate: true });
             } catch (e) {
-                // Previne qualquer crash interno do Leaflet
+                // Ignore silent leaflet errors on mount
             }
         }
     }, [lat, lng, map]);
-
     return null;
 }
 
@@ -59,26 +48,25 @@ export function PanelForm() {
     const isEditing = Boolean(panelId);
     const toast = useToast();
 
+    const [currentStep, setCurrentStep] = useState<number>(1);
     const [isLoading, setIsLoading] = useState(isEditing);
     const [initialData, setInitialData] = useState<any>(null);
-
-    const [position, setPosition] = useState<[number, number]>([-16.6869, -49.2648]);
-
-    // Estados independentes para os inputs de Lat e Lng
-    const [latInput, setLatInput] = useState<string>('-16.6869');
-    const [lngInput, setLngInput] = useState<string>('-49.2648');
-
-    const [googleUrl, setGoogleUrl] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
+    // Estados do Formulário
+    const [position, setPosition] = useState<[number, number]>([-16.6869, -49.2648]);
+    const [latInput, setLatInput] = useState<string>('-16.6869');
+    const [lngInput, setLngInput] = useState<string>('-49.2648');
+    const [googleUrl, setGoogleUrl] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-
     const [status, setStatus] = useState<string>('AVAILABLE');
+    
+    // Demais dados (controlados por FormData nativo no onSubmit para otimização)
+    const [formValues, setFormValues] = useState({
+        name: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', price: ''
+    });
 
-    /**
-     * Sincroniza os inputs de texto com as coordenadas reais.
-     */
     useEffect(() => {
         setLatInput(position[0].toString());
         setLngInput(position[1].toString());
@@ -105,8 +93,17 @@ export function PanelForm() {
                     if (data.status) setStatus(data.status);
                     if (data.lat && data.lng) setPosition([data.lat, data.lng]);
                     if (data.images && data.images[0]) setImagePreview(data.images[0]);
+                    
+                    setFormValues({
+                        name: data.name || '',
+                        city: data.city || 'Goiânia',
+                        state: data.state || 'GO',
+                        size: data.size || '',
+                        px: data.px || '',
+                        impacts: data.impacts || '',
+                        price: data.price ? String(data.price) : ''
+                    });
                 } catch (error) {
-                    console.error("Erro ao buscar painel:", error);
                     toast.error("Painel não encontrado.");
                     navigate('/dashboard/paineis');
                 } finally {
@@ -120,23 +117,17 @@ export function PanelForm() {
     const handleGoogleLinkPaste = (e: React.ChangeEvent<HTMLInputElement>) => {
         const url = e.target.value;
         setGoogleUrl(url);
-
         if (!url.trim()) return;
 
         if (url.includes('maps.app.goo.gl') || url.includes('g.page')) {
-            toast.error("Links encurtados não funcionam. Cole o link completo do navegador ou digite as coordenadas.");
+            toast.error("Links encurtados não funcionam. Cole o link completo do navegador.");
             return;
         }
 
         const match = url.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
-
         if (match) {
-            const lat = parseFloat(match[1]);
-            const lng = parseFloat(match[2]);
-            setPosition([lat, lng]);
-            toast.success("Localização atualizada no mapa!");
-        } else if (url.includes('google.com/maps')) {
-            toast.info("Não conseguimos encontrar as coordenadas neste formato de link.");
+            setPosition([parseFloat(match[1]), parseFloat(match[2])]);
+            toast.success("Localização atualizada!");
         }
     };
 
@@ -148,33 +139,32 @@ export function PanelForm() {
         }
     };
 
-    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const handleSave = async () => {
         setIsSaving(true);
-
         try {
-            const formData = new FormData(e.currentTarget);
             let uploadedUrls: string[] = initialData?.images || [];
 
             if (imageFile) {
-                const imageUrl = await uploadImage(imageFile);
+                // AQUI ESTÁ A CORREÇÃO: Garante que o folderId aponte para a pasta raiz "panels" 
+                // e crie uma subpasta com o ID do painel.
+                const folderId = `panels/${panelId || window.crypto.randomUUID()}`;
+                const imageUrl = await uploadImage(imageFile, folderId);
                 uploadedUrls = [imageUrl];
             }
 
-            const rawPrice = formData.get('price') as string;
-            const formattedPrice = rawPrice ? Number(rawPrice.replace(',', '.')) : 0;
+            const formattedPrice = formValues.price ? Number(formValues.price.replace(',', '.')) : 0;
 
             const panelPayload = {
-                name: formData.get('name') as string,
+                name: formValues.name,
                 lat: position[0],
                 lng: position[1],
                 status: status as PanelStatus,
-                size: formData.get('size') as string,
-                px: formData.get('px') as string,
-                impacts: formData.get('impacts') as string,
+                size: formValues.size,
+                px: formValues.px,
+                impacts: formValues.impacts,
                 price: formattedPrice,
-                city: formData.get('city') as string,
-                state: (formData.get('state') as string).toUpperCase(),
+                city: formValues.city,
+                state: formValues.state.toUpperCase(),
                 images: uploadedUrls,
             };
 
@@ -188,23 +178,12 @@ export function PanelForm() {
 
             navigate('/dashboard/paineis');
         } catch (error: any) {
-            console.error("Erro ao salvar no banco:", error);
-            const backendMsg = error.response?.data?.message || error.response?.data?.error || "Verifique os dados.";
-            toast.error(`Falha ao salvar: ${typeof backendMsg === 'string' ? backendMsg : JSON.stringify(backendMsg)}`);
+            console.error("Erro ao salvar:", error);
+            toast.error("Falha ao salvar. Verifique os campos.");
         } finally {
             setIsSaving(false);
         }
     };
-
-    const worldBounds: L.LatLngBoundsLiteral = [[-90, -180], [90, 180]];
-
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
-            </div>
-        );
-    }
 
     const statusOptions = [
         { value: 'AVAILABLE', label: 'Disponível' },
@@ -212,299 +191,200 @@ export function PanelForm() {
         { value: 'MAINTENANCE', label: 'Manutenção' }
     ];
 
+    if (isLoading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin" />
+            </div>
+        );
+    }
+
+    const worldBounds: L.LatLngBoundsLiteral = [[-90, -180], [90, 180]];
+
     return (
-        <div className="w-full h-full flex flex-col relative">
-
-            {/* DESKTOP LAYOUT */}
-            <div className="hidden lg:block max-w-[1400px] mx-auto w-full pb-12">
-                <div className="flex items-center gap-4 mb-6">
-                    <Link to="/dashboard/paineis">
-                        <button className="p-2 hover:bg-brand-surface/80 rounded-lg transition-colors text-brand-muted hover:text-white bg-brand-surface/30 border border-brand-border/40 flex items-center justify-center">
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                    </Link>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">
-                        {isEditing ? 'Editar Painel' : 'Novo Painel'}
+        <div className="w-full h-full flex flex-col relative max-w-7xl mx-auto pb-12">
+            
+            {/* HEADER */}
+            <div className="flex items-center gap-4 mb-6 shrink-0">
+                <Link to="/dashboard/paineis">
+                    <button className="p-2 border border-white/10 rounded-md bg-[#111113] hover:border-[#FF5E00] hover:text-[#FF5E00] transition-colors text-[#8F8F91]">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                </Link>
+                <div>
+                    <h1 className="text-2xl font-black text-white tracking-tight uppercase">
+                        {isEditing ? 'Editar Ponto' : 'Cadastrar Ponto'}
                     </h1>
+                    <p className="text-xs text-[#8F8F91] uppercase tracking-widest mt-0.5">Configure as informações do painel</p>
                 </div>
+            </div>
 
-                <form id="desktop-panel-form" onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                    <div className="lg:col-span-5 flex flex-col gap-6">
-                        <div className="glass-panel p-5 rounded-xl flex flex-col border border-brand-border/40 shadow-sm bg-brand-surface/10">
-                            <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2 mb-4">
-                                <ImageIcon className="w-4 h-4 text-brand-neon" />
-                                Imagem do Ponto
-                            </h2>
-                            <label htmlFor="dropzone-file-desktop" className="flex flex-col items-center justify-center w-full h-36 border border-brand-border border-dashed rounded-lg cursor-pointer bg-brand-black/30 hover:bg-brand-surface/50 hover:border-brand-neon transition-all relative overflow-hidden">
-                                {imagePreview ? (
+            {/* MAIN LAYOUT SPLIT */}
+            <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+                
+                {/* WIZARD COLUMN */}
+                <div className="w-full lg:w-1/2 flex flex-col gap-6">
+                    
+                    {/* TABS DE NAVEGAÇÃO */}
+                    <div className="flex gap-2 p-1.5 bg-[#0A0A0B] border border-white/5 rounded-md shadow-inner overflow-x-auto custom-scrollbar">
+                        {[
+                            { step: 1, label: 'Básico' },
+                            { step: 2, label: 'Localização' },
+                            { step: 3, label: 'Técnico' }
+                        ].map((s) => (
+                            <button
+                                key={s.step}
+                                onClick={() => setCurrentStep(s.step)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-sm text-[10px] uppercase font-bold tracking-widest transition-colors shrink-0 ${
+                                    currentStep === s.step 
+                                        ? 'bg-[#FF5E00] text-[#0A0A0B]' 
+                                        : 'bg-transparent text-[#8F8F91] hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                                <span>{s.step}.</span> {s.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* WIZARD CONTENT */}
+                    <div className="bg-[#111113] border border-white/5 rounded-md p-6 flex flex-col flex-1 shadow-xl">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentStep}
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex flex-col gap-5 flex-1"
+                            >
+                                {currentStep === 1 && (
                                     <>
-                                        <img src={imagePreview} alt="Preview do Painel" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-brand-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                            <p className="text-sm font-medium text-white">Trocar Foto</p>
+                                        <div className="flex flex-col gap-1.5">
+                                            <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+                                                <ImageIcon className="w-4 h-4 text-[#FF5E00]" /> Imagem Principal
+                                            </h2>
+                                            <label className="flex flex-col items-center justify-center w-full h-48 border border-white/10 border-dashed rounded-md cursor-pointer bg-[#0A0A0B] hover:border-[#FF5E00]/50 transition-colors relative overflow-hidden group">
+                                                {imagePreview ? (
+                                                    <>
+                                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-[#111113] border border-white/10 px-4 py-2 rounded-sm">Alterar Mídia</span>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center px-4 text-center">
+                                                        <ImageIcon className="w-8 h-8 text-[#8F8F91] mb-2" />
+                                                        <p className="text-[11px] text-[#8F8F91] uppercase tracking-wider"><span className="text-[#FF5E00] font-bold">Clique</span> para selecionar</p>
+                                                    </div>
+                                                )}
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
+                                            </label>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 mt-2">
+                                            <Input name="name" label="Identificação do Painel *" value={formValues.name} onChange={e => setFormValues({...formValues, name: e.target.value})} placeholder="Ex: Av. T-7 com T-3" required className="bg-[#0A0A0B]" />
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 mt-2 relative z-50">
+                                            <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold ml-1">Status Operacional</label>
+                                            <CustomSelect options={statusOptions} value={status} onChange={setStatus} />
                                         </div>
                                     </>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center">
-                                        <p className="text-sm text-brand-muted"><span className="text-brand-neon font-medium">Clique</span> ou arraste a imagem</p>
-                                        <p className="text-xs text-brand-muted/70 mt-1">Será convertida para WEBP (Max. 5MB)</p>
-                                    </div>
                                 )}
-                                <input id="dropzone-file-desktop" type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
-                            </label>
-                        </div>
 
-                        <div className="glass-panel p-5 rounded-xl flex flex-col gap-4 border border-brand-border/40 shadow-sm bg-brand-surface/10 relative z-10">
-                            <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2 border-b border-brand-border/30 pb-3 mb-1">
-                                <MapPin className="w-4 h-4 text-brand-neon" />
-                                Logradouro do Painel
-                            </h2>
-                            <Input name="name" label="Nome da Localização" defaultValue={initialData?.name} placeholder="Ex: Av T7 - Setor Oeste" required />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input name="city" label="Cidade" defaultValue={initialData?.city || "Goiânia"} placeholder="Goiânia" required />
-                                <Input name="state" label="Estado (UF)" defaultValue={initialData?.state || "GO"} placeholder="GO" maxLength={2} required />
-                            </div>
-                        </div>
+                                {currentStep === 2 && (
+                                    <>
+                                        <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+                                            <MapPin className="w-4 h-4 text-[#FF5E00]" /> Endereçamento
+                                        </h2>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Input name="city" label="Cidade *" value={formValues.city} onChange={e => setFormValues({...formValues, city: e.target.value})} required className="bg-[#0A0A0B]" />
+                                            <Input name="state" label="UF *" value={formValues.state} onChange={e => setFormValues({...formValues, state: e.target.value})} maxLength={2} required className="bg-[#0A0A0B] uppercase" />
+                                        </div>
 
-                        <div className="glass-panel p-5 rounded-xl flex flex-col gap-4 border border-brand-border/40 shadow-sm bg-brand-surface/10 flex-1 relative z-20">
-                            <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2 border-b border-brand-border/30 pb-3 mb-1">
-                                <Activity className="w-4 h-4 text-brand-neon" />
-                                Informações do Painel
-                            </h2>
-                            <div className="grid grid-cols-2 gap-4 items-end">
-                                <Input name="size" label="Tamanho" defaultValue={initialData?.size} placeholder="4x8m" required />
-                                <Input name="px" label="Resolução" defaultValue={initialData?.px} placeholder="960x1920" required />
-                                <Input name="impacts" label="Impacto Diário" defaultValue={initialData?.impacts} placeholder="400.000" required />
-                                <Input name="price" type="number" step="0.01" label="Valor Mensal (R$)" defaultValue={initialData?.price} placeholder="1500.00" required />
-                                <div className="col-span-2 flex flex-col justify-end gap-[6px] relative z-50 mt-1">
-                                    <label className="text-sm font-medium text-brand-muted">Status</label>
-                                    <CustomSelect options={statusOptions} value={status} onChange={setStatus} placeholder="Selecione..." />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        <div className="relative mt-2">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <LinkIcon className="h-4 w-4 text-[#8F8F91]" />
+                                            </div>
+                                            <input type="text" placeholder="Cole o link do Google Maps para buscar as coordenadas..." value={googleUrl} onChange={handleGoogleLinkPaste} className="w-full bg-[#0A0A0B] border border-white/10 rounded-md pl-10 pr-4 py-3 text-[13px] text-white focus:border-[#FF5E00] focus:outline-none transition-colors shadow-inner" />
+                                        </div>
 
-                    <div className="lg:col-span-7 glass-panel p-5 rounded-xl flex flex-col border border-brand-border/40 shadow-sm bg-brand-surface/10 h-full relative z-0">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
-                            <h2 className="text-sm font-semibold text-brand-text flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-brand-neon" />
-                                Posicionamento no Mapa
-                            </h2>
-                            <div className="flex justify-end gap-3 w-full sm:w-auto">
-                                <button type="button" onClick={() => navigate('/dashboard/paineis')} className="px-5 py-2 rounded-lg text-sm font-medium text-brand-muted hover:text-white border border-brand-border/60 hover:border-brand-border bg-transparent hover:bg-brand-surface/50 transition-all">
-                                    Cancelar
-                                </button>
-                                <button type="submit" disabled={isSaving} className="px-6 py-2 rounded-lg text-sm font-bold text-brand-black bg-brand-neon hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    Salvar
-                                </button>
-                            </div>
-                        </div>
+                                        <div className="grid grid-cols-2 gap-4 mt-2">
+                                            <Input name="lat" label="Latitude *" type="number" step="any" value={latInput} onChange={handleLatChange} required className="bg-[#0A0A0B]" />
+                                            <Input name="lng" label="Longitude *" type="number" step="any" value={lngInput} onChange={handleLngChange} required className="bg-[#0A0A0B]" />
+                                        </div>
+                                    </>
+                                )}
 
-                        <div className="relative mb-4 shrink-0">
-                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                                <LinkIcon className="h-4 w-4 text-brand-muted" />
-                            </div>
-                            <input type="text" placeholder="Cole o link completo do Google Maps ou as coordenadas..." value={googleUrl} onChange={handleGoogleLinkPaste} className="w-full bg-brand-black/50 border border-brand-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-brand-text focus:border-brand-neon focus:outline-none transition-colors" />
-                        </div>
+                                {currentStep === 3 && (
+                                    <>
+                                        <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+                                            <Activity className="w-4 h-4 text-[#FF5E00]" /> Ficha Técnica
+                                        </h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input name="size" label="Formato Físico *" value={formValues.size} onChange={e => setFormValues({...formValues, size: e.target.value})} placeholder="4x8m" required className="bg-[#0A0A0B]" />
+                                            <Input name="px" label="Resolução (Px) *" value={formValues.px} onChange={e => setFormValues({...formValues, px: e.target.value})} placeholder="960x1920" required className="bg-[#0A0A0B]" />
+                                            <Input name="impacts" label="Impactos Diários *" value={formValues.impacts} onChange={e => setFormValues({...formValues, impacts: e.target.value})} placeholder="400mil" required className="bg-[#0A0A0B]" />
+                                            <Input name="price" label="Valor Base Mensal (R$) *" type="number" step="0.01" value={formValues.price} onChange={e => setFormValues({...formValues, price: e.target.value})} placeholder="1500.00" required className="bg-[#0A0A0B]" />
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4 shrink-0">
-                            <Input
-                                name="lat"
-                                label="Latitude"
-                                type="number"
-                                step="any"
-                                value={latInput}
-                                onChange={handleLatChange}
-                                placeholder="-16.6869"
-                                required
-                            />
-                            <Input
-                                name="lng"
-                                label="Longitude"
-                                type="number"
-                                step="any"
-                                value={lngInput}
-                                onChange={handleLngChange}
-                                placeholder="-49.2648"
-                                required
-                            />
-                        </div>
-
-                        {/* MAPA DESKTOP MODIFICADO: OpenStreetMap + Tailwind CSS Filters para Dark Mode */}
-                        <div className="flex-1 w-full rounded-lg overflow-hidden border border-brand-border bg-[#0A0A0B] relative min-h-[400px] z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
-                            <MapContainer
-                                center={position}
-                                zoom={14}
-                                minZoom={3}
-                                maxBounds={worldBounds}
-                                maxBoundsViscosity={1.0}
-                                className="w-full h-full outline-none absolute inset-0 z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-10 [&_.leaflet-layer]:contrast-125"
-                                zoomControl={true}
+                        {/* CONTROLES DE NAVEGAÇÃO DO WIZARD */}
+                        <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between">
+                            <Button 
+                                type="button" variant="secondary" 
+                                disabled={currentStep === 1} 
+                                onClick={() => setCurrentStep(c => c - 1)}
+                                className="bg-[#0A0A0B] border-white/10 text-white rounded-sm text-[10px] uppercase font-bold tracking-widest px-6"
                             >
-                                <TileLayer
-                                    noWrap={true}
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                                />
-                                <Marker position={position} icon={neonMarker} />
-                                <MapClickHandler setPosition={setPosition} />
-                                <MapCenterUpdater lat={position[0]} lng={position[1]} />
-                            </MapContainer>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            {/* MOBILE LAYOUT */}
-            <div className="flex lg:hidden flex-col w-full relative">
-
-                <div className="flex items-center gap-3 mb-6 shrink-0">
-                    <Link to="/dashboard/paineis">
-                        <button className="p-2 bg-[#111113] border border-white/5 rounded-full shadow-md active:scale-95 transition-transform text-white">
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                    </Link>
-                    <div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">{isEditing ? 'Editar Painel' : 'Novo Painel'}</h1>
-                        <p className="text-[11px] text-brand-muted mt-0.5">Preencha as informações do ponto</p>
-                    </div>
-                </div>
-
-                <form id="mobile-panel-form" onSubmit={handleSave} className="flex flex-col gap-6">
-
-                    <div className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md">
-                        <h2 className="text-[13px] font-bold text-white flex items-center gap-2 mb-3">
-                            <ImageIcon className="w-4 h-4 text-brand-neon" /> Imagem do Ponto
-                        </h2>
-                        <label htmlFor="dropzone-file-mobile" className="flex flex-col items-center justify-center w-full h-40 border border-brand-border/40 border-dashed rounded-xl cursor-pointer bg-[#0A0A0B] relative overflow-hidden">
-                            {imagePreview ? (
-                                <>
-                                    <img src={imagePreview} alt="Preview do Painel" className="w-full h-full object-cover opacity-80" />
-                                    <div className="absolute bottom-2 right-2 bg-[#0A0A0B]/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-lg">
-                                        <p className="text-[10px] font-bold text-white uppercase tracking-wider">Trocar Foto</p>
-                                    </div>
-                                </>
+                                Voltar
+                            </Button>
+                            
+                            {currentStep < 3 ? (
+                                <Button 
+                                    type="button" 
+                                    onClick={() => setCurrentStep(c => c + 1)}
+                                    className="bg-[#111113] border-white/10 hover:border-[#FF5E00] text-white rounded-sm text-[10px] uppercase font-bold tracking-widest px-6 flex items-center gap-2"
+                                >
+                                    Avançar <ArrowRight className="w-4 h-4" />
+                                </Button>
                             ) : (
-                                <div className="flex flex-col items-center justify-center text-center px-4">
-                                    <ImageIcon className="w-8 h-8 text-brand-border mb-2" />
-                                    <p className="text-xs text-brand-muted font-medium">Toque para selecionar a imagem</p>
-                                </div>
+                                <Button 
+                                    type="button" 
+                                    onClick={handleSave}
+                                    disabled={isSaving || !formValues.name || !formValues.size || !formValues.price}
+                                    className="bg-[#25D366] border-none text-[#0A0A0B] rounded-sm text-[10px] uppercase font-black tracking-widest px-8 flex items-center gap-2 hover:bg-[#1eb858] transition-colors"
+                                >
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                    {isSaving ? 'Salvando...' : 'Finalizar e Salvar'}
+                                </Button>
                             )}
-                            <input id="dropzone-file-mobile" type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
-                        </label>
-                    </div>
-
-                    <div className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md gap-4">
-                        <h2 className="text-[13px] font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
-                            <MapPin className="w-4 h-4 text-brand-neon" /> Logradouro
-                        </h2>
-                        <Input name="name" label="Nome da Localização *" defaultValue={initialData?.name} placeholder="Ex: Av T7 - Setor Oeste" required className="bg-[#0A0A0B]" />
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input name="city" label="Cidade *" defaultValue={initialData?.city || "Goiânia"} placeholder="Goiânia" required className="bg-[#0A0A0B]" />
-                            <Input name="state" label="Estado *" defaultValue={initialData?.state || "GO"} placeholder="GO" maxLength={2} required className="bg-[#0A0A0B]" />
                         </div>
                     </div>
-
-                    <div className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md gap-4">
-                        <h2 className="text-[13px] font-bold text-white flex items-center gap-2 pb-2 border-b border-white/5">
-                            <Activity className="w-4 h-4 text-brand-neon" /> Ficha Técnica
-                        </h2>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input name="size" label="Tamanho *" defaultValue={initialData?.size} placeholder="4x8m" required className="bg-[#0A0A0B]" />
-                            <Input name="px" label="Resolução *" defaultValue={initialData?.px} placeholder="960x1920" required className="bg-[#0A0A0B]" />
-                            <Input name="impacts" label="Impactos/Dia *" defaultValue={initialData?.impacts} placeholder="400mil" required className="bg-[#0A0A0B]" />
-                            <Input name="price" type="number" step="0.01" label="Valor (R$) *" defaultValue={initialData?.price} placeholder="1500.00" required className="bg-[#0A0A0B]" />
-                        </div>
-                        <div className="flex flex-col gap-1.5 mt-1 relative z-50">
-                            <label className="text-[11px] font-medium text-brand-muted ml-1">Status Operacional</label>
-                            <CustomSelect options={statusOptions} value={status} onChange={setStatus} placeholder="Selecione..." />
-                        </div>
-                    </div>
-
-                    <div className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex flex-col shadow-md">
-                        <h2 className="text-[13px] font-bold text-white flex items-center gap-2 pb-3">
-                            <MapPin className="w-4 h-4 text-brand-neon" /> Posicionamento no Mapa
-                        </h2>
-
-                        <div className="relative mb-4">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <LinkIcon className="h-4 w-4 text-brand-muted" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Cole o link completo do Google Maps ou as coordenadas..."
-                                value={googleUrl}
-                                onChange={handleGoogleLinkPaste}
-                                className="w-full bg-[#0A0A0B] border border-brand-border/40 rounded-xl pl-9 pr-3 py-3 text-xs text-brand-text focus:border-brand-neon focus:outline-none transition-colors shadow-inner"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            <Input
-                                name="lat"
-                                label="Latitude *"
-                                type="number"
-                                step="any"
-                                value={latInput}
-                                onChange={handleLatChange}
-                                placeholder="-16.6869"
-                                required
-                                className="bg-[#0A0A0B]"
-                            />
-                            <Input
-                                name="lng"
-                                label="Longitude *"
-                                type="number"
-                                step="any"
-                                value={lngInput}
-                                onChange={handleLngChange}
-                                placeholder="-49.2648"
-                                required
-                                className="bg-[#0A0A0B]"
-                            />
-                        </div>
-
-                        {/* MAPA MOBILE MODIFICADO: OpenStreetMap + Tailwind CSS Filters para Dark Mode */}
-                        <div className="w-full h-[300px] rounded-xl overflow-hidden border border-brand-border/40 bg-[#0A0A0B] relative z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
-                            <MapContainer center={position} zoom={15} minZoom={3} maxBounds={worldBounds} maxBoundsViscosity={1.0} className="w-full h-full outline-none absolute inset-0" zoomControl={false}>
-                                <TileLayer
-                                    noWrap={true}
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                                />
-                                <Marker position={position} icon={neonMarker} />
-                                <MapClickHandler setPosition={setPosition} />
-                                <MapCenterUpdater lat={position[0]} lng={position[1]} />
-                            </MapContainer>
-                        </div>
-                        <p className="text-[10px] text-brand-muted/70 text-center mt-3">Toque no mapa para ajustar a posição do pino.</p>
-                    </div>
-
-                </form>
-
-                <div className="h-[200px] w-full shrink-0 pointer-events-none" aria-hidden="true" />
-
-                <div className="fixed bottom-[72px] left-0 right-0 p-4 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-brand-border/20 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] z-[90] pb-safe flex gap-3">
-                    <Link to="/dashboard/paineis" className="w-1/3">
-                        <Button
-                            variant="secondary"
-                            className="w-full h-14 bg-[#111113] border-white/10 text-brand-muted hover:text-white rounded-2xl text-[13px] font-bold"
-                        >
-                            Cancelar
-                        </Button>
-                    </Link>
-                    <Button
-                        type="submit"
-                        form="mobile-panel-form"
-                        disabled={isSaving}
-                        className="w-2/3 h-14 bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] rounded-2xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] active:scale-[0.98] transition-all border-none"
-                    >
-                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                        {isSaving ? 'Salvando...' : 'Salvar Painel'}
-                    </Button>
                 </div>
-            </div>
 
+                {/* MAP PREVIEW COLUMN (SEMPRE VISÍVEL) */}
+                <div className="w-full lg:w-1/2 flex flex-col h-[400px] lg:h-auto bg-[#111113] border border-white/5 rounded-md overflow-hidden shadow-xl">
+                    <div className="p-4 bg-[#0A0A0B] border-b border-white/5 shrink-0 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#8F8F91]" />
+                        <span className="text-[10px] uppercase font-bold text-[#8F8F91] tracking-widest">Pré-visualização do Ponto</span>
+                    </div>
+                    <div className="flex-1 w-full bg-black relative z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
+                        <MapContainer center={position} zoom={15} minZoom={3} maxBounds={worldBounds} maxBoundsViscosity={1.0} className="w-full h-full outline-none absolute inset-0 z-0">
+                            <TileLayer
+                                noWrap={true}
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; OpenStreetMap'
+                            />
+                            <Marker position={position} icon={neonMarker} />
+                            <MapClickHandler setPosition={setPosition} />
+                            <MapCenterUpdater lat={position[0]} lng={position[1]} />
+                        </MapContainer>
+                    </div>
+                </div>
+
+            </div>
         </div>
     );
 }

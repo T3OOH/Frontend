@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
     LayoutDashboard, Map as MapIcon, List, LogOut, Globe, Menu, X,
-    Users, ShoppingCart, ReceiptText, Sun, Moon, Images, 
+    Users, ShoppingCart, ReceiptText, Sun, Moon, Images, Building2
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -79,6 +79,10 @@ export function DashboardLayout() {
                     <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Produtos & Soluções</span>
                     <Link to="/dashboard/solution" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/solution')}`}>
                         <Images className="w-[18px] h-[18px]" /> Gestão T3 Solution
+                    </Link>
+
+                    <Link to="/dashboard/info" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/info')}`}>
+                        <Building2 className="w-[18px] h-[18px]" /> Gestão Institucional
                     </Link>
 
                     <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Administração</span>
@@ -207,6 +211,10 @@ export function DashboardLayout() {
 
                             <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/solution" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
                                 <Images className="w-5 h-5 text-brand-neon" /> Gestão T3 Solution
+                            </Link>
+
+                            <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/info" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
+                                <Building2 className="w-5 h-5 text-brand-neon" /> Gestão Institucional
                             </Link>
                             
                             <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/usuarios" className="flex items-center gap-3 p-4 rounded-xl border border-brand-border bg-brand-surface text-brand-text font-bold text-sm">
