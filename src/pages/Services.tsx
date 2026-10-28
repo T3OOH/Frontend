@@ -1,21 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    MapPin, ShoppingCart, X, Loader2, Search, Filter,
-    Heart, Maximize, CheckCircle, Tag, Activity, ShieldCheck
-} from 'lucide-react';
+import { ArrowRight, Check, Filter, Loader2, MapPin, Maximize, Plus, Search, ShoppingCart, Tag, X } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
 import { CustomSelect } from '@/components/CustomSelect';
-import { Button } from '@/components/Button';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 import { Seo } from '@/components/Seo';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+
+/** Desconto do plano de 12 meses, usado nos preços de vitrine (mesma regra do backend). */
+const ANNUAL_DISCOUNT = 0.3;
+const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
+const field = 'w-full border border-white/15 bg-ink-900 px-4 py-3 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none';
 
 const formatCurrency = (value: number | string) => {
     const numericValue = Number(value) || 0;
@@ -40,7 +43,6 @@ export function Services() {
     const [selectedState, setSelectedState] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
 
-    const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [selectedPanel, setSelectedPanel] = useState<CartPanel | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     useEscapeKey(Boolean(selectedPanel) || isSidebarOpen, () => { setSelectedPanel(null); setIsSidebarOpen(false); });
@@ -161,15 +163,10 @@ export function Services() {
     // ============================================================================
     const monthOptions = Array.from({ length: 12 }, (_, i) => {
         const month = i + 1;
-        let discountLabel = '(Valor Base)';
-        
-        if (month >= 12) discountLabel = '(30% OFF)';
-        else if (month >= 6) discountLabel = '(20% OFF)';
-        else if (month >= 3) discountLabel = '(15% OFF)';
-
+        const discount = month >= 12 ? 30 : month >= 6 ? 20 : month >= 3 ? 15 : 0;
         return {
             value: String(month),
-            label: `${month} Mês${month > 1 ? 'es' : ''} ${discountLabel}`
+            label: `${month} ${month > 1 ? 'meses' : 'mês'}${discount ? ` · ${discount}% de desconto` : ''}`
         };
     });
 
@@ -229,17 +226,6 @@ export function Services() {
         addToast('Cupom removido.', 'info');
     };
 
-    const toggleFavorite = (e: React.MouseEvent, panelId: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setFavorites(prev => {
-            const next = new Set(prev);
-            if (next.has(panelId)) next.delete(panelId);
-            else next.add(panelId);
-            return next;
-        });
-    };
-
     const handleOrderSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -275,313 +261,293 @@ export function Services() {
         }
     };
 
-    // Componente Interno do Card (Sem Seletor - Foco em Marketing)
-    const PanelCard = ({ panel }: { panel: Panel }) => {
-        const inCart = isInCart(panel.id);
-        const isFavorite = favorites.has(panel.id);
-        const basePrice = Number(panel.price) || 0;
-        
-        // Exibição padrão de Marketing (Preço de 12 Meses = 30% OFF)
-        const marketingDiscount = 0.30;
-        const marketingPrice = basePrice * (1 - marketingDiscount);
-
-        return (
-            <motion.div
-                onClick={() => setSelectedPanel(panel)}
-                whileHover={{ y: -5 }}
-                className={`bg-[#111113] rounded-md overflow-hidden border transition-all flex flex-col cursor-pointer ${inCart ? 'border-[#FF5E00]' : 'border-white/10 hover:border-white/30'}`}
-            >
-                <div className="h-[220px] relative bg-black shrink-0 w-full border-b border-white/5 group">
-                    <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105" />
-
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="bg-transparent text-white font-bold px-6 py-2.5 rounded-md border border-white/40 flex items-center gap-2 text-sm uppercase tracking-widest">
-                            <Maximize className="w-4 h-4" /> Detalhes Técnicos
-                        </div>
-                    </div>
-
-                    <button aria-label="Favoritar" onClick={(e) => toggleFavorite(e, panel.id)} className="absolute top-3 right-3 bg-[#0A0A0B] p-2 rounded-md border border-white/10 z-10 hover:border-[#FF5E00]/50 transition-colors">
-                        <Heart className={`w-4 h-4 transition-colors ${isFavorite ? 'fill-[#FF5E00] text-[#FF5E00]' : 'text-white'}`} />
-                    </button>
-                    
-                    <div className="absolute top-3 left-3 bg-[#FF5E00] text-white font-black px-2 py-1 rounded-sm text-[10px] uppercase tracking-widest">
-                        Até 30% OFF no plano anual
-                    </div>
-                </div>
-                
-                <div className="p-5 flex flex-col flex-1 relative z-10">
-                    <div className="mb-4">
-                        <h3 className="text-base font-bold text-white line-clamp-1 pr-2 mb-1 uppercase tracking-wide">{panel.name}</h3>
-                        <p className="text-xs text-[#8F8F91] flex items-center gap-1.5 truncate"><MapPin className="w-3.5 h-3.5 text-[#FF5E00] shrink-0" /> <span className="truncate">{panel.city} - {panel.state}</span></p>
-                    </div>
-
-                    <div className="flex flex-col gap-3 mt-auto border-t border-white/10 pt-4">
-                        <div className="flex flex-col">
-                            <div className="flex justify-between items-center text-[10px] text-[#8F8F91] uppercase font-bold tracking-wider mb-1">
-                                <span>Valor Mensal (Plano 12x)</span>
-                                <span className="line-through">{formatCurrency(basePrice)}</span>
-                            </div>
-                            <div className="flex justify-between items-end">
-                                <span className="text-2xl font-black text-[#FF5E00]">{formatCurrency(marketingPrice)}</span>
-                            </div>
-                        </div>
-
-                        <button onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }} className={`w-full py-3 rounded-md text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${inCart ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-white hover:bg-[#e05300]'}`}>
-                            {inCart ? <><X className="w-4 h-4" /> Remover</> : <><ShoppingCart className="w-4 h-4" /> Adicionar</>}
-                        </button>
-                    </div>
-                </div>
-            </motion.div>
-        );
-    };
+    const resetFilters = () => { setSearchTerm(''); setSelectedState(''); setSelectedCity(''); };
+    const hasFilters = Boolean(searchTerm || selectedState || selectedCity);
+    const closeSidebar = () => { setIsSidebarOpen(false); if (checkoutStep === 'success') setCheckoutStep('cart'); };
 
     return (
         <>
         <Seo title="Catálogo de painéis" description="Catálogo de painéis de LED e mídia exterior com localização, formato e investimento. Monte seu pacote e solicite orçamento." path="/servicos" />
-        <div className="relative w-full min-h-screen bg-[#0A0A0B] flex flex-col overflow-x-hidden selection:bg-[#FF5E00]/30 selection:text-[#FF5E00]">
 
-            <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
+        {/* ============================ CABEÇALHO (sobre o vídeo da cidade) ============================ */}
+        <section className="mx-auto grid max-w-[1400px] grid-cols-1 items-end gap-8 px-4 pb-14 pt-12 md:grid-cols-[1fr_auto] md:px-8 md:pb-20 lg:pt-20">
+            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                <p className="mb-8 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-400">
+                    Inventário <span className="text-brand-neon">/</span> {isLoading ? 'carregando' : `${panels.length} ${panels.length === 1 ? 'ponto disponível' : 'pontos disponíveis'}`}
+                </p>
+                <h1 className="text-[2.75rem] font-light uppercase leading-[0.95] tracking-tight text-ink-100 sm:text-6xl xl:text-7xl">
+                    Catálogo<br /><span className="text-brand-neon">de painéis.</span>
+                </h1>
+                <p className="mt-8 max-w-[50ch] text-base leading-relaxed text-ink-300">
+                    Escolha os pontos da campanha e defina o prazo no resumo. Os valores já mostram o desconto do plano anual.
+                </p>
+            </motion.div>
+            <button type="button" onClick={() => setIsSidebarOpen(true)} className={`${btnGhost} relative self-end bg-ink-950/60 backdrop-blur-sm`}>
+                <ShoppingCart className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Resumo do projeto
+                {cart.length > 0 && <span className="ml-1 bg-brand-neon px-2 py-0.5 font-mono text-xs text-ink-950" aria-label={`${cart.length} painéis no projeto`}>{cart.length}</span>}
+            </button>
+        </section>
 
-            {/* HEADER E FILTROS */}
-            <div className="flex flex-col max-w-[1400px] mx-auto px-6 relative z-10 w-full pt-10 pb-16">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-                    <div>
-                        <h1 className="text-3xl md:text-5xl font-light uppercase text-white tracking-tight flex items-center gap-3">
-                            Catálogo de painéis
-                        </h1>
-                        <p className="text-[#8F8F91] mt-3 font-medium text-sm md:text-base">Escolha os pontos da sua campanha e defina o prazo no carrinho.</p>
-                    </div>
-                    
-                    <button onClick={() => setIsSidebarOpen(true)} className="relative bg-[#111113] border border-white/10 px-8 py-4 rounded-md text-white font-bold hover:border-[#FF5E00] hover:text-white uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2">
-                        <ShoppingCart className="w-4 h-4" /> Resumo do Projeto
-                        {cart.length > 0 && <span className="absolute -top-2 -right-2 w-6 h-6 bg-[#FF5E00] text-white text-xs font-black rounded-sm flex items-center justify-center">{cart.length}</span>}
+        {/* ============================ FILTROS (fixos ao rolar) ============================ */}
+        <div className="sticky top-20 z-20 border-y border-white/[0.08] bg-ink-950/95 backdrop-blur-sm">
+            <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:px-8">
+                <div className="relative flex-1">
+                    <label htmlFor="catalog-search" className="sr-only">Buscar painéis</label>
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" strokeWidth={1.75} aria-hidden="true" />
+                    <input id="catalog-search" type="search" placeholder="Avenida, região ou nome do painel" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full border border-white/15 bg-ink-900 py-3 pl-11 pr-4 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none" autoComplete="off" />
+                </div>
+                <div className="grid grid-cols-2 gap-3 md:w-[420px]">
+                    <div className="relative z-30"><CustomSelect options={stateOptions} value={selectedState} onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }} placeholder="Estado" icon={<Filter className="h-4 w-4" />} /></div>
+                    <div className="relative z-20"><CustomSelect options={cityOptions} value={selectedCity} onChange={(val: string) => setSelectedCity(val)} placeholder="Cidade" icon={<MapPin className="h-4 w-4" />} disabled={cityOptions.length <= 1} /></div>
+                </div>
+                {hasFilters && <button type="button" onClick={resetFilters} className="text-sm text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Limpar</button>}
+                {/* Atalho para o resumo, visível mesmo depois de rolar o cabeçalho */}
+                {cart.length > 0 && (
+                    <button type="button" onClick={() => setIsSidebarOpen(true)} className="inline-flex items-center justify-center gap-2 bg-brand-neon px-4 py-3 text-sm font-semibold text-ink-950 hover:bg-brand-neonHover">
+                        <ShoppingCart className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Resumo · <span className="font-mono">{cart.length}</span>
                     </button>
-                </div>
-
-                {/* BARRA DE FILTROS SÓLIDA */}
-                <div className="bg-[#111113] p-4 md:p-6 rounded-md mb-12 border border-white/10 relative z-20 flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-5 w-5 text-[#8F8F91] group-focus-within:text-[#FF5E00] transition-colors" /></div>
-                        <input type="text" placeholder="Buscar por avenida, região ou nome do painel..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-12 pr-4 py-3.5 bg-[#0A0A0B] border border-white/10 rounded-md text-white placeholder:text-[#8F8F91] focus:outline-none focus:border-[#FF5E00] transition-colors font-medium text-sm" autoComplete="off" />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 md:w-5/12">
-                        <div className="w-full relative z-30"><CustomSelect options={stateOptions} value={selectedState} onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }} placeholder="Estado" icon={<Filter className="w-4 h-4" />} /></div>
-                        <div className={`w-full relative z-20 ${!selectedState && cityOptions.length === 1 ? 'opacity-40 pointer-events-none' : ''}`}><CustomSelect options={cityOptions} value={selectedCity} onChange={(val: string) => setSelectedCity(val)} placeholder="Cidade" icon={<MapPin className="w-4 h-4" />} /></div>
-                    </div>
-                </div>
-
-                {/* GRID DE RESULTADOS */}
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-32 relative z-10"><Loader2 className="w-10 h-10 text-[#FF5E00] animate-spin mb-4" /><p className="text-[#8F8F91] uppercase tracking-widest text-xs font-bold">Carregando Inventário...</p></div>
-                ) : filteredPanels.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-[#111113] rounded-md border border-white/10 relative z-10"><Search className="w-16 h-16 text-white/10 mb-4" /><h3 className="text-lg font-bold text-white mb-2">Nenhum Ponto Encontrado</h3><p className="text-sm text-[#8F8F91] text-center max-w-md">Modifique sua busca ou limpe os filtros selecionados.</p></div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 relative z-10 pb-20">
-                        {filteredPanels.map(panel => <PanelCard key={panel.id} panel={panel} />)}
-                    </div>
                 )}
             </div>
+        </div>
 
-            {/* MODAL DETALHES DO PAINEL (VER MAIS SÓLIDO E DIRETO) */}
-            <AnimatePresence>
-                {selectedPanel && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4">
-                        <div className="absolute inset-0 cursor-pointer" onClick={() => setSelectedPanel(null)} />
-                        
-                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="w-full max-w-[900px] bg-[#0A0A0B] border border-white/10 rounded-md overflow-hidden relative z-10 flex flex-col md:flex-row max-h-[90vh]">
-                            
-                            <button aria-label="Fechar" onClick={() => setSelectedPanel(null)} className="absolute top-4 right-4 z-50 bg-[#111113] border border-white/10 p-2 rounded-sm text-[#8F8F91] hover:text-white hover:border-[#FF5E00] transition-colors"><X className="w-5 h-5" /></button>
-                            
-                            <div className="w-full md:w-1/2 h-[250px] md:h-auto bg-black relative border-b md:border-b-0 md:border-r border-white/5">
-                                <img src={selectedPanel.images?.[0] || '/placeholder.svg'} alt={selectedPanel.name} className="w-full h-full object-cover opacity-80" />
-                                <div className="absolute bottom-4 left-4 bg-[#FF5E00] text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-sm">
-                                    Ponto Auditado
-                                </div>
+        {/* ============================ GRADE DE PAINÉIS ============================ */}
+        <section className="bg-ink-950">
+            <div className="mx-auto max-w-[1400px] px-4 py-10 md:px-8 md:py-14">
+                {isLoading ? (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-busy="true" aria-label="Carregando painéis">
+                        {Array.from({ length: 6 }, (_, i) => (
+                            <div key={i} className="bg-ink-900">
+                                <div className="aspect-[4/3] animate-pulse bg-ink-850" />
+                                <div className="space-y-3 p-5"><div className="h-3 w-1/3 animate-pulse bg-ink-800" /><div className="h-5 w-2/3 animate-pulse bg-ink-800" /><div className="h-10 animate-pulse bg-ink-800" /></div>
                             </div>
-                            
-                            <div className="w-full md:w-1/2 p-8 overflow-y-auto flex flex-col bg-[#111113]">
-                                <span className="text-[#FF5E00] text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {selectedPanel.city} - {selectedPanel.state}</span>
-                                <h2 className="text-2xl font-black text-white mb-6 uppercase leading-tight">{selectedPanel.name}</h2>
-                                
-                                <div className="grid grid-cols-2 gap-4 mb-8">
-                                    <div className="bg-[#0A0A0B] border border-white/5 p-4 rounded-md">
-                                        <Activity className="w-5 h-5 text-[#FF5E00] mb-2" />
-                                        <p className="text-[10px] text-[#8F8F91] uppercase tracking-wider font-bold mb-1">Impactos / Dia</p>
-                                        <p className="text-lg font-black text-white">{selectedPanel.impacts || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-[#0A0A0B] border border-white/5 p-4 rounded-md">
-                                        <Maximize className="w-5 h-5 text-[#FF5E00] mb-2" />
-                                        <p className="text-[10px] text-[#8F8F91] uppercase tracking-wider font-bold mb-1">Formato</p>
-                                        <p className="text-lg font-black text-white">{selectedPanel.size || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-[#0A0A0B] border border-white/5 p-4 rounded-md col-span-2 flex items-center gap-4">
-                                        <ShieldCheck className="w-5 h-5 text-[#FF5E00] shrink-0" />
-                                        <div>
-                                            <p className="text-[10px] text-[#8F8F91] uppercase tracking-wider font-bold">Resolução da Tela</p>
-                                            <p className="text-sm font-black text-white">{selectedPanel.px || 'Alta Definição'}</p>
+                        ))}
+                    </div>
+                ) : filteredPanels.length === 0 ? (
+                    <div className="border border-dashed border-white/15 p-10 md:p-16">
+                        <h2 className="text-2xl font-light uppercase tracking-tight text-ink-100">Nenhum ponto encontrado</h2>
+                        <p className="mt-3 max-w-[50ch] text-ink-400">
+                            {hasFilters ? 'Nenhum painel bate com a busca e os filtros escolhidos.' : 'Não há painéis disponíveis agora. Fale com o comercial para saber das próximas liberações.'}
+                        </p>
+                        {hasFilters
+                            ? <button type="button" onClick={resetFilters} className={`mt-6 ${btnGhost}`}>Limpar filtros</button>
+                            : <Link to="/contato" className={`mt-6 ${btnGhost}`}>Falar com o comercial</Link>}
+                    </div>
+                ) : (
+                    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                        {filteredPanels.map((panel, i) => {
+                            const inCart = isInCart(panel.id);
+                            const basePrice = Number(panel.price) || 0;
+                            const impacts = parseImpacts(panel.impacts);
+                            return (
+                                <motion.li
+                                    key={panel.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true, margin: '-40px' }}
+                                    transition={{ ...spring, delay: (i % 4) * 0.05 }}
+                                    className={`group flex flex-col bg-ink-900 outline outline-1 -outline-offset-1 ${inCart ? 'outline-brand-neon' : 'outline-transparent'}`}
+                                >
+                                    <button type="button" onClick={() => setSelectedPanel(panel)} className="relative block aspect-[4/3] overflow-hidden bg-ink-850 text-left" aria-label={`Ver detalhes de ${panel.name}`}>
+                                        <img src={panel.images?.[0] || '/placeholder.svg'} alt="" loading="lazy" className="h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0" />
+                                        <span className="absolute left-0 top-0 bg-ink-950 px-3 py-1.5 font-mono text-[11px] text-ink-300">{String(i + 1).padStart(2, '0')}</span>
+                                        <span className="absolute bottom-0 right-0 flex items-center gap-1.5 bg-ink-950 px-3 py-1.5 text-xs text-ink-100 opacity-0 transition-opacity group-hover:opacity-100">
+                                            <Maximize className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Detalhes
+                                        </span>
+                                    </button>
+                                    <div className="flex flex-1 flex-col p-5">
+                                        <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-ink-400">
+                                            <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                                            <span className="truncate">{[panel.city, panel.state].filter(Boolean).join(' · ')}</span>
+                                        </p>
+                                        <h2 className="mt-2 line-clamp-2 text-lg font-medium tracking-tight text-ink-100">{panel.name}</h2>
+                                        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-4 font-mono text-xs">
+                                            <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-1 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
+                                            <div><dt className="text-ink-500">Formato</dt><dd className="mt-1 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                        </dl>
+                                        <div className="mt-auto pt-5">
+                                            {basePrice > 0 ? (
+                                                <p className="font-mono">
+                                                    <span className="block text-xs text-ink-500 line-through">{formatCurrency(basePrice)}</span>
+                                                    <span className="text-xl text-brand-neon">{formatCurrency(basePrice * (1 - ANNUAL_DISCOUNT))}</span>
+                                                    <span className="text-xs text-ink-400"> /mês no plano anual</span>
+                                                </p>
+                                            ) : <p className="text-sm text-ink-400">Valor sob consulta</p>}
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleInCart(panel)}
+                                                aria-pressed={inCart}
+                                                className={`mt-4 w-full ${inCart ? btnGhost : btnPrimary}`}
+                                            >
+                                                {inCart ? <><Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> No projeto · remover</> : <><Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> Adicionar ao projeto</>}
+                                            </button>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                <div className="mt-auto border-t border-white/10 pt-6">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-[10px] text-[#8F8F91] uppercase font-bold tracking-widest">Valor Mensal (Plano Anual)</span>
-                                        <span className="text-[10px] text-[#8F8F91] line-through">{formatCurrency(Number(selectedPanel.price))}</span>
-                                    </div>
-                                    <div className="flex justify-between items-end mb-6">
-                                        <span className="text-3xl font-black text-[#FF5E00]">{formatCurrency(Number(selectedPanel.price) * 0.70)}</span>
-                                    </div>
-                                    
-                                    <Button onClick={() => { toggleInCart(selectedPanel); setSelectedPanel(null); }} className={`w-full py-4 text-xs tracking-widest font-black uppercase rounded-md border ${isInCart(selectedPanel.id) ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-white border-transparent hover:bg-[#e05300]'}`}>
-                                        {isInCart(selectedPanel.id) ? 'Remover do Projeto' : 'Adicionar ao Projeto'}
-                                    </Button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
+                                </motion.li>
+                            );
+                        })}
+                    </ul>
                 )}
-            </AnimatePresence>
+            </div>
+        </section>
 
-            {/* CARRINHO LATERAL Z-INDEX MÁXIMO SOBREPONDO TUDO */}
-            <AnimatePresence>
-                {isSidebarOpen && (
-                    <>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/80 z-[99998]" />
-                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25 }} className="fixed right-0 top-0 bottom-0 w-full md:w-[480px] bg-[#0A0A0B] border-l border-white/10 z-[99999] flex flex-col">
-                            
-                            <div className="px-6 py-6 border-b border-white/10 bg-[#111113] flex justify-between items-center shrink-0">
-                                <h2 className="text-lg font-black text-white uppercase tracking-widest">
-                                    {checkoutStep === 'success' ? 'Pedido Registrado!' : checkoutStep === 'cart' ? 'Resumo do Projeto' : 'Identificação'}
-                                </h2>
-                                <button aria-label="Fechar" onClick={() => { setIsSidebarOpen(false); if(checkoutStep === 'success') setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white p-1 bg-white/5 rounded-sm"><X className="w-5 h-5" /></button>
+        {/* ============================ DETALHES DO PAINEL ============================ */}
+        <AnimatePresence>
+            {selectedPanel && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[99999] flex items-center justify-center bg-ink-950/90 p-4" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+                    <div className="absolute inset-0" onClick={() => setSelectedPanel(null)} />
+                    <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={spring} className="relative z-10 flex max-h-[90vh] w-full max-w-[960px] flex-col overflow-hidden border border-white/10 bg-ink-950 md:flex-row">
+                        <button type="button" aria-label="Fechar" onClick={() => setSelectedPanel(null)} className="absolute right-0 top-0 z-10 bg-ink-950 p-3 text-ink-300 hover:text-ink-100"><X className="h-5 w-5" strokeWidth={1.75} /></button>
+
+                        <div className="relative h-[240px] shrink-0 bg-ink-900 md:h-auto md:w-1/2">
+                            <img src={selectedPanel.images?.[0] || '/placeholder.svg'} alt={`Painel ${selectedPanel.name}`} className="h-full w-full object-cover" />
+                        </div>
+
+                        <div className="flex flex-col overflow-y-auto p-6 md:w-1/2 md:p-10">
+                            <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-ink-400">
+                                <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> {[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}
+                            </p>
+                            <h2 id="panel-title" className="mt-3 text-3xl font-light uppercase leading-tight tracking-tight text-ink-100">{selectedPanel.name}</h2>
+
+                            <dl className="mt-8 grid grid-cols-2 border-t border-white/[0.08] font-mono text-sm">
+                                <div className="border-b border-white/[0.08] py-4 pr-4"><dt className="text-xs text-ink-500">Impactos por dia</dt><dd className="mt-1 text-ink-100">{selectedPanel.impacts || '—'}</dd></div>
+                                <div className="border-b border-l border-white/[0.08] py-4 pl-4"><dt className="text-xs text-ink-500">Formato</dt><dd className="mt-1 text-ink-100">{selectedPanel.size || '—'}</dd></div>
+                                <div className="col-span-2 border-b border-white/[0.08] py-4"><dt className="text-xs text-ink-500">Resolução</dt><dd className="mt-1 text-ink-100">{selectedPanel.px || '—'}</dd></div>
+                            </dl>
+
+                            <div className="mt-auto pt-8">
+                                {Number(selectedPanel.price) > 0 ? (
+                                    <p className="font-mono">
+                                        <span className="block text-xs text-ink-500">Plano anual · de <span className="line-through">{formatCurrency(Number(selectedPanel.price))}</span> por</span>
+                                        <span className="text-3xl text-brand-neon">{formatCurrency(Number(selectedPanel.price) * (1 - ANNUAL_DISCOUNT))}</span>
+                                        <span className="text-sm text-ink-400"> /mês</span>
+                                    </p>
+                                ) : <p className="text-ink-400">Valor sob consulta</p>}
+                                <button type="button" onClick={() => { toggleInCart(selectedPanel); setSelectedPanel(null); }} className={`mt-6 w-full ${isInCart(selectedPanel.id) ? btnGhost : btnPrimary}`}>
+                                    {isInCart(selectedPanel.id) ? 'Remover do projeto' : 'Adicionar ao projeto'}
+                                </button>
                             </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
 
-                            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
-                                {checkoutStep === 'success' ? (
-                                    <div className="flex flex-col items-center text-center mt-20">
-                                        <CheckCircle className="w-16 h-16 text-[#FF5E00] mb-6" />
-                                        <h3 className="text-2xl font-black text-white mb-2 uppercase">Projeto Solicitado!</h3>
-                                        <p className="text-[#8F8F91] text-sm leading-relaxed">Sua configuração de painéis foi enviada com sucesso para nossa equipe comercial. Entraremos em contato em breve.</p>
+        {/* ============================ RESUMO DO PROJETO (gaveta lateral) ============================ */}
+        <AnimatePresence>
+            {isSidebarOpen && (
+                <>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeSidebar} className="fixed inset-0 z-[99998] bg-ink-950/80" />
+                    <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 260, damping: 30 }} className="fixed bottom-0 right-0 top-0 z-[99999] flex w-full flex-col border-l border-white/10 bg-ink-950 md:w-[480px]" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+                        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-6 py-5">
+                            <div>
+                                <p className={eyebrow}>{checkoutStep === 'crm' ? 'Passo 2 de 2' : checkoutStep === 'cart' ? 'Passo 1 de 2' : 'Pronto'}</p>
+                                <h2 id="cart-title" className="mt-1 text-xl font-light uppercase tracking-tight text-ink-100">
+                                    {checkoutStep === 'success' ? 'Pedido registrado' : checkoutStep === 'cart' ? 'Resumo do projeto' : 'Seus dados'}
+                                </h2>
+                            </div>
+                            <button type="button" aria-label="Fechar" onClick={closeSidebar} className="p-2 text-ink-400 hover:text-ink-100"><X className="h-5 w-5" strokeWidth={1.75} /></button>
+                        </div>
+
+                        <div className="custom-scrollbar flex flex-1 flex-col overflow-y-auto p-6">
+                            {checkoutStep === 'success' ? (
+                                <div role="status" className="mt-12">
+                                    <span className="flex h-12 w-12 items-center justify-center bg-brand-neon text-ink-950"><Check className="h-6 w-6" strokeWidth={2} aria-hidden="true" /></span>
+                                    <h3 className="mt-6 text-3xl font-light uppercase tracking-tight text-ink-100">Projeto enviado</h3>
+                                    <p className="mt-3 leading-relaxed text-ink-400">O comercial recebeu os painéis e os valores do seu projeto e vai falar com você em breve. Você acompanha o pedido no seu perfil.</p>
+                                </div>
+                            ) : checkoutStep === 'cart' ? (
+                                cart.length === 0 ? (
+                                    <div className="mt-12">
+                                        <h3 className="text-2xl font-light uppercase tracking-tight text-ink-100">Nenhum painel ainda</h3>
+                                        <p className="mt-3 text-ink-400">Use "Adicionar ao projeto" nos painéis do catálogo para montar sua campanha.</p>
                                     </div>
-                                ) : checkoutStep === 'cart' ? (
-                                    cart.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
-                                            <ShoppingCart className="w-12 h-12 text-[#8F8F91] mb-4" />
-                                            <p className="text-sm font-medium text-[#8F8F91] uppercase tracking-widest">Seu projeto está vazio.</p>
+                                ) : (
+                                    <ul className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
+                                        {cart.map((p) => {
+                                            const itemBasePrice = Number(p.price) || 0;
+                                            return (
+                                                <li key={p.id} className="flex gap-4 py-4">
+                                                    <img src={p.images?.[0] || '/placeholder.svg'} alt="" className="h-20 w-24 shrink-0 bg-ink-900 object-cover" />
+                                                    <div className="flex min-w-0 flex-1 flex-col">
+                                                        <h4 className="truncate text-sm font-medium text-ink-100">{p.name}</h4>
+                                                        <p className="mt-1 truncate text-xs uppercase tracking-[0.1em] text-ink-400">{[p.city, p.state].filter(Boolean).join(' · ')}</p>
+                                                        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                                                            <p className="font-mono text-sm">
+                                                                {cartDiscount > 0 && <span className="mr-2 text-xs text-ink-500 line-through">{formatCurrency(itemBasePrice)}</span>}
+                                                                <span className="text-brand-neon">{formatCurrency(itemBasePrice * (1 - cartDiscount))}</span><span className="text-xs text-ink-400">/mês</span>
+                                                            </p>
+                                                            <button type="button" onClick={() => toggleInCart(p)} className="text-xs text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Remover</button>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )
+                            ) : (
+                                <form id="crm-form" onSubmit={handleOrderSubmit} className="flex flex-col gap-5">
+                                    <div><label htmlFor="o-name" className="mb-2 block text-sm text-ink-300">Nome completo</label><input id="o-name" required autoComplete="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={field} /></div>
+                                    <div><label htmlFor="o-phone" className="mb-2 block text-sm text-ink-300">WhatsApp</label><input id="o-phone" required type="tel" autoComplete="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={field} /></div>
+                                    <div><label htmlFor="o-company" className="mb-2 block text-sm text-ink-300">Agência ou empresa <span className="text-ink-500">(opcional)</span></label><input id="o-company" autoComplete="organization" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className={field} /></div>
+                                    <div><label htmlFor="o-msg" className="mb-2 block text-sm text-ink-300">Observações <span className="text-ink-500">(opcional)</span></label><textarea id="o-msg" rows={3} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} className={`${field} resize-none`} /></div>
+                                </form>
+                            )}
+                        </div>
+
+                        {checkoutStep === 'cart' ? (
+                            <div className="flex shrink-0 flex-col gap-5 border-t border-white/[0.08] p-6">
+                                <div>
+                                    <span className="mb-2 block text-sm text-ink-300">Duração da campanha</span>
+                                    <div className="relative z-50">
+                                        <CustomSelect options={monthOptions} value={cartMonths} onChange={(val: string) => setCartMonths(val)} placeholder="Duração do contrato" maxHeight="max-h-[132px]" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="coupon" className="mb-2 block text-sm text-ink-300">Cupom <span className="text-ink-500">(opcional)</span></label>
+                                    {appliedCoupon ? (
+                                        <div className="flex items-center justify-between gap-3 border border-brand-neon/40 px-4 py-3 text-sm text-brand-neon">
+                                            <span className="flex items-center gap-2 truncate"><Tag className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" /> {appliedCoupon.code} · {appliedCoupon.label}</span>
+                                            <button type="button" onClick={handleRemoveCoupon} className="text-xs text-ink-400 hover:text-ink-100">Remover</button>
                                         </div>
                                     ) : (
-                                        cart.map((p: any) => {
-                                            const itemBasePrice = Number(p.price) || 0;
-                                            const itemFinalPrice = itemBasePrice * (1 - cartDiscount);
-
-                                            return (
-                                                <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-md relative">
-                                                    <img src={p.images?.[0] || '/placeholder.svg'} alt={p.name} className="w-24 h-full min-h-[90px] rounded-sm object-cover shrink-0 bg-black opacity-80" />
-                                                    <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                                                        <h4 className="text-sm font-bold text-white truncate uppercase">{p.name}</h4>
-                                                        <p className="text-[10px] text-[#8F8F91] uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-[#FF5E00]"/> {p.city} - {p.state}</p>
-                                                        
-                                                        <div className="grid grid-cols-2 gap-2 mt-1">
-                                                            <span className="text-[9px] text-[#8F8F91] uppercase">Impactos: <span className="text-white font-bold">{p.impacts || 'N/A'}</span></span>
-                                                            <span className="text-[9px] text-[#8F8F91] uppercase">Formato: <span className="text-white font-bold">{p.size || 'N/A'}</span></span>
-                                                        </div>
-                                                        
-                                                        <div className="flex justify-between items-end mt-2 gap-2 border-t border-white/5 pt-2">
-                                                            <div className="flex flex-col">
-                                                                {cartDiscount > 0 && <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(itemBasePrice)}</span>}
-                                                                <span className="text-sm font-black text-[#FF5E00] truncate">{formatCurrency(itemFinalPrice)} <span className="text-[9px] text-[#8F8F91] font-normal uppercase">/mês</span></span>
-                                                            </div>
-                                                            <button onClick={() => toggleInCart(p)} className="text-[10px] text-red-500 uppercase font-bold shrink-0 hover:text-red-400">Remover</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    )
-                                ) : (
-                                    <form id="crm-form" onSubmit={handleOrderSubmit} className="flex flex-col gap-5">
-                                        <div className="flex flex-col gap-1.5"><label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Nome Completo *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="bg-[#111113] border border-white/10 rounded-md p-3.5 text-white focus:border-[#FF5E00] outline-none text-sm" /></div>
-                                        <div className="flex flex-col gap-1.5"><label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">WhatsApp *</label><input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="bg-[#111113] border border-white/10 rounded-md p-3.5 text-white focus:border-[#FF5E00] outline-none text-sm" /></div>
-                                        <div className="flex flex-col gap-1.5"><label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Agência/Empresa</label><input value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="bg-[#111113] border border-white/10 rounded-md p-3.5 text-white focus:border-[#FF5E00] outline-none text-sm" /></div>
-                                        <div className="flex flex-col gap-1.5"><label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Mensagem / Observações</label><textarea rows={3} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="bg-[#111113] border border-white/10 rounded-md p-3.5 text-white focus:border-[#FF5E00] outline-none resize-none text-sm" /></div>
-                                    </form>
-                                )}
-                            </div>
-
-                            {checkoutStep === 'cart' ? (
-                                <div className="bg-[#111113] p-6 border-t border-white/10 flex flex-col gap-5 shrink-0">
-                                    
-                                    <div className="flex flex-col gap-4">
-                                        {/* SELETOR GLOBAL DE MESES AQUI NO CARRINHO */}
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] uppercase font-bold tracking-widest block">Duração da Campanha</label>
-                                            <div className="relative z-50">
-                                                <CustomSelect 
-                                                    options={monthOptions} 
-                                                    value={cartMonths} 
-                                                    onChange={(val: string) => setCartMonths(val)} 
-                                                    placeholder="Duração do Contrato"
-                                                    maxHeight="max-h-[132px]" // Mostra ~3 itens por vez
-                                                />
-                                            </div>
+                                        <div className="flex">
+                                            <input id="coupon" type="text" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="CÓDIGO" className={`${field} font-mono uppercase`} />
+                                            <button type="button" onClick={handleApplyCoupon} disabled={!couponInput.trim() || cart.length === 0} className="border border-l-0 border-white/15 px-5 text-sm text-ink-100 hover:bg-ink-800 disabled:opacity-40">Aplicar</button>
                                         </div>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] uppercase font-bold tracking-widest block">Cupom de Desconto Extra</label>
-                                            {appliedCoupon ? (
-                                                <div className="flex items-center justify-between gap-3 bg-[#FF5E00]/5 border border-[#FF5E00]/20 p-3 rounded-md text-[#FF5E00]">
-                                                    <div className="flex items-center gap-2.5 truncate">
-                                                        <Tag className="w-4 h-4 shrink-0" />
-                                                        <span className="text-xs font-bold truncate">{appliedCoupon.code} ({appliedCoupon.label})</span>
-                                                    </div>
-                                                    <button onClick={handleRemoveCoupon} className="text-[10px] font-bold uppercase text-[#8F8F91] hover:text-white">Remover</button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <input 
-                                                        type="text"
-                                                        value={couponInput}
-                                                        onChange={(e) => setCouponInput(e.target.value)}
-                                                        placeholder="DIGITE O CUPOM"
-                                                        className="flex-1 bg-[#0A0A0B] border border-white/10 rounded-md px-4 py-3 text-xs text-white placeholder:text-[#555] focus:border-[#FF5E00] outline-none uppercase font-bold tracking-widest"
-                                                    />
-                                                    <Button onClick={handleApplyCoupon} className="bg-[#111113] border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest px-5 py-3 rounded-md hover:bg-white/5">Aplicar</Button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 bg-[#0A0A0B] p-4 rounded-md border border-white/5">
-                                            <span className="text-[10px] font-bold text-[#8F8F91] uppercase tracking-widest mb-1">Investimento Mensal Total</span>
-                                            <div className="flex justify-between items-end">
-                                                <span className="text-3xl font-black text-[#FF5E00]">{formatCurrency(finalCartMonthlyValue)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <Button disabled={cart.length === 0} onClick={() => setCheckoutStep('crm')} className="w-full bg-[#FF5E00] py-4 rounded-md font-black text-white text-xs uppercase tracking-widest hover:bg-[#e05300] transition-colors">Avançar para Identificação</Button>
-                                </div>
-                            ) : checkoutStep === 'crm' ? (
-                                <div className="bg-[#111113] p-6 border-t border-white/10">
-                                    {!user?.id && (
-                                        <p role="alert" className="mb-4 text-xs text-center text-[#8F8F91]">
-                                            Para finalizar o pedido, <Link to="/login" className="text-white underline">entre na sua conta</Link> ou <Link to="/cadastro" className="text-white underline">cadastre-se</Link>.
-                                        </p>
                                     )}
-                                    <Button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className="w-full bg-[#FF5E00] py-4 rounded-md font-black text-[#0A0A0B] hover:bg-[#FF7A29] text-xs uppercase tracking-widest">
-                                        {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : 'Finalizar Pedido'}
-                                    </Button>
-                                    <button onClick={() => setCheckoutStep('cart')} className="w-full text-center text-[10px] tracking-widest uppercase text-[#8F8F91] mt-4 hover:text-white font-bold">Voltar para o projeto</button>
                                 </div>
-                            ) : (
-                                <div className="bg-[#111113] p-6 border-t border-white/10">
-                                    <Button onClick={() => { setIsSidebarOpen(false); setCheckoutStep('cart'); }} className="w-full bg-white/10 text-white py-4 rounded-md font-black hover:bg-white/15 text-xs uppercase tracking-widest">Fechar Janela</Button>
+
+                                <div className="flex items-end justify-between border-t border-white/[0.08] pt-5">
+                                    <span className="text-sm text-ink-400">Investimento mensal</span>
+                                    <span className="font-mono text-3xl text-brand-neon">{formatCurrency(finalCartMonthlyValue)}</span>
                                 </div>
-                            )}
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-        </div>
+
+                                <button type="button" disabled={cart.length === 0} onClick={() => setCheckoutStep('crm')} className={`${btnPrimary} w-full`}>
+                                    Continuar <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                                </button>
+                            </div>
+                        ) : checkoutStep === 'crm' ? (
+                            <div className="shrink-0 border-t border-white/[0.08] p-6">
+                                {!user?.id && (
+                                    <p role="alert" className="mb-4 text-sm text-ink-400">
+                                        Para enviar o pedido, <Link to="/login" className="text-ink-100 underline underline-offset-4">entre na sua conta</Link> ou <Link to="/cadastro" className="text-ink-100 underline underline-offset-4">cadastre-se</Link>.
+                                    </p>
+                                )}
+                                <button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className={`${btnPrimary} w-full`}>
+                                    {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : 'Enviar pedido'}
+                                </button>
+                                <button type="button" onClick={() => setCheckoutStep('cart')} className="mt-4 w-full text-center text-sm text-ink-400 hover:text-ink-100">Voltar ao resumo</button>
+                            </div>
+                        ) : (
+                            <div className="shrink-0 border-t border-white/[0.08] p-6">
+                                <button type="button" onClick={closeSidebar} className={`${btnGhost} w-full`}>Fechar</button>
+                            </div>
+                        )}
+                    </motion.aside>
+                </>
+            )}
+        </AnimatePresence>
         </>
     );
 }
