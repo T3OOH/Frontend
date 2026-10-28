@@ -1,455 +1,303 @@
-import React, { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, Variants, AnimatePresence } from 'framer-motion';
-import { 
-    Home, Building2, Briefcase, Store, HardHat, MonitorCog, 
-    Maximize, SunMedium, Settings2, LayoutTemplate, Target, X, Loader2, CheckCircle
-} from 'lucide-react';
-import Aurora from '../components/Aurora';
-import DepthCarousel from '../components/DepthCarousel';
-import { Button } from '@/components/Button';
-import { CustomSelect } from '@/components/CustomSelect';
+import { FormEvent, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowRight, Check, ChevronDown, Loader2 } from 'lucide-react';
+
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
 import { Seo } from '@/components/Seo';
-import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { LedScreen, LedScene } from '@/components/led/LedScreen';
+import { CtaBand, btnOnOrange } from '@/components/CtaBand';
+import { btnDark, btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 
-// ==========================================
-// MOCK DATA (Fallback caso o banco esteja vazio)
-// ==========================================
-const MOCK_CAROUSEL_IMAGES = [
-    { image: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=800&auto=format&fit=crop', alt: 'Painel LED Corporativo' },
-    { image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop', alt: 'Painel Arquitetural' },
-    { image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=800&auto=format&fit=crop', alt: 'Painel Publicitário' },
-    { image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format&fit=crop', alt: 'Painel Vitrine' },
-    { image: 'https://images.unsplash.com/photo-1533750516457-d7f3acb28c05?q=80&w=800&auto=format&fit=crop', alt: 'Painel Eventos' }
+interface PortfolioItem { image: string; alt: string }
+
+const APPLICATIONS = [
+    { title: 'Residências', text: 'Áreas de lazer, salas de cinema, espaços gourmet e fachadas de casas de alto padrão.' },
+    { title: 'Condomínios', text: 'Avisos digitais para moradores e telas nas áreas comuns, com conteúdo atualizado de longe.' },
+    { title: 'Empresas', text: 'Recepções, salas de reunião, painéis de indicadores e comunicação interna.' },
+    { title: 'Comércio', text: 'Vitrines e pontos de venda com promoções que mudam ao longo do dia.' },
+    { title: 'Empreendimentos', text: 'Lançamentos imobiliários, stands, empenas e grandes fachadas.' },
+    { title: 'Sob medida', text: 'Formatos fora do padrão, respeitando as medidas e as restrições da arquitetura.' },
 ];
 
-const APLICATIVAS_OPTIONS = [
-    { value: "Residências", label: "Residências" },
-    { value: "Condomínios", label: "Condomínios" },
-    { value: "Empresas", label: "Empresas" },
-    { value: "Comércio", label: "Comércio" },
-    { value: "Empreendimentos", label: "Empreendimentos" },
-    { value: "Projetos Personalizados", label: "Projetos Personalizados" }
+const SPECS = [
+    { label: 'Indoor', value: 'Pixel fino e alta taxa de atualização, para quem vê a tela de perto.' },
+    { label: 'Outdoor', value: 'Brilho alto e gabinete resistente a sol e chuva, para fachadas e vias.' },
+    { label: 'Modular', value: 'Gabinetes encaixáveis que montam telas em praticamente qualquer formato.' },
+    { label: 'Estrutura', value: 'Totens, painéis embutidos em marcenaria, fachadas e estruturas metálicas.' },
 ];
+
+const STEPS = [
+    { title: 'Entendemos o espaço', text: 'Você conta onde a tela vai ficar e para que ela serve.' },
+    { title: 'Desenhamos a solução', text: 'Definimos tamanho, pixel, estrutura e a especificação técnica.' },
+    { title: 'Proposta', text: 'Você recebe o escopo e o investimento detalhados.' },
+    { title: 'Instalação', text: 'Com a aprovação, cuidamos da fixação, instalação e configuração.' },
+];
+
+/** Telão do hero: a tela "de produto" que a T3 Solution entrega. */
+const HERO_SCENES: LedScene[] = [
+    { type: 'logo', hold: 3200 },
+    { type: 'ad', lines: ['SUA TELA', 'SOB MEDIDA'], bg: '#FF5E00', fg: '#0B0B0C', stripe: '#0B0B0C', hold: 3600 },
+    { type: 'bars', hold: 2400 },
+    { type: 'text', lines: ['INDOOR', 'OUTDOOR'], hold: 3000 },
+];
+
+const CTA_SCENES: LedScene[] = [
+    { type: 'ticker', text: 'T3 SOLUTION  •  PAINÉIS DE LED SOB MEDIDA  •  PROJETO, INSTALAÇÃO E SUPORTE', hold: 12000 },
+    { type: 'logo', hold: 2600 },
+];
+
+const EMPTY_FORM = { name: '', phone: '', email: '', company: '', application: '', message: '' };
+
+const field = 'w-full border border-white/15 bg-ink-900 px-4 py-3.5 text-sm text-ink-100 placeholder:text-ink-500 transition-colors focus:border-brand-neon focus:outline-none';
+const label = 'mb-2 block text-sm text-ink-300';
+const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
 
 export function Solution() {
-    const [portfolioImages, setPortfolioImages] = useState(MOCK_CAROUSEL_IMAGES);
-
-    // Estados do Formulário Modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
     const { addToast } = useToast();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '', phone: '', email: '', company: '', application: '', message: ''
-    });
+    const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState(false);
 
-    // Travar scroll quando modal estiver aberto
-    useEffect(() => {
-        if (isModalOpen) document.body.style.overflow = 'hidden';
-        else document.body.style.overflow = '';
-        return () => { document.body.style.overflow = ''; };
-    }, [isModalOpen]);
-
-    // ==========================================
-    // ANIMAÇÕES E CONTROLES DE SCROLL
-    // ==========================================
-    const { scrollY } = useScroll();
-    const logoScale = useTransform(scrollY, [0, 500], [1, 3]);
-    const logoOpacity = useTransform(scrollY, [0, 400], [1, 0]);
-    const logoY = useTransform(scrollY, [0, 500], [0, -300]);
-
-    const fadeUp: Variants = {
-        hidden: { opacity: 0, y: 40 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
-    };
-
-    const staggerContainer: Variants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
-    };
-
-    // ==========================================
-    // BUSCA DAS IMAGENS NO BANCO DE DADOS
-    // ==========================================
     useEffect(() => {
         const controller = new AbortController();
-
-        const fetchPortfolio = async () => {
-            try {
-                const response = await api.get('/solution/portfolio', { signal: controller.signal });
-                
-                if (!controller.signal.aborted && response.data && response.data.length > 0) {
-                    const loadedImages = response.data.map((item: any) => ({
-                        image: item.url,
-                        alt: item.alt
-                    }));
-                    setPortfolioImages(loadedImages);
-                }
-            } catch (error) {
-                if (!controller.signal.aborted) {
-                    console.error("Erro ao carregar imagens do portfólio", error);
-                }
-            }
-        };
-        fetchPortfolio();
-
+        api.get('/solution/portfolio', { signal: controller.signal })
+            .then((res) => {
+                const items = Array.isArray(res.data) ? res.data : [];
+                setPortfolio(items.filter((i: { url?: string }) => i.url).map((i: { url: string; alt?: string }) => ({ image: i.url, alt: i.alt || 'Projeto da T3 Solution' })));
+            })
+            .catch(() => { /* sem portfólio, a seção some */ });
         return () => controller.abort();
     }, []);
 
-    // ==========================================
-    // SUBMIT DO FORMULÁRIO
-    // ==========================================
-    const handleFormSubmit = async (e: React.FormEvent) => {
+    const set = (key: keyof typeof EMPTY_FORM) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+    const onSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
-
+        setSending(true);
         try {
-            // A aplicação desejada segue no corpo da mensagem (o endpoint aceita apenas os campos do contato)
-            const message = [`[T3 Solution] Aplicação: ${formData.application}`, formData.message.trim()]
-                .filter(Boolean)
-                .join('\n\n');
-
-            await api.post('/contacts', {
-                name: formData.name,
-                phone: formData.phone,
-                email: formData.email,
-                company: formData.company || undefined,
-                message,
-            });
-            
-            setIsSuccess(true);
-            setFormData({ name: '', phone: '', email: '', company: '', application: '', message: '' });
-        } catch (error: any) {
-            console.error("Erro ao enviar contato:", error);
-            addToast(error.response?.data?.details?.[0]?.message || 'Não foi possível enviar sua mensagem. Tente novamente.', 'error');
+            // A aplicação segue no corpo da mensagem (o endpoint aceita apenas os campos do contato)
+            const message = [`[T3 Solution] Aplicação: ${form.application}`, form.message.trim()].filter(Boolean).join('\n\n');
+            await api.post('/contacts', { name: form.name, phone: form.phone, email: form.email, company: form.company || undefined, message });
+            setSent(true);
+            setForm(EMPTY_FORM);
+        } catch (error: unknown) {
+            const details = (error as { response?: { data?: { details?: { message?: string }[] } } }).response?.data?.details;
+            addToast(details?.[0]?.message || 'Não foi possível enviar sua mensagem. Tente novamente.', 'error');
         } finally {
-            setIsSubmitting(false);
+            setSending(false);
         }
-    };
-
-    const closeModal = () => {
-        setIsModalOpen(false);
-        setTimeout(() => setIsSuccess(false), 300); // Reseta estado de sucesso após fechar
     };
 
     return (
         <>
-        <Seo title="T3 Solution" description="Painéis de LED sob medida para empresas e eventos: projeto, instalação e suporte com a T3 Solution." path="/solution" />
-        <div className="relative min-h-screen bg-[#0A0A0B] text-white selection:bg-[#FF5E00] selection:text-[#0A0A0B] font-sans overflow-x-hidden">
-            
-            {/* BACKGROUND ANIMADO */}
-            <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-screen">
-                <Aurora colorStops={['#FF5E00', '#111113', '#0A0A0B']} blend={0.5} amplitude={0.7} speed={0.2} />
-            </div>
+            <Seo title="T3 Solution" description="Painéis de LED sob medida para casas, empresas, comércio e empreendimentos: projeto, instalação e suporte com a T3 Solution." path="/solution" />
 
-            {/* GRADE (GRID) TECNOLÓGICA PADRÃO DA HOME */}
-            <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
-
-            {/* ========================================== */}
-            {/* HERO SECTION                               */}
-            {/* ========================================== */}
-            <section className="relative z-10 pt-0 pb-20 md:pb-24 px-6 max-w-[1400px] mx-auto border-b border-white/5">
-                
-                {/* CONTAINER DA LOGO */}
-                <div className="w-full flex flex-col justify-center items-center min-h-[85vh] mb-16 pointer-events-none relative z-50">
-                    <motion.div 
-                        style={{ scale: logoScale, opacity: logoOpacity, y: logoY }}
-                        className="w-[95%] max-w-[1000px] xl:max-w-[1200px] origin-center flex flex-col items-center"
-                    >
-                        <img 
-                            src="/t3-solution-3d.webp" 
-                            alt="T3 Solution Logo" 
-                            className="w-full h-auto object-contain"
-                        />
-                        <p className="text-[#8F8F91] text-xs md:text-sm lg:text-lg font-bold tracking-[0.3em] md:tracking-[0.5em] uppercase mt-8 md:mt-12 text-center">
-                            Projetos de LED & Tecnologia Visual
-                        </p>
-                    </motion.div>
-
-                    <motion.div style={{ opacity: logoOpacity }} className="absolute bottom-10 flex flex-col items-center pointer-events-none">
-                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40">Role para descobrir</span>
-                    </motion.div>
-                </div>
-
-                {/* CONTEÚDO PRINCIPAL E CARROSSEL */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center relative z-20">
-                    <div className="flex flex-col items-start lg:pr-8">
-                        <motion.h1 
-                            initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: "easeOut" }}
-                            className="text-4xl md:text-5xl xl:text-6xl font-black tracking-tighter leading-[1.05] text-white mb-6"
-                        >
-                            Seu Espaço Merece Uma Tela À Altura Do Seu Projeto.
-                        </motion.h1>
-                        
-                        <motion.p 
-                            initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-                            className="text-lg md:text-xl text-[#8F8F91] max-w-lg font-medium mb-10 leading-relaxed"
-                        >
-                            Painéis De LED Para Residências, Empresas, Empreendimentos E Projetos Personalizados. Tecnologia Visual Pensada Para O Seu Ambiente.
-                        </motion.p>
-                        
-                        <motion.div 
-                            initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-                            className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
-                        >
-                            <Button 
-                                onClick={() => setIsModalOpen(true)}
-                                size="lg"
-                                className="w-full sm:w-auto bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black uppercase tracking-widest text-xs h-14 rounded-sm transition-colors border-none"
-                            >
-                                Solicitar Orçamento
-                            </Button>
-                            <a href="#aplicacoes" className="w-full sm:w-auto">
-                                <Button 
-                                    variant="ghost" size="lg"
-                                    className="w-full sm:w-auto bg-transparent hover:bg-white/5 border border-white/20 text-white font-bold uppercase tracking-widest text-xs h-14 rounded-sm transition-colors"
-                                >
-                                    Conhecer Soluções
-                                </Button>
-                            </a>
-                        </motion.div>
-                    </div>
-
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                        className="w-full h-[450px] md:h-[550px] relative z-10 flex items-center justify-center"
-                    >
-                        <DepthCarousel items={portfolioImages} cardWidth={260} cardHeight={360} tiltDirection="right" autoplay={true} autoplayDelay={4000} />
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* ========================================== */}
-            {/* APLICAÇÕES                                 */}
-            {/* ========================================== */}
-            <section id="aplicacoes" className="relative z-10 py-24 md:py-32">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="mb-16 md:mb-24 flex flex-col gap-4">
-                        <span className="text-[#FF5E00] font-black uppercase tracking-widest text-xs">Aplicações</span>
-                        <h2 className="text-3xl md:text-5xl font-light uppercase text-white tracking-tight">Uma solução para cada espaço.</h2>
-                    </div>
-
-                    <motion.div 
-                        initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }} variants={staggerContainer}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
-                        {[
-                            { icon: Home, title: "Residências", desc: "Painéis Para Áreas De Lazer, Salas, Fachadas, Espaços Gourmet E Projetos Residenciais De Alto Padrão." },
-                            { icon: Building2, title: "Condomínios", desc: "Comunicação Clara Para Moradores, Mural De Avisos Digitais E Painéis Em Áreas Comuns." },
-                            { icon: Briefcase, title: "Empresas", desc: "Recepções Corporativas, Salas De Reuniões, Dashboards De Indicadores E Endomarketing." },
-                            { icon: Store, title: "Comércio", desc: "Vitrines De Alta Atratividade, Promoções Dinâmicas E Modernização Da Comunicação No PDV." },
-                            { icon: HardHat, title: "Empreendimentos", desc: "Estruturas Para Lançamentos Imobiliários, Stands Imersivos, Empenas E Grandes Fachadas." },
-                            { icon: MonitorCog, title: "Projetos Personalizados", desc: "Soluções Desenvolvidas Sob Medida, Respeitando As Dimensões E Restrições Arquitetônicas." }
-                        ].map((item, index) => (
-                            <motion.div 
-                                key={index} variants={fadeUp}
-                                className="bg-[#111113] border border-white/5 p-6 md:p-8 hover:border-[#FF5E00]/40 transition-colors duration-300 rounded-sm"
-                            >
-                                <div className="w-12 h-12 bg-[#FF5E00]/10 flex items-center justify-center mb-6 rounded-sm">
-                                    <item.icon className="w-6 h-6 text-[#FF5E00]" />
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                                <p className="text-sm text-[#8F8F91] leading-relaxed">{item.desc}</p>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* ========================================== */}
-            {/* ESPECIFICAÇÕES                             */}
-            {/* ========================================== */}
-            <section className="relative z-10 py-24 md:py-32 bg-[#050505] border-y border-white/5">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col lg:flex-row gap-16 lg:gap-24">
-                    <motion.div 
-                        initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={fadeUp}
-                        className="lg:w-1/3 lg:sticky lg:top-32 h-fit"
-                    >
-                        <span className="text-[#FF5E00] font-black uppercase tracking-widest text-xs mb-4 block">Portfólio</span>
-                        <h2 className="text-3xl md:text-4xl font-light uppercase text-white tracking-tight mb-6">Encontre o painel ideal.</h2>
-                        <p className="text-[#8F8F91] text-lg">Configuramos O Painel De Acordo Com O Ambiente E A Necessidade Do Seu Projeto.</p>
-                    </motion.div>
-                    
-                    <motion.div 
-                        initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
-                        className="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-12 border-t border-white/5 pt-12 lg:border-none lg:pt-0"
-                    >
-                        {[
-                            { icon: LayoutTemplate, title: "Painéis Indoor", desc: "Soluções Com Alta Taxa De Atualização E Resoluções Finas Para Visualização Próxima." },
-                            { icon: SunMedium, title: "Painéis Outdoor", desc: "Equipamentos Resistentes A Intempéries Com Altíssimo Nível De Brilho E Visibilidade." },
-                            { icon: Maximize, title: "Dimensões Modulares", desc: "Montagem Modular Permite Construção De Telas Em Praticamente Qualquer Formato Ou Proporção." },
-                            { icon: Settings2, title: "Estruturas Sob Medida", desc: "Desde Totens Independentes Até Painéis Embutidos Em Marcenaria Ou Fachadas Planejadas." }
-                        ].map((spec, index) => (
-                            <motion.div key={index} variants={fadeUp} className="flex flex-col border-l-2 border-white/10 pl-6 hover:border-[#FF5E00]/50 transition-colors duration-300">
-                                <spec.icon className="w-6 h-6 text-[#FF5E00] mb-4" />
-                                <h3 className="text-lg font-bold text-white mb-2">{spec.title}</h3>
-                                <p className="text-sm text-[#8F8F91]">{spec.desc}</p>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* ========================================== */}
-            {/* PROCESSO DE COMPRA                         */}
-            {/* ========================================== */}
-            <section className="relative z-10 py-24 md:py-32 border-b border-white/5">
-                <div className="max-w-7xl mx-auto px-6">
-                    <h2 className="text-3xl md:text-4xl font-light uppercase text-white tracking-tight mb-16 text-center">Como funciona o nosso processo</h2>
-                    
-                    <motion.div 
-                        initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
-                    >
-                        {[
-                            { num: "01", title: "Entendemos Seu Projeto", desc: "Você Informa Onde Pretende Instalar O Painel E Qual Será A Principal Utilização Da Tela.", active: true },
-                            { num: "02", title: "Definimos A Solução", desc: "Nossa Equipe Avalia O Tamanho, A Aplicação, A Estrutura E As Especificações Técnicas.", active: false },
-                            { num: "03", title: "Orçamento E Escopo", desc: "Você Recebe Uma Proposta Detalhada E Comercialmente Adequada À Realidade Do Projeto.", active: false },
-                            { num: "04", title: "Instalação Completa", desc: "Após A Aprovação, Cuidamos De Toda A Etapa De Fixação E Instalação Do Equipamento.", active: false }
-                        ].map((step, index) => (
-                            <motion.div key={index} variants={fadeUp} className={`flex flex-col border-t pt-6 ${step.active ? 'border-[#FF5E00]' : 'border-white/10'}`}>
-                                <span className={`${step.active ? 'text-[#FF5E00]' : 'text-white/20'} font-black text-4xl mb-4`}>{step.num}</span>
-                                <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
-                                <p className="text-sm text-[#8F8F91]">{step.desc}</p>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* ========================================== */}
-            {/* CALL TO ACTION (CTA) FINAL                 */}
-            {/* ========================================== */}
-            <motion.section 
-                initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={fadeUp}
-                className="relative z-20 w-full max-w-5xl mx-auto px-6 pb-32 pt-24"
-            >
-                <div className="bg-[#111113] border border-white/5 p-10 md:p-16 text-center rounded-sm">
-                    <Target className="w-12 h-12 text-[#FF5E00] mx-auto mb-6" />
-                    <h2 className="text-3xl md:text-5xl font-light uppercase text-white mb-6 tracking-tight">
-                        Tem Um Espaço Para Transformar?
-                    </h2>
-                    <p className="text-[#8F8F91] text-sm md:text-base max-w-2xl mx-auto mb-10">
-                        Conte Para A Equipe Da T3 Solution Onde Você Pretende Instalar Seu Painel. Nós Ajudamos A Desenhar O Equipamento Ideal Para O Seu Negócio.
+            {/* ============================ HERO ============================ */}
+            <section className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-14 px-4 pb-20 pt-12 md:px-8 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)] lg:pb-24">
+                <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                    <img src="/t3-solution-3d.webp" alt="T3 Solution" className="mb-10 h-auto w-56 md:w-72" />
+                    <h1 className="text-[2.6rem] font-light uppercase leading-[0.95] tracking-tight text-ink-100 sm:text-6xl xl:text-7xl">
+                        Telas de LED<br />do tamanho<br /><span className="text-brand-neon">do seu projeto.</span>
+                    </h1>
+                    <p className="mt-8 max-w-[48ch] text-base leading-relaxed text-ink-300 md:text-lg">
+                        Projeto, fornecimento e instalação de painéis de LED para casas, empresas, lojas e empreendimentos.
                     </p>
-                    
-                    <div className="flex justify-center">
-                        <Button 
-                            onClick={() => setIsModalOpen(true)}
-                            size="lg"
-                            className="w-full sm:w-auto bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black border-none uppercase tracking-widest text-xs h-14 px-12 rounded-sm transition-colors"
-                        >
-                            Solicitar Orçamento
-                        </Button>
+                    <div className="mt-10 flex flex-wrap gap-3">
+                        <a href="#orcamento" className={btnPrimary}>Pedir orçamento <ArrowDown className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></a>
+                        <a href="#aplicacoes" className={btnGhost}>Onde aplicar</a>
                     </div>
-                </div>
-            </motion.section>
+                </motion.div>
 
-            {/* ========================================== */}
-            {/* MODAL DE ORÇAMENTO (FLOATING OVERLAY)      */}
-            {/* ========================================== */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 md:p-6">
-                        <motion.div 
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                            className="absolute inset-0 bg-black/90 backdrop-blur-sm" 
-                            onClick={closeModal} 
-                        />
-                        
-                        <motion.div 
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-                            animate={{ scale: 1, opacity: 1, y: 0 }} 
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-                            className="relative w-full max-w-2xl bg-[#0A0A0B] border border-white/10 rounded-sm shadow-2xl flex flex-col max-h-[95vh]"
-                        >
-                            <div className="p-6 border-b border-white/5 bg-[#111113] flex justify-between items-center shrink-0">
+                {/* Módulo de LED: gabinetes com a tela rodando */}
+                <motion.div
+                    initial={{ opacity: 0, y: 28 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ ...spring, delay: 0.15 }}
+                    className="relative hidden lg:block"
+                    aria-hidden="true"
+                >
+                    <div className="border border-white/10 bg-[#1d1d20] p-3 shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
+                        <div className="relative">
+                            <LedScreen scenes={HERO_SCENES} cols={96} rows={54} className="block aspect-video w-full bg-[#121113]" />
+                            {/* Juntas dos gabinetes (grade 4×3) */}
+                            <div className="pointer-events-none absolute inset-0 grid grid-cols-4 grid-rows-3">
+                                {Array.from({ length: 12 }, (_, i) => <span key={i} className="border-[0.5px] border-black/40" />)}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mx-auto flex w-2/3 justify-between">
+                        <span className="h-16 w-2 bg-[#2a2a2e]" /><span className="h-16 w-2 bg-[#2a2a2e]" />
+                    </div>
+                </motion.div>
+            </section>
+
+            {/* ============================ APLICAÇÕES ============================ */}
+            <section id="aplicacoes" className="scroll-mt-20 border-t border-white/[0.08] bg-ink-950">
+                <div className="mx-auto max-w-[1400px] px-4 py-20 md:px-8 md:py-28">
+                    <div className="mb-14 grid grid-cols-1 items-end gap-6 md:grid-cols-[1fr_auto]">
+                        <div>
+                            <p className={`mb-4 ${eyebrow}`}>Aplicações</p>
+                            <h2 className="text-4xl font-light uppercase leading-[0.95] tracking-tight text-ink-100 md:text-6xl">Uma tela para<br />cada espaço</h2>
+                        </div>
+                    </div>
+                    <ul className="grid grid-cols-1 border-t border-white/[0.08] md:grid-cols-2">
+                        {APPLICATIONS.map((item, i) => (
+                            <motion.li
+                                key={item.title}
+                                initial={{ opacity: 0, y: 16 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-60px' }}
+                                transition={{ ...spring, delay: (i % 2) * 0.06 }}
+                                className={`group grid grid-cols-[3.5rem_1fr] gap-4 border-b border-white/[0.08] py-8 md:py-10 ${i % 2 === 1 ? 'md:border-l md:pl-10' : 'md:pr-10'}`}
+                            >
+                                <span className="font-mono text-sm text-ink-500 transition-colors group-hover:text-brand-neon">0{i + 1}</span>
                                 <div>
-                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Enviar Projeto</h3>
-                                    <p className="text-[11px] text-[#8F8F91] font-medium mt-1">Preencha os dados e entraremos em contato.</p>
+                                    <h3 className="text-2xl font-medium uppercase tracking-tight text-ink-100 md:text-3xl">{item.title}</h3>
+                                    <p className="mt-3 max-w-[48ch] leading-relaxed text-ink-400">{item.text}</p>
                                 </div>
-                                <button aria-label="Fechar" onClick={closeModal} className="text-[#8F8F91] hover:text-white p-2 bg-white/5 hover:bg-[#FF5E00] transition-colors rounded-sm">
-                                    <X className="w-5 h-5" />
+                            </motion.li>
+                        ))}
+                    </ul>
+                </div>
+            </section>
+
+            {/* ============================ PORTFÓLIO ============================ */}
+            {portfolio.length > 0 && (
+                <section className="border-t border-white/[0.08] bg-ink-950">
+                    <div className="mx-auto max-w-[1400px] px-4 py-20 md:px-8 md:py-24">
+                        <p className={`mb-4 ${eyebrow}`}>Portfólio</p>
+                        <h2 className="mb-12 text-4xl font-light uppercase leading-none tracking-tight text-ink-100 md:text-6xl">Projetos entregues</h2>
+                        <div className={`grid grid-cols-1 gap-2 ${portfolio.length > 1 ? 'md:grid-cols-[1.4fr_1fr]' : ''}`}>
+                            {portfolio.slice(0, 5).map((item, i) => (
+                                <motion.figure
+                                    key={item.image}
+                                    initial={{ opacity: 0, y: 24 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true, margin: '-60px' }}
+                                    transition={{ ...spring, delay: i * 0.06 }}
+                                    className={`group relative overflow-hidden bg-ink-900 ${i === 0 && portfolio.length > 2 ? 'md:row-span-2' : ''}`}
+                                >
+                                    <img src={item.image} alt={item.alt} loading="lazy" className="h-full max-h-[640px] w-full object-cover transition duration-700 group-hover:scale-[1.02]" />
+                                    <figcaption className="absolute bottom-0 left-0 bg-ink-950 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-300">{item.alt}</figcaption>
+                                </motion.figure>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* ============================ ESPECIFICAÇÕES + PROCESSO (seção clara) ============================ */}
+            <section className="bg-[#F4F1EC] text-ink-950">
+                <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-14 px-4 py-20 md:px-8 md:py-28 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                    <div className="lg:sticky lg:top-28 lg:self-start">
+                        <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">Especificação</p>
+                        <h2 className="text-4xl font-light uppercase leading-[0.95] tracking-tight md:text-6xl">O painel certo<br />para o ambiente</h2>
+                        <p className="mt-6 max-w-[42ch] leading-relaxed text-ink-700">
+                            A tela é configurada a partir da distância de quem vai olhar, da luz do lugar e da estrutura disponível.
+                        </p>
+                    </div>
+                    <dl className="border-t border-ink-950/15">
+                        {SPECS.map((spec) => (
+                            <div key={spec.label} className="grid grid-cols-1 gap-2 border-b border-ink-950/15 py-8 sm:grid-cols-[10rem_1fr] sm:gap-6">
+                                <dt className="text-2xl font-medium uppercase tracking-tight">{spec.label}</dt>
+                                <dd className="max-w-[52ch] leading-relaxed text-ink-700">{spec.value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
+
+                <div className="mx-auto max-w-[1400px] px-4 pb-20 md:px-8 md:pb-28">
+                    <p className="mb-8 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">Como funciona</p>
+                    <ol className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                        {STEPS.map((step, i) => (
+                            <motion.li
+                                key={step.title}
+                                initial={{ opacity: 0, y: 16 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-60px' }}
+                                transition={{ ...spring, delay: i * 0.07 }}
+                                className={`border-t-2 pt-6 ${i === 0 ? 'border-brand-neon' : 'border-ink-950/20'}`}
+                            >
+                                <span className="font-mono text-4xl font-light text-brand-neon">0{i + 1}</span>
+                                <h3 className="mt-4 text-xl font-medium uppercase tracking-tight">{step.title}</h3>
+                                <p className="mt-2 leading-relaxed text-ink-700">{step.text}</p>
+                            </motion.li>
+                        ))}
+                    </ol>
+                </div>
+            </section>
+
+            {/* ============================ ORÇAMENTO ============================ */}
+            <section id="orcamento" className="scroll-mt-20 bg-ink-950">
+                <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-14 px-4 py-20 md:px-8 md:py-28 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                    <div>
+                        <p className={`mb-4 ${eyebrow}`}>Orçamento</p>
+                        <h2 className="text-4xl font-light uppercase leading-[0.95] tracking-tight text-ink-100 md:text-6xl">Conte sobre<br />o seu espaço</h2>
+                        <p className="mt-6 max-w-[42ch] leading-relaxed text-ink-400">
+                            Medidas aproximadas, fotos do local e o uso da tela ajudam a chegar mais rápido na proposta.
+                            A equipe da T3 Solution responde pelo WhatsApp informado.
+                        </p>
+                    </div>
+
+                    {sent ? (
+                        <div role="status" className="flex flex-col items-start justify-center border border-white/10 p-8 md:p-12">
+                            <span className="flex h-12 w-12 items-center justify-center bg-brand-neon text-ink-950"><Check className="h-6 w-6" strokeWidth={2} aria-hidden="true" /></span>
+                            <h3 className="mt-6 text-3xl font-light uppercase tracking-tight text-ink-100">Pedido recebido</h3>
+                            <p className="mt-3 max-w-[44ch] leading-relaxed text-ink-400">A equipe vai analisar o projeto e falar com você em breve.</p>
+                            <button type="button" onClick={() => setSent(false)} className={`mt-8 ${btnGhost}`}>Enviar outro pedido</button>
+                        </div>
+                    ) : (
+                        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div>
+                                <label htmlFor="sol-name" className={label}>Nome completo</label>
+                                <input id="sol-name" required autoComplete="name" value={form.name} onChange={set('name')} className={field} />
+                            </div>
+                            <div>
+                                <label htmlFor="sol-phone" className={label}>WhatsApp</label>
+                                <input id="sol-phone" required type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder="(62) 9 0000-0000" className={field} />
+                            </div>
+                            <div>
+                                <label htmlFor="sol-email" className={label}>E-mail</label>
+                                <input id="sol-email" required type="email" autoComplete="email" value={form.email} onChange={set('email')} className={field} />
+                            </div>
+                            <div>
+                                <label htmlFor="sol-company" className={label}>Empresa <span className="text-ink-500">(opcional)</span></label>
+                                <input id="sol-company" autoComplete="organization" value={form.company} onChange={set('company')} className={field} />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="sol-app" className={label}>Onde a tela vai ficar</label>
+                                <div className="relative">
+                                    <select id="sol-app" required value={form.application} onChange={set('application')} className={`${field} appearance-none pr-10`}>
+                                        <option value="" disabled>Selecione</option>
+                                        {APPLICATIONS.map((a) => <option key={a.title} value={a.title}>{a.title}</option>)}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" strokeWidth={1.75} aria-hidden="true" />
+                                </div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="sol-msg" className={label}>Detalhes do projeto <span className="text-ink-500">(opcional)</span></label>
+                                <textarea id="sol-msg" rows={5} value={form.message} onChange={set('message')} placeholder="Local, medidas aproximadas, uso da tela" className={`${field} resize-none`} />
+                            </div>
+                            <div className="md:col-span-2">
+                                <button type="submit" disabled={sending} className={`${btnPrimary} w-full md:w-auto`}>
+                                    {sending ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : <>Enviar pedido <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
                                 </button>
                             </div>
+                        </form>
+                    )}
+                </div>
+            </section>
 
-                            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                                {isSuccess ? (
-                                    <div className="flex flex-col items-center justify-center text-center py-16">
-                                        <CheckCircle className="w-16 h-16 text-[#FF5E00] mb-6" />
-                                        <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Solicitação Recebida!</h3>
-                                        <p className="text-[#8F8F91] text-sm max-w-md">
-                                            Agradecemos o seu interesse. Nossa equipe de especialistas em tecnologia visual analisará seu projeto e entrará em contato em breve.
-                                        </p>
-                                        <Button onClick={closeModal} className="mt-8 bg-white/10 hover:bg-white/20 text-white border-none uppercase tracking-widest text-[10px] font-bold px-8">
-                                            Fechar Janela
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <form id="solution-contact-form" onSubmit={handleFormSubmit} className="flex flex-col gap-5">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Nome Completo *</label>
-                                                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="bg-[#111113] border border-white/10 rounded-sm px-4 py-3.5 text-white focus:border-[#FF5E00] outline-none text-sm transition-colors" placeholder="Seu nome" />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">WhatsApp *</label>
-                                                <input required type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="bg-[#111113] border border-white/10 rounded-sm px-4 py-3.5 text-white focus:border-[#FF5E00] outline-none text-sm transition-colors" placeholder="(00) 00000-0000" />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">E-mail Profissional *</label>
-                                                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="bg-[#111113] border border-white/10 rounded-sm px-4 py-3.5 text-white focus:border-[#FF5E00] outline-none text-sm transition-colors" placeholder="email@empresa.com" />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Empresa / Agência</label>
-                                                <input type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="bg-[#111113] border border-white/10 rounded-sm px-4 py-3.5 text-white focus:border-[#FF5E00] outline-none text-sm transition-colors" placeholder="Nome da empresa" />
-                                            </div>
-                                        </div>
-
-                                        {/* CUSTOM SELECT APLICADO AQUI */}
-                                        <div className="flex flex-col gap-1.5 z-50 relative">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Aplicação do Painel *</label>
-                                            <CustomSelect 
-                                                options={APLICATIVAS_OPTIONS}
-                                                value={formData.application}
-                                                onChange={(val) => setFormData({...formData, application: val})}
-                                                placeholder="Selecione a categoria do espaço..."
-                                                maxHeight="max-h-[160px]"
-                                            />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Detalhes do Projeto / Dimensões</label>
-                                            <textarea rows={4} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="bg-[#111113] border border-white/10 rounded-sm px-4 py-3.5 text-white focus:border-[#FF5E00] outline-none resize-none text-sm transition-colors custom-scrollbar" placeholder="Descreva o local de instalação, medidas estimadas e objetivo do painel..." />
-                                        </div>
-                                    </form>
-                                )}
-                            </div>
-
-                            {!isSuccess && (
-                                <div className="p-6 border-t border-white/5 bg-[#0A0A0B] shrink-0">
-                                    <Button 
-                                        type="submit" 
-                                        form="solution-contact-form"
-                                        disabled={isSubmitting || !formData.name || !formData.phone || !formData.email || !formData.application} 
-                                        className="w-full bg-[#FF5E00] py-4 rounded-sm font-black text-[#0A0A0B] hover:bg-[#e05300] text-xs uppercase tracking-widest border-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : 'Enviar Solicitação'}
-                                    </Button>
-                                </div>
-                            )}
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-        </div>
+            {/* ============================ CHAMADA FINAL ============================ */}
+            <CtaBand title={<>Quer anunciar<br />nos telões?</>} scenes={CTA_SCENES}>
+                <Link to="/mapa" className={btnDark}>
+                    Ver a rede T3 OOH <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                </Link>
+                <Link to="/contato" className={btnOnOrange}>Falar com o comercial</Link>
+            </CtaBand>
         </>
     );
 }
