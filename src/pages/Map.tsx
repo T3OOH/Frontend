@@ -1,24 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { InteractiveMap } from '@/features/map/InteractiveMap';
-import { 
-    Loader2, Search, X, ChevronLeft, ShoppingCart, Check, Send, 
-    Zap, MapPin, Maximize, Minimize, Compass, Shield, MonitorPlay, Tag, CheckCircle2, LayoutGrid
-} from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { InteractiveMap, MapPanel } from '@/features/map/InteractiveMap';
+import { ArrowRight, Check, ChevronLeft, Loader2, Maximize, Minimize, Plus, Search, Send, ShoppingCart, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
-import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { nextSellerPhone } from '@/lib/contacts';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 import { Seo } from '@/components/Seo';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+
+/** Desconto do plano anual exibido nos cards (mesma regra do backend). */
+const ANNUAL_DISCOUNT = 0.3;
+/** Prazos aceitos pelo checkout (1 a 36 meses no backend). */
+const MONTHS = [1, 2, 3, 4, 5, 6, 9, 12, 18, 24, 36];
+const field = 'w-full border border-white/15 bg-ink-900 px-3.5 py-3 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none disabled:opacity-50';
 
 /**
  * Interface Component: Map Integration & Interactive Catalog
@@ -126,27 +128,6 @@ export function Map() {
     const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
     /**
-     * Impact Formatting Utility.
-     * Normalizes and scales impression metrics for display.
-     */
-    const formatImpacts = (rawImpacts: string | number) => {
-        if (!rawImpacts) return '0';
-        const strVal = String(rawImpacts).toLowerCase();
-        
-        let n = Number(strVal.replace(/\D/g, ''));
-        
-        if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
-        else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
-        else if (strVal.includes('bi')) n *= 1000000000;
-
-        if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + ' bilhão';
-        if (n >= 2000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '').replace('.', ',') + ' milhões';
-        if (n >= 1000000) return '1 milhão';
-        if (n >= 1000) return (n / 1000).toFixed(0) + ' mil';
-        return n.toLocaleString('pt-BR');
-    };
-
-    /**
      * Data Fetching Hook.
      * Retrieves panel inventory and applies schema normalization to prevent map rendering errors.
      */
@@ -198,7 +179,8 @@ export function Map() {
     }, [panels, selectedState]);
 
     const filteredPanels = panels.filter(panel => {
-        const matchesSearch = panel.name?.toLowerCase().includes(searchTerm.toLowerCase()) || panel.city?.toLowerCase().includes(searchTerm.toLowerCase());
+        const q = searchTerm.trim().toLowerCase();
+        const matchesSearch = !q || [panel.name, panel.city, panel.state, panel.address].some((v) => String(v ?? '').toLowerCase().includes(q));
         const matchesState = selectedState ? panel.state === selectedState : true;
         const matchesCity = selectedCity ? panel.city === selectedCity : true;
         return matchesSearch && matchesState && matchesCity;
@@ -207,24 +189,9 @@ export function Map() {
     /**
      * Financial Aggregations and Checkout Calculations.
      */
-    const monthOptions = useMemo(() => {
-        return Array.from({ length: 12 }, (_, i) => ({
-            value: String(i + 1),
-            label: `${i + 1} ${i === 0 ? 'Mês' : 'Meses'}`
-        }));
-    }, []);
-
     const totalCartImpacts = cart.reduce((acc, cartItem) => {
         const livePanel = panels.find(p => p.id === cartItem.id);
-        const impactToSum = livePanel ? livePanel.impacts : cartItem.impacts;
-        const strVal = String(impactToSum || '').toLowerCase();
-        
-        let n = Number(strVal.replace(/\D/g, ''));
-        if (strVal.includes('mil') && !strVal.includes('milh')) n *= 1000;
-        else if (strVal.includes('mi') || strVal.includes('milh')) n *= 1000000;
-        else if (strVal.includes('bi')) n *= 1000000000;
-        
-        return acc + n;
+        return acc + parseImpacts(livePanel ? livePanel.impacts : cartItem.impacts);
     }, 0);
 
     const baseMonthly = cart.reduce((acc, cartItem) => {
@@ -245,7 +212,6 @@ export function Map() {
     const couponDiscount = appliedCoupon && couponQuote ? couponQuote.couponDiscount : 0;
     const finalTotalValue = subtotalAfterTerm - couponDiscount;
     const finalMonthlyValue = finalTotalValue / months;
-    const totalEconomy = totalWithoutAnyDiscount - finalTotalValue;
 
     const cartKey = cart.map(p => p.id).join(',');
 
@@ -354,480 +320,285 @@ export function Map() {
         }
     };
 
+    const priceLabel = (p: { price?: number | string | null }) => {
+        const base = Number(p.price) || 0;
+        return base > 0 ? `${formatCurrency(base * (1 - ANNUAL_DISCOUNT))}/mês no plano anual` : 'Valor sob consulta';
+    };
+    const hasFilters = Boolean(searchTerm || selectedState || selectedCity);
+    const clearFilters = () => { setSearchTerm(''); setSelectedState(''); setSelectedCity(''); };
+    const closeCheckout = () => { setIsCheckoutOpen(false); setCheckoutStep('cart'); };
+    const pick = (id: string) => { setSelectedPanelId(id); };
+
+    /** Card do painel (lista lateral e faixa do celular). */
+    const PanelCard = ({ panel, compact }: { panel: Panel; compact?: boolean }) => {
+        const inCart = isInCart(panel.id);
+        const active = selectedPanelId === panel.id;
+        const impacts = parseImpacts(panel.impacts);
+        return (
+            <article
+                className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'w-[300px] shrink-0 snap-start' : ''}`}
+            >
+                <button type="button" onClick={() => pick(panel.id)} className="relative w-24 shrink-0 overflow-hidden bg-ink-850 sm:w-28" aria-label={`Ver ${panel.name} no mapa`}>
+                    <img src={panel.images?.[0] || '/placeholder.svg'} alt="" loading="lazy" className="h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col p-3">
+                    <button type="button" onClick={() => pick(panel.id)} className="min-w-0 text-left">
+                        <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[panel.city, panel.state].filter(Boolean).join(' · ')}</p>
+                        <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-ink-100">{panel.name}</p>
+                    </button>
+                    <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                        <p className="font-mono text-xs leading-tight">
+                            <span className="block text-ink-100">{impacts ? `${formatImpacts(impacts)}/dia` : '—'}</span>
+                            {Number(panel.price) > 0 && <span className="block text-brand-neon">{formatCurrency(Number(panel.price) * (1 - ANNUAL_DISCOUNT))}/mês</span>}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => toggleInCart(panel)}
+                            aria-pressed={inCart}
+                            aria-label={inCart ? `Remover ${panel.name} do orçamento` : `Adicionar ${panel.name} ao orçamento`}
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center transition-colors ${inCart ? 'border border-white/40 text-ink-100 hover:border-white' : 'bg-brand-neon text-ink-950 hover:bg-brand-neonHover'}`}
+                        >
+                            {inCart ? <Check className="h-4 w-4" strokeWidth={2} /> : <Plus className="h-4 w-4" strokeWidth={2} />}
+                        </button>
+                    </div>
+                </div>
+            </article>
+        );
+    };
+
     return (
         <>
         <Seo title="Mapa de painéis" description="Veja no mapa os painéis de LED e pontos de mídia OOH disponíveis, filtre por cidade e monte seu orçamento." path="/mapa" />
-        <div className={
-            isFullscreen 
-            ? "fixed inset-0 z-[9999] flex bg-[#0A0A0B] overflow-hidden" 
-            : "flex-1 w-full flex bg-[#0A0A0B] relative overflow-hidden min-h-[calc(100vh-5rem)]"
-        }>
-            
-            {/* Map Engine Container */}
-            <div className="absolute inset-0 z-0 bg-[#0A0A0B]">
-                {isLoading ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B]/90">
-                        <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin mb-4" />
-                        <p className="text-xs font-bold tracking-widest text-[#8F8F91] uppercase">Sincronizando Circuito...</p>
+        <div className={isFullscreen ? 'fixed inset-0 z-[600] flex bg-ink-950' : 'relative flex h-[calc(100dvh-5rem)] min-h-[560px] w-full bg-ink-950'}>
+
+            {/* ============================ LISTA LATERAL (desktop) ============================ */}
+            <aside className={`hidden w-[420px] shrink-0 flex-col border-r border-white/[0.08] bg-ink-950 md:flex ${isSidebarOpen ? '' : 'md:hidden'}`}>
+                <div className="border-b border-white/[0.08] p-5">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <p className={eyebrow}>Mapa <span className="text-brand-neon">/</span> {isLoading ? 'carregando' : `${filteredPanels.length} de ${panels.length} pontos`}</p>
+                            <h1 className="mt-3 text-3xl font-light uppercase leading-none tracking-tight text-ink-100">Painéis no mapa</h1>
+                        </div>
+                        <button type="button" onClick={() => setIsSidebarOpen(false)} className="p-2 text-ink-400 hover:text-ink-100" aria-label="Recolher lista"><ChevronLeft className="h-5 w-5" /></button>
                     </div>
-                ) : (
-                    <InteractiveMap panels={filteredPanels as any[]} selectedPanelId={selectedPanelId} />
-                )}
-            </div>
-
-            {/* Desktop Fullscreen Toggle */}
-            {!isCheckoutOpen && (
-                <div className="hidden md:flex absolute top-6 right-6 z-[400] pointer-events-auto">
-                    <button
-                        onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="p-3 bg-[#111113] border border-white/10 rounded-sm shadow-md text-white hover:text-[#FF5E00] transition-colors"
-                        title={isFullscreen ? "Sair da Tela Cheia" : "Travar Mapa em Tela Cheia"}
-                    >
-                        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                    </button>
+                    <div className="mt-5 flex flex-col gap-2">
+                        <div className="relative">
+                            <label htmlFor="map-search" className="sr-only">Buscar painéis</label>
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                            <input id="map-search" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} pl-10`} autoComplete="off" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label htmlFor="map-state" className="sr-only">Estado</label>
+                                <select id="map-state" value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity(''); }} className={field}>
+                                    {stateOptions.map((o) => <option key={o.value} value={o.value}>{o.value ? o.label : 'Todos os estados'}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="map-city" className="sr-only">Cidade</label>
+                                <select id="map-city" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} disabled={cityOptions.length <= 1} className={field}>
+                                    {cityOptions.map((o) => <option key={o.value} value={o.value}>{o.value ? o.label : 'Todas as cidades'}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {hasFilters && <button type="button" onClick={clearFilters} className="self-start text-sm text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Limpar filtros</button>}
+                    </div>
                 </div>
-            )}
 
-            {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP                                         */}
-            {/* ========================================================= */}
-            
-            {/* Desktop Sidebar Toggle Trigger */}
-            <AnimatePresence>
-                {!isSidebarOpen && !isCheckoutOpen && (
-                    <motion.button
-                        key="reopen-sidebar-btn"
-                        initial={{ x: -50, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: -50, opacity: 0 }}
-                        onClick={() => setIsSidebarOpen(true)}
-                        className="hidden md:flex absolute top-6 left-6 z-[100] bg-[#111113] border border-white/10 px-4 py-3 rounded-sm shadow-md hover:border-[#FF5E00]/50 transition-colors items-center gap-3 group cursor-pointer"
-                    >
-                        <Search className="w-4 h-4 text-[#FF5E00]" />
-                        <span className="text-[11px] font-bold text-white uppercase tracking-widest">Buscar Painéis</span>
-                    </motion.button>
-                )}
-            </AnimatePresence>
-
-            {/* Desktop Navigation Sidebar */}
-            <AnimatePresence initial={false}>
-                {isSidebarOpen && !isCheckoutOpen && (
-                    <motion.div initial={{ x: '-100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0 }} transition={{ type: "tween", duration: 0.2 }} className="hidden md:flex absolute top-0 left-0 bottom-0 w-[400px] bg-[#0A0A0B] border-r border-white/10 z-40 flex-col shadow-2xl">
-                        <div className="p-6 border-b border-white/5 bg-[#111113] flex-shrink-0">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-sm font-black text-white uppercase tracking-widest">Inventário de Mídia</h2>
-                                <button aria-label="Voltar" onClick={() => setIsSidebarOpen(false)} className="p-1.5 hover:bg-white/5 border border-transparent hover:border-white/10 rounded-sm text-[#8F8F91] transition-colors">
-                                    <ChevronLeft className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex flex-col gap-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8F8F91] z-10" />
-                                    <Input
-                                        placeholder="Buscar por avenida ou localização..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-9 bg-[#0A0A0B] border-white/10 text-[13px]"
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <div className="w-1/2">
-                                        <CustomSelect
-                                            options={stateOptions}
-                                            value={selectedState}
-                                            onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }}
-                                            placeholder="Estado"
-                                        />
-                                    </div>
-                                    <div className={`w-1/2 ${!selectedState ? 'opacity-40 pointer-events-none' : ''}`}>
-                                        <CustomSelect
-                                            options={cityOptions}
-                                            value={selectedCity}
-                                            onChange={(val: string) => setSelectedCity(val)}
-                                            placeholder="Cidade"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                <div className="custom-scrollbar flex-1 overflow-y-auto p-3">
+                    {isLoading ? (
+                        <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse bg-ink-900" />)}</div>
+                    ) : filteredPanels.length === 0 ? (
+                        <div className="border border-dashed border-white/15 p-6">
+                            <p className="text-ink-100">Nenhum ponto encontrado</p>
+                            <p className="mt-2 text-sm text-ink-400">{hasFilters ? 'Ajuste a busca ou os filtros.' : 'Não há painéis disponíveis agora.'}</p>
+                            {hasFilters && <button type="button" onClick={clearFilters} className={`mt-4 ${btnGhost}`}>Limpar filtros</button>}
                         </div>
+                    ) : (
+                        <ul className="flex flex-col gap-2">{filteredPanels.map((panel) => <li key={panel.id}><PanelCard panel={panel} /></li>)}</ul>
+                    )}
+                </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                            {filteredPanels.map((panel) => {
-                                const inCart = isInCart(panel.id);
-                                const isSelected = selectedPanelId === panel.id; 
-
-                                return (
-                                    <div 
-                                        key={panel.id} 
-                                        className={`flex flex-col p-4 rounded-sm border mb-3 transition-colors duration-200 cursor-pointer ${
-                                            isSelected 
-                                            ? 'bg-[#FF5E00]/5 border-[#FF5E00]/50' 
-                                            : 'bg-[#111113] border-white/5 hover:border-white/20'
-                                        }`}
-                                        onClick={() => setSelectedPanelId(panel.id)}
-                                    >
-                                        <div className="flex gap-4 mb-4">
-                                            <div className="w-20 h-20 rounded-sm overflow-hidden flex-shrink-0 bg-black">
-                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-90" />
-                                            </div>
-                                            
-                                            <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                                                <h4 className="text-[13px] font-bold text-white leading-tight line-clamp-2">
-                                                    {panel.name}
-                                                </h4>
-                                                
-                                                <div className="flex flex-col gap-1 mt-auto">
-                                                    <div className="flex items-center gap-1.5 w-full">
-                                                        <Zap className="w-3.5 h-3.5 text-[#FF5E00]" />
-                                                        <span className="text-sm font-black text-[#FF5E00] truncate">
-                                                            {formatImpacts(panel.impacts || 0)}
-                                                        </span>
-                                                        <span className="text-[8px] text-[#8F8F91] uppercase font-bold leading-tight ml-auto text-right">
-                                                            Impactos<br/>Diários
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
-                                                        <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-widest">Investimento</span>
-                                                        <span className="text-xs font-black text-white">{formatCurrency(Number(panel.price) || 0)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <Button
-                                            type="button"
-                                            variant={inCart ? 'secondary' : 'primary'}
-                                            className={`w-full text-[11px] uppercase tracking-widest font-bold py-2.5 rounded-sm h-auto border ${inCart ? 'bg-white/5 border-white/10 text-white' : 'bg-[#111113] border-white/10 text-[#8F8F91] hover:text-[#FF5E00] hover:border-[#FF5E00]/50'}`}
-                                            onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
-                                        >
-                                            {inCart ? <><Check className="w-3 h-3 mr-1" /> Selecionado</> : 'Adicionar ao Orçamento'}
-                                        </Button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <AnimatePresence>
-                            {cart.length > 0 && (
-                                <motion.div className="p-5 border-t border-white/5 bg-[#111113] shrink-0">
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-[11px] uppercase tracking-widest font-black bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] rounded-sm border-none">
-                                        <ShoppingCart className="w-4 h-4 mr-2" /> Avançar ({cart.length})
-                                    </Button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* ========================================================= */}
-            {/* VIEWPORT: MOBILE                                          */}
-            {/* ========================================================= */}
-            
-            {!isCheckoutOpen && (
-                <>
-                    {/* Mobile Floating Search & Controls */}
-                    <div className="md:hidden absolute top-4 left-4 right-4 z-[400] pointer-events-auto flex items-center gap-2">
-                        <div className="flex-1 bg-[#111113] border border-white/10 rounded-sm px-4 py-2.5 shadow-md flex items-center gap-3">
-                            <Search className="w-4 h-4 text-[#FF5E00] shrink-0" />
-                            <input 
-                                className="bg-transparent border-none text-white w-full focus:outline-none text-xs placeholder-[#8F8F91]"
-                                placeholder="Buscar região..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            {searchTerm && (
-                                <button aria-label="Fechar" type="button" onClick={() => setSearchTerm('')} className="p-1 text-[#8F8F91] hover:text-white shrink-0">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="shrink-0 flex items-center justify-center w-[40px] h-[40px] bg-[#111113] border border-white/10 rounded-sm shadow-md text-white hover:text-[#FF5E00] transition-colors"
-                        >
-                            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                {cart.length > 0 && (
+                    <div className="border-t border-white/[0.08] p-4">
+                        <button type="button" onClick={() => setIsCheckoutOpen(true)} className={`${btnPrimary} w-full`}>
+                            <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Ver orçamento · <span className="font-mono">{cart.length}</span>
                         </button>
                     </div>
+                )}
+            </aside>
 
-                    {/* Mobile Floating Bottom Context */}
-                    <div className={`md:hidden absolute left-0 right-0 z-[400] pointer-events-none flex flex-col items-center justify-end pb-3 transition-all duration-300 ${isFullscreen ? 'bottom-4' : 'bottom-[76px]'}`}>
-                        
-                        <AnimatePresence>
-                            {cart.length > 0 && (
-                                <motion.div 
-                                    initial={{ y: 20, opacity: 0 }} 
-                                    animate={{ y: 0, opacity: 1 }} 
-                                    exit={{ y: 20, opacity: 0 }}
-                                    className="pointer-events-auto mb-4 px-4 w-full"
-                                >
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full rounded-sm bg-[#FF5E00] text-[#0A0A0B] font-black py-3.5 shadow-lg text-[11px] uppercase tracking-widest flex justify-center items-center gap-2 border-none">
-                                        <ShoppingCart className="w-4 h-4" />
-                                        Processar Orçamento ({cart.length})
-                                    </Button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+            {/* ============================ MAPA ============================ */}
+            <div className="relative min-w-0 flex-1">
+                {isLoading ? (
+                    <div className="absolute inset-0 animate-pulse bg-ink-900" aria-busy="true" aria-label="Carregando mapa" />
+                ) : (
+                    <InteractiveMap
+                        panels={filteredPanels as MapPanel[]}
+                        selectedPanelId={selectedPanelId}
+                        onSelect={pick}
+                        onToggle={(p) => toggleInCart(p as Panel)}
+                        isInCart={isInCart}
+                        priceLabel={priceLabel}
+                    />
+                )}
 
-                        <div className="w-full pointer-events-auto">
-                            <div className="flex gap-3 overflow-x-auto snap-x px-4 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {filteredPanels.map(panel => {
-                                    const inCart = isInCart(panel.id);
-                                    const isSelected = selectedPanelId === panel.id;
-
-                                    return (
-                                        <div 
-                                            key={panel.id}
-                                            onClick={() => setSelectedPanelId(panel.id)}
-                                            className={`snap-start flex-shrink-0 w-[280px] bg-[#111113] rounded-sm overflow-hidden border transition-colors shadow-md flex flex-row ${
-                                                isSelected ? 'border-[#FF5E00]/50 bg-[#FF5E00]/5' : 'border-white/10'
-                                            }`}
-                                        >
-                                            <div className="w-[90px] h-full bg-black relative shrink-0">
-                                                <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90" alt={panel.name} />
-                                                <div className="absolute top-1 left-1 bg-[#0A0A0B]/90 px-1.5 py-0.5 rounded-sm border border-white/5 flex items-center gap-1">
-                                                    <Zap className="w-2.5 h-2.5 text-[#FF5E00]" />
-                                                    <span className="text-[8px] font-black text-white">{formatImpacts(panel.impacts || 0)}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-white line-clamp-1 mb-0.5">{panel.name}</h4>
-                                                    <p className="text-[9px] text-[#8F8F91] flex items-center gap-1 truncate font-bold uppercase tracking-wider">
-                                                        <MapPin className="w-2.5 h-2.5 shrink-0" /> {panel.city}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
-                                                    <span className="text-xs font-black text-white">{formatCurrency(Number(panel.price) || 0)}</span>
-                                                    <button 
-                                                        type="button"
-                                                        onClick={(e) => { e.stopPropagation(); toggleInCart(panel); }}
-                                                        className={`w-6 h-6 rounded-sm flex items-center justify-center border transition-colors shrink-0 ${
-                                                            inCart ? 'bg-white/10 border-white/20 text-white' : 'bg-[#0A0A0B] border-white/10 text-[#8F8F91] hover:text-[#FF5E00]'
-                                                        }`}
-                                                    >
-                                                        {inCart ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Mobile Bottom Navigation */}
-            {!isCheckoutOpen && !isFullscreen && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0B] border-t border-white/5 z-[500] px-6 py-3 flex justify-between items-center pb-safe">
-                    <Link to="/" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
-                        <Compass className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Início</span>
-                    </Link>
-                    <Link to="/mapa" className="flex flex-col items-center gap-1 text-[#FF5E00]">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Mapa</span>
-                    </Link>
-                    <Link to="/servicos" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
-                        <MonitorPlay className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Painéis</span>
-                    </Link>
-                    <Link to="/contato" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors">
-                        <Shield className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Contato</span>
-                    </Link>
+                {/* Controles sobre o mapa (desktop) */}
+                <div className="pointer-events-none absolute left-4 right-4 top-4 z-[400] hidden items-start justify-between md:flex">
+                    {!isSidebarOpen ? (
+                        <button type="button" onClick={() => setIsSidebarOpen(true)} className="pointer-events-auto inline-flex items-center gap-2 border border-white/15 bg-ink-950/90 px-4 py-2.5 text-sm text-ink-100 backdrop-blur hover:border-white/40">
+                            <Search className="h-4 w-4" aria-hidden="true" /> Lista de painéis <span className="font-mono text-ink-400">{filteredPanels.length}</span>
+                        </button>
+                    ) : <span />}
+                    <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className="pointer-events-auto border border-white/15 bg-ink-950/90 p-2.5 text-ink-100 backdrop-blur hover:border-white/40" aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </button>
                 </div>
-            )}
 
+                {/* Busca (celular) */}
+                <div className="absolute left-3 right-3 top-3 z-[400] flex gap-2 md:hidden">
+                    <div className="relative flex-1">
+                        <label htmlFor="map-search-m" className="sr-only">Buscar painéis</label>
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                        <input id="map-search-m" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} border-white/20 bg-ink-950/95 pl-10 backdrop-blur`} autoComplete="off" />
+                    </div>
+                    <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className="shrink-0 border border-white/20 bg-ink-950/95 px-3 text-ink-100" aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </button>
+                </div>
 
-            {/* ========================================================= */}
-            {/* CHECKOUT MODAL (DRAWER)                                   */}
-            {/* ========================================================= */}
-            
-            <AnimatePresence>
-                {isCheckoutOpen && (
-                    <motion.div 
-                        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'tween', duration: 0.2 }}
-                        className="fixed inset-y-0 right-0 h-full w-full md:w-[480px] bg-[#0A0A0B] border-l border-white/10 z-[99999] flex flex-col shadow-2xl"
-                    >
-                        {/* Header */}
-                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-[#111113] shrink-0 pt-[env(safe-area-inset-top,20px)]">
-                            <h2 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-3">
-                                {checkoutStep === 'cart' ? (
-                                    <><ShoppingCart className="w-4 h-4 text-[#FF5E00]" /> Resumo do Pedido</>
-                                ) : (
-                                    <><Send className="w-4 h-4 text-[#FF5E00]" /> Enviar Orçamento</>
-                                )}
-                            </h2>
-                            <button aria-label="Fechar" type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white bg-[#0A0A0B] p-2 rounded-sm border border-white/5 transition-colors">
-                                <X className="w-4 h-4" />
+                {/* Faixa de cards (celular) */}
+                <div className="absolute inset-x-0 bottom-0 z-[400] flex flex-col gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+                    {cart.length > 0 && (
+                        <div className="px-3">
+                            <button type="button" onClick={() => setIsCheckoutOpen(true)} className={`${btnPrimary} w-full`}>
+                                <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Ver orçamento · <span className="font-mono">{cart.length}</span>
                             </button>
                         </div>
+                    )}
+                    <div className="flex snap-x gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {filteredPanels.map((panel) => <PanelCard key={panel.id} panel={panel} compact />)}
+                        {!isLoading && filteredPanels.length === 0 && <p className="border border-white/15 bg-ink-950/95 px-4 py-3 text-sm text-ink-300">Nenhum ponto com essa busca.</p>}
+                    </div>
+                </div>
+            </div>
 
-                        {/* Content Body */}
-                        <div className="flex-1 overflow-y-auto p-6 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                            {checkoutStep === 'cart' ? (
-                                cart.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                                        <ShoppingCart className="w-10 h-10 text-[#8F8F91]/50 mb-4" />
-                                        <p className="text-xs font-bold uppercase tracking-widest text-[#8F8F91]">Carrinho Vazio</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-4">
-                                        {cart.map((p, i) => (
-                                            <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-sm relative">
-                                                <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-black font-black text-[10px] rounded-sm flex items-center justify-center shadow-md z-10">{i + 1}</div>
-                                                <img src={p.images?.[0] || '/placeholder.svg'} alt={p.name} className="w-16 h-16 rounded-sm object-cover bg-black" />
-                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <h4 className="text-xs font-bold text-white leading-tight mb-1 truncate">{p.name}</h4>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#8F8F91] mb-3 flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</p>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-sm font-black text-white">{formatCurrency(Number(p.price))}</span>
-                                                        <button type="button" onClick={() => toggleInCart(p)} className="text-[9px] text-[#ff4d4d] font-bold uppercase tracking-widest hover:text-white bg-[#ff4d4d]/10 hover:bg-[#ff4d4d]/30 px-2.5 py-1.5 rounded-sm transition-colors border border-[#ff4d4d]/20">Remover</button>
+            {/* ============================ ORÇAMENTO (gaveta) ============================ */}
+            <AnimatePresence>
+                {isCheckoutOpen && (
+                    <>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeCheckout} className="fixed inset-0 z-[99998] bg-ink-950/80" />
+                        <motion.aside
+                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+                            className="fixed inset-y-0 right-0 z-[99999] flex w-full flex-col border-l border-white/10 bg-ink-950 md:w-[480px]"
+                            role="dialog" aria-modal="true" aria-labelledby="map-checkout-title"
+                        >
+                            <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-6 py-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+                                <div>
+                                    <p className={eyebrow}>{checkoutStep === 'cart' ? 'Passo 1 de 2' : 'Passo 2 de 2'}</p>
+                                    <h2 id="map-checkout-title" className="mt-1 text-xl font-light uppercase tracking-tight text-ink-100">{checkoutStep === 'cart' ? 'Seu orçamento' : 'Seus dados'}</h2>
+                                </div>
+                                <button type="button" onClick={closeCheckout} className="p-2 text-ink-400 hover:text-ink-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+                            </div>
+
+                            <div className="custom-scrollbar flex-1 overflow-y-auto p-6">
+                                {checkoutStep === 'cart' ? (
+                                    cart.length === 0 ? (
+                                        <div className="mt-8">
+                                            <p className="text-2xl font-light uppercase tracking-tight text-ink-100">Nenhum painel ainda</p>
+                                            <p className="mt-3 text-ink-400">Use o botão + nos cards ou "Adicionar ao orçamento" no mapa.</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
+                                            {cart.map((p) => (
+                                                <li key={p.id} className="flex gap-4 py-4">
+                                                    <img src={p.images?.[0] || '/placeholder.svg'} alt="" className="h-16 w-20 shrink-0 bg-ink-900 object-cover" />
+                                                    <div className="flex min-w-0 flex-1 flex-col">
+                                                        <p className="truncate text-sm font-medium text-ink-100">{p.name}</p>
+                                                        <p className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-ink-400">{[p.city, p.state].filter(Boolean).join(' · ')}</p>
+                                                        <div className="mt-auto flex items-end justify-between pt-2">
+                                                            <span className="font-mono text-sm text-ink-100">{formatCurrency(Number(p.price) || 0)}<span className="text-xs text-ink-400">/mês</span></span>
+                                                            <button type="button" onClick={() => toggleInCart(p)} className="text-xs text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Remover</button>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )
+                                ) : (
+                                    <form id="crm-checkout-form" onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-5">
+                                        <dl className="grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08] font-mono text-sm">
+                                            <div className="bg-ink-950 p-3"><dt className="text-xs text-ink-500">Painéis</dt><dd className="mt-1 text-ink-100">{cart.length}</dd></div>
+                                            <div className="bg-ink-950 p-3"><dt className="text-xs text-ink-500">Alcance/dia</dt><dd className="mt-1 text-ink-100">{totalCartImpacts ? formatImpacts(totalCartImpacts) : '—'}</dd></div>
+                                            <div className="bg-ink-950 p-3"><dt className="text-xs text-ink-500">Prazo</dt><dd className="mt-1 text-ink-100">{months} {months === 1 ? 'mês' : 'meses'}</dd></div>
+                                            <div className="bg-ink-950 p-3"><dt className="text-xs text-ink-500">Total</dt><dd className="mt-1 text-brand-neon">{formatCurrency(finalTotalValue)}</dd></div>
+                                        </dl>
+                                        {[
+                                            { id: 'name', label: 'Nome completo', type: 'text', auto: 'name', required: true },
+                                            { id: 'email', label: 'E-mail', type: 'email', auto: 'email', required: true },
+                                            { id: 'phone', label: 'WhatsApp', type: 'tel', auto: 'tel', required: true },
+                                            { id: 'company', label: 'Empresa ou marca', type: 'text', auto: 'organization', required: false },
+                                        ].map((f) => (
+                                            <div key={f.id}>
+                                                <label htmlFor={`mc-${f.id}`} className="mb-2 block text-sm text-ink-300">{f.label} {!f.required && <span className="text-ink-500">(opcional)</span>}</label>
+                                                <input id={`mc-${f.id}`} type={f.type} autoComplete={f.auto} required={f.required} value={checkoutForm[f.id as keyof typeof checkoutForm]} onChange={(e) => setCheckoutForm({ ...checkoutForm, [f.id]: e.target.value })} className={field} />
                                             </div>
                                         ))}
-                                    </div>
-                                )
-                            ) : (
-                                <form id="crm-checkout-form" onSubmit={handleWhatsAppSubmit} className="flex flex-col gap-6 pb-4">
-                                    <div className="bg-[#111113] rounded-sm p-6 border border-white/5">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="w-3.5 h-3.5" /> Oportunidade</span>
-                                            <span className="bg-white/5 text-white text-[10px] font-bold px-2 py-0.5 rounded-sm border border-white/10">{cart.length} Pontos</span>
+                                        <div>
+                                            <label htmlFor="mc-msg" className="mb-2 block text-sm text-ink-300">Observações <span className="text-ink-500">(opcional)</span></label>
+                                            <textarea id="mc-msg" rows={3} value={checkoutForm.message} onChange={(e) => setCheckoutForm({ ...checkoutForm, message: e.target.value })} placeholder="Quando quer começar, público, dúvidas" className={`${field} resize-none`} />
                                         </div>
-                                        <div className="border-t border-white/5 my-4" />
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] text-[#FF5E00] font-bold uppercase tracking-widest mb-1">Alcance Diário</span>
-                                                <span className="text-lg font-black text-[#FF5E00]">{formatImpacts(totalCartImpacts)}</span>
-                                            </div>
-                                            <div className="flex flex-col items-end text-right">
-                                                {totalEconomy > 0 && <span className="text-[10px] text-[#8F8F91] line-through mb-0.5">{formatCurrency(totalWithoutAnyDiscount)}</span>}
-                                                <span className="text-[9px] text-[#8F8F91] font-bold uppercase tracking-widest mb-1">Valor Liquido</span>
-                                                <span className="text-lg font-black text-white leading-none mb-1.5">{formatCurrency(finalTotalValue)}</span>
-                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#FF5E00] bg-[#FF5E00]/10 px-2 py-0.5 rounded-sm border border-[#FF5E00]/20 uppercase tracking-widest">Economia: {formatCurrency(totalEconomy)}</span>}
-                                            </div>
+                                    </form>
+                                )}
+                            </div>
+
+                            {checkoutStep === 'cart' ? (
+                                <div className="flex shrink-0 flex-col gap-4 border-t border-white/[0.08] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label htmlFor="mc-months" className="mb-2 block text-sm text-ink-300">Prazo</label>
+                                            <select id="mc-months" value={months} onChange={(e) => setMonths(Number(e.target.value))} className={field}>
+                                                {MONTHS.map((m) => <option key={m} value={m}>{m} {m === 1 ? 'mês' : 'meses'}{m >= 12 ? ' · 30%' : m >= 6 ? ' · 20%' : m >= 3 ? ' · 15%' : ''}</option>)}
+                                            </select>
                                         </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-4">
-                                        <h3 className="text-[11px] font-black text-white uppercase tracking-widest border-b border-white/5 pb-2">Detalhes de Contato</h3>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Nome Completo *</label>
-                                            <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">E-mail *</label>
-                                                <input type="email" required value={checkoutForm.email} onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">WhatsApp *</label>
-                                                <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Empresa / Marca</label>
-                                            <input type="text" value={checkoutForm.company} onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none transition-colors" />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Observações (Opcional)</label>
-                                            <textarea rows={3} value={checkoutForm.message} onChange={(e) => setCheckoutForm({ ...checkoutForm, message: e.target.value })} className="bg-[#0A0A0B] border border-white/10 rounded-sm p-3 text-white text-sm focus:border-[#FF5E00] outline-none resize-none transition-colors" />
-                                        </div>
-                                    </div>
-                                </form>
-                            )}
-                        </div>
-
-                        {/* Footer (Actions) */}
-                        {checkoutStep === 'cart' ? (
-                            <div className="bg-[#111113] p-6 border-t border-white/5 shrink-0 pb-safe">
-                                <div className="flex flex-col w-full mb-6">
-                                    <div className="flex flex-col gap-4 border-b border-white/5 pb-6 mb-6">
-                                        <div className="grid grid-cols-2 gap-4 items-end">
-                                            <div className="flex flex-col gap-2 relative z-50">
-                                                <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold">Contrato (Meses)</label>
-                                                <CustomSelect
-                                                    options={monthOptions}
-                                                    value={String(months)}
-                                                    onChange={(val: string) => setMonths(Number(val))}
-                                                    placeholder="Duração"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-2 h-full">
-                                                <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold">Cupom OFF</label>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="CÓDIGO"
-                                                        value={couponInput}
-                                                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                                                        className="w-full bg-[#0A0A0B] border border-white/10 rounded-sm px-3 text-white text-xs font-bold focus:border-[#FF5E00] outline-none uppercase placeholder:normal-case placeholder:font-normal h-[42px] transition-colors"
-                                                        disabled={appliedCoupon !== null}
-                                                    />
-                                                    {appliedCoupon ? (
-                                                        <Button type="button" aria-label="Remover cupom" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="px-3 h-[42px] bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-sm transition-colors"><X className="w-4 h-4" /></Button>
-                                                    ) : (
-                                                        <Button type="button" aria-label="Aplicar cupom" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/5 text-[#8F8F91] hover:text-white border border-white/10 hover:border-white/20 rounded-sm transition-colors"><Tag className="w-4 h-4" /></Button>
-                                                    )}
+                                        <div>
+                                            <label htmlFor="mc-coupon" className="mb-2 block text-sm text-ink-300">Cupom</label>
+                                            {appliedCoupon ? (
+                                                <div className="flex h-[46px] items-center justify-between gap-2 border border-brand-neon/40 px-3 text-sm text-brand-neon">
+                                                    <span className="truncate font-mono">{appliedCoupon.code}</span>
+                                                    <button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="text-ink-400 hover:text-ink-100" aria-label="Remover cupom"><X className="h-4 w-4" /></button>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#FF5E00] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Bonificação de {termDiscountPercent * 100}% aplicada</p>}
-                                        {appliedCoupon && <p className="text-[10px] text-[#FF5E00] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Cupom {appliedCoupon.code} ativo ({appliedCoupon.label})</p>}
-                                    </div>
-
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-[#8F8F91] uppercase tracking-widest mb-1">Custo Operacional Mensal</span>
-                                            {totalEconomy > 0 && <span className="text-[11px] text-[#8F8F91] font-medium line-through mb-0.5">{formatCurrency(baseMonthly)}</span>}
-                                            <span className="text-2xl font-black text-white leading-none">{formatCurrency(finalMonthlyValue)}</span>
-                                            <span className="text-[10px] text-[#8F8F91] mt-2 font-bold uppercase tracking-widest">Budget Total: {formatCurrency(finalTotalValue)}</span>
+                                            ) : (
+                                                <div className="flex">
+                                                    <input id="mc-coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="CÓDIGO" className={`${field} min-w-0 font-mono uppercase`} />
+                                                    <button type="button" onClick={handleApplyCoupon} disabled={!couponInput.trim() || cart.length === 0} className="border border-l-0 border-white/15 px-3 text-sm text-ink-100 hover:bg-ink-800 disabled:opacity-40">OK</button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+                                    <div className="flex flex-col gap-1 text-sm">
+                                        {termDiscountPercent > 0 && <p className="flex justify-between text-ink-400"><span>Desconto de prazo ({termDiscountPercent * 100}%)</span><span className="font-mono">− {formatCurrency(totalTermDiscount)}</span></p>}
+                                        {couponDiscount > 0 && <p className="flex justify-between text-ink-400"><span>Cupom {appliedCoupon?.code}</span><span className="font-mono">− {formatCurrency(couponDiscount)}</span></p>}
+                                        <p className="mt-2 flex items-end justify-between border-t border-white/[0.08] pt-3"><span className="text-ink-300">Investimento mensal</span><span className="font-mono text-2xl text-brand-neon">{formatCurrency(cart.length ? finalMonthlyValue : 0)}</span></p>
+                                        <p className="text-right font-mono text-xs text-ink-400">Total da campanha: {formatCurrency(cart.length ? finalTotalValue : 0)}</p>
+                                    </div>
+                                    <button type="button" disabled={cart.length === 0 || isSubmitting} onClick={() => setCheckoutStep('crm')} className={`${btnPrimary} w-full`}>
+                                        Continuar <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                    </button>
                                 </div>
-
-                                <Button
-                                    type="button"
-                                    disabled={cart.length === 0 || isSubmitting}
-                                    onClick={() => setCheckoutStep('crm')}
-                                    className="w-full bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] transition-colors"
-                                >
-                                    Avançar Etapa
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="bg-[#111113] p-6 border-t border-white/5 shrink-0 pb-safe flex flex-col gap-4 z-20 relative">
-                                <button type="button" onClick={() => setCheckoutStep('cart')} className="w-full py-2 text-[10px] font-bold text-[#8F8F91] hover:text-white uppercase tracking-widest transition-colors">Voltar para Especificações</button>
-                                <Button
-                                    type="submit"
-                                    form="crm-checkout-form"
-                                    disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
-                                    className="w-full bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                                >
-                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                    Finalizar e Enviar
-                                </Button>
-                            </div>
-                        )}
-                    </motion.div>
+                            ) : (
+                                <div className="shrink-0 border-t border-white/[0.08] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                                    <p className="mb-4 text-xs text-ink-400">Ao enviar, o pedido chega ao comercial da T3 e abrimos o WhatsApp de um atendente com o resumo.</p>
+                                    <button type="submit" form="crm-checkout-form" disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone} className={`${btnPrimary} w-full`}>
+                                        {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : <><Send className="h-4 w-4" aria-hidden="true" /> Enviar pelo WhatsApp</>}
+                                    </button>
+                                    <button type="button" onClick={() => setCheckoutStep('cart')} className="mt-4 w-full text-center text-sm text-ink-400 hover:text-ink-100">Voltar ao orçamento</button>
+                                </div>
+                            )}
+                        </motion.aside>
+                    </>
                 )}
             </AnimatePresence>
-
         </div>
         </>
     );

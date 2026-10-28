@@ -1,8 +1,9 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { BaseTiles } from '@/features/map/basemap';
+import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from '@/features/map/markers';
 import { ArrowLeft, ImagePlus, Star, Trash2 } from 'lucide-react';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
@@ -11,14 +12,8 @@ import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
 
-const marker = L.divIcon({
-    className: '',
-    html: '<div style="width:18px;height:18px;background:#FF5E00;border:3px solid #0B0B0C;box-shadow:0 0 0 1px #FF5E00"></div>',
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-});
+const marker = brandMarker('brand', true);
 
-const GOIANIA: [number, number] = [-16.6869, -49.2648];
 const MAX_IMAGES = 8;
 
 const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
@@ -234,9 +229,9 @@ export function PanelForm() {
                         <Field label="Coordenadas" htmlFor="pn-coords" hint='Clique no mapa, ou cole "latitude, longitude" ou o link completo do Google Maps.'>
                             <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} className={`${crmInput} font-mono ${parseCoordinates(coordsText) ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText)} />
                         </Field>
-                        <div className={`relative h-[360px] border border-brand-border lg:h-[420px] ${theme === 'dark' ? '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.9)]' : ''}`}>
-                            <MapContainer center={position} zoom={15} minZoom={4} className="absolute inset-0 z-0">
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                        <div className={`relative h-[360px] border border-brand-border lg:h-[420px]`}>
+                            <MapContainer center={position} zoom={15} minZoom={4} maxBounds={BRAZIL_BOUNDS} className="absolute inset-0 z-0">
+                                <BaseTiles theme={theme} />
                                 <Marker position={position} icon={marker} draggable eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); place([ll.lat, ll.lng]); } }} />
                                 <ClickToPlace onPick={place} />
                                 <FollowPosition position={position} />
