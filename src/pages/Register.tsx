@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { z } from 'zod';
 import { Seo } from '@/components/Seo';
 
@@ -329,16 +330,11 @@ export function Register() {
                             {/* RECAPTCHA E BOTÃO */}
                             <div className="flex flex-col sm:flex-row items-center gap-5 pt-4 mt-2">
                                 <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0 bg-[#0A0A0B]">
-                                    <ReCAPTCHA
-                                        ref={captchaRef}
-                                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""}
-                                        onChange={(token) => setCaptchaToken(token)}
-                                        theme="dark"
-                                    />
+                                    <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
                                 </div>
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || !RECAPTCHA_SITE_KEY}
                                     className="w-full flex-1 bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-[78px] sm:h-16 rounded-none transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99] disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Criar Conta <Send className="w-4 h-4" /></>}
