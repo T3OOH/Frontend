@@ -121,7 +121,7 @@ export function UserProfile() {
     const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
     const translateStatus = (status: string) => {
-        if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20' };
+        if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#FF5E00]/10 text-[#FF5E00] border-[#FF5E00]/20' };
         if (status === 'LOST') return { text: 'Cancelado', color: 'bg-red-500/10 text-red-500 border-red-500/20' };
         return { text: 'Em Análise', color: 'bg-brand-neon/10 text-brand-neon border-brand-neon/20' };
     };
@@ -153,7 +153,7 @@ export function UserProfile() {
                         {formData.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 text-center sm:text-left z-10 min-w-0 flex flex-col justify-center h-full">
-                        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2 truncate">{formData.name}</h1>
+                        <h1 className="text-3xl sm:text-4xl font-light uppercase text-white tracking-tight mb-2 truncate">{formData.name}</h1>
                         <p className="text-[#FF5E00] text-xs font-bold uppercase tracking-widest mb-5">Conta Corporativa</p>
                         
                         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-5 text-[13px] text-[#8F8F91] font-medium">
@@ -306,7 +306,7 @@ export function UserProfile() {
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0">
-                                                            <span className="text-[10px] font-bold text-[#25D366] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
+                                                            <span className="text-[10px] font-bold text-[#FF5E00] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
                                                             <span className="text-sm font-black text-white">{formatCurrency(item.priceSnapshot || 0)}</span>
                                                         </div>
                                                     </div>
@@ -317,14 +317,14 @@ export function UserProfile() {
                                         <div className="bg-[#0A0A0B] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-inner">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Resumo Financeiro</span>
-                                                <span className="text-2xl font-black text-[#25D366] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
+                                                <span className="text-2xl font-black text-[#FF5E00] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
                                                 <span className="text-xs text-[#8F8F91] font-medium mt-1">Duração: {activeOrder.contractMonths || 1} Meses</span>
                                             </div>
                                             
                                             <Button 
                                                 onClick={() => handleContactSupport(activeOrder)}
                                                 size="lg"
-                                                className="w-full sm:w-auto bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
+                                                className="w-full sm:w-auto bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
                                                 rightIcon={<MessageCircle className="w-4 h-4" />}
                                             >
                                                 Falar com Consultor

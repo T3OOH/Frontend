@@ -229,7 +229,7 @@ export function Solution() {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="mb-16 md:mb-24 flex flex-col gap-4">
                         <span className="text-[#FF5E00] font-black uppercase tracking-widest text-xs">Aplicações</span>
-                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">Uma Solução Para Cada Espaço.</h2>
+                        <h2 className="text-3xl md:text-5xl font-light uppercase text-white tracking-tight">Uma solução para cada espaço.</h2>
                     </div>
 
                     <motion.div 
@@ -269,7 +269,7 @@ export function Solution() {
                         className="lg:w-1/3 lg:sticky lg:top-32 h-fit"
                     >
                         <span className="text-[#FF5E00] font-black uppercase tracking-widest text-xs mb-4 block">Portfólio</span>
-                        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-6">Encontre O Painel Ideal.</h2>
+                        <h2 className="text-3xl md:text-4xl font-light uppercase text-white tracking-tight mb-6">Encontre o painel ideal.</h2>
                         <p className="text-[#8F8F91] text-lg">Configuramos O Painel De Acordo Com O Ambiente E A Necessidade Do Seu Projeto.</p>
                     </motion.div>
                     
@@ -298,7 +298,7 @@ export function Solution() {
             {/* ========================================== */}
             <section className="relative z-10 py-24 md:py-32 border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6">
-                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-16 text-center">Como Funciona O Nosso Processo</h2>
+                    <h2 className="text-3xl md:text-4xl font-light uppercase text-white tracking-tight mb-16 text-center">Como funciona o nosso processo</h2>
                     
                     <motion.div 
                         initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
