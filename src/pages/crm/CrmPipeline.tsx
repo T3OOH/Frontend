@@ -1,508 +1,351 @@
-import { useState, useEffect, FormEvent } from 'react';
-import { Plus, DollarSign, Clock, AlertCircle, Loader2, X, Filter, MessageCircle } from 'lucide-react';
-import { crmService, CrmDeal, CrmClient, CreateDealData, DealStage } from '@/services/crm.service';
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { MessageCircle, Plus, Trophy, XCircle, RotateCcw } from 'lucide-react';
+import { crmService, CrmClient, CrmDeal, DealStage, DealStatus } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
-import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/crm/ui';
+import { crmBtn, crmInput, formatBRL, formatDate, whatsappUrl } from '@/components/crm/tokens';
 
-/**
- * Componente principal do Funil de Vendas (Kanban / Pipeline).
- * Implementa arquitetura responsiva separando a interface em dois viewports:
- * - Desktop: Quadro Kanban tradicional com suporte a Drag and Drop nativo (HTML5).
- * - Mobile: Lista vertical agrupada por estágio (Stack) com seletores de ação diretos 
- *   para facilitar a transição de cards via touch.
- */
+const STAGES: { id: DealStage; title: string }[] = [
+    { id: 'NEW_LEAD', title: 'Novos leads' },
+    { id: 'FIRST_CONTACT', title: 'Primeiro contato' },
+    { id: 'NEGOTIATION', title: 'Em negociação' },
+    { id: 'WAITING_REPLY', title: 'Aguardando retorno' },
+    { id: 'PROPOSAL_SENT', title: 'Proposta enviada' },
+    { id: 'POST_SALES', title: 'Pós-venda' },
+];
+
+const STATUS_TABS: { id: DealStatus; label: string }[] = [
+    { id: 'OPEN', label: 'Abertos' },
+    { id: 'WON', label: 'Ganhos' },
+    { id: 'LOST', label: 'Perdidos' },
+];
+
+const EMPTY_FORM = { clientId: '', title: '', expectedValue: '', probability: '50' };
+const daysSince = (date: string) => Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+const errorMessage = (error: unknown, fallback: string) =>
+    (error as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
+
 export function CrmPipeline() {
+    const toast = useToast();
     const [deals, setDeals] = useState<CrmDeal[]>([]);
     const [clients, setClients] = useState<CrmClient[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState<CreateDealData>({
-        clientId: '',
-        title: '',
-        expectedValue: 0,
-        probability: 50,
-    });
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [view, setView] = useState<DealStatus>('OPEN');
+    const [mobileStage, setMobileStage] = useState<DealStage>('NEW_LEAD');
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [overStage, setOverStage] = useState<DealStage | null>(null);
+    const [selected, setSelected] = useState<CrmDeal | null>(null);
+    const [creating, setCreating] = useState(false);
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [saving, setSaving] = useState(false);
 
-    const [draggedDealId, setDraggedDealId] = useState<string | null>(null);
-
-    const toast = useToast();
-
-    /**
-     * Efeito de inicialização.
-     * Carrega as oportunidades em andamento e a lista de clientes vinculáveis.
-     */
-    useEffect(() => {
-        fetchData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    /**
-     * Busca assíncrona dos dados do Pipeline e da carteira de clientes.
-     */
-    const fetchData = async () => {
+    const load = async () => {
         try {
-            setIsLoading(true);
-            const [dealsData, clientsData] = await Promise.all([
-                crmService.getDeals(),
-                crmService.getClients()
-            ]);
-            setDeals(dealsData);
-            setClients(clientsData);
-        } catch (error) {
-            console.error('Erro ao buscar dados do Kanban:', error);
-            toast.error('Não foi possível carregar o funil de vendas.');
-        } finally {
-            setIsLoading(false);
+            setStatus('loading');
+            const [d, c] = await Promise.all([crmService.getDeals(), crmService.getClients()]);
+            setDeals(d);
+            setClients(c);
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
     };
 
-    /**
-     * Submete o formulário para criação de uma nova oportunidade de negócio no topo do funil.
-     */
-    const handleCreateDeal = async (e: FormEvent) => {
+    useEffect(() => { load(); }, []);
+
+    const byStatus = useMemo(() => deals.filter((d) => d.status === view), [deals, view]);
+    const counts = useMemo(() => ({
+        OPEN: deals.filter((d) => d.status === 'OPEN').length,
+        WON: deals.filter((d) => d.status === 'WON').length,
+        LOST: deals.filter((d) => d.status === 'LOST').length,
+    }), [deals]);
+
+    /** Atualiza um negócio na tela antes da resposta e desfaz se o servidor recusar. */
+    const optimistic = async (id: string, patch: Partial<CrmDeal>, request: () => Promise<unknown>, success: string) => {
+        const before = deals;
+        setDeals((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch, updatedAt: new Date().toISOString() } : d)));
+        setSelected((prev) => (prev?.id === id ? { ...prev, ...patch } : prev));
+        try {
+            await request();
+            toast.success(success);
+        } catch (error) {
+            setDeals(before);
+            setSelected((prev) => (prev?.id === id ? before.find((d) => d.id === id) ?? null : prev));
+            toast.error(errorMessage(error, 'Não foi possível salvar. Nada foi alterado.'));
+        }
+    };
+
+    const moveTo = (deal: CrmDeal, stage: DealStage) => {
+        if (deal.stage === stage) return;
+        const title = STAGES.find((s) => s.id === stage)?.title;
+        optimistic(deal.id, { stage }, () => crmService.updateDealStage(deal.id, stage), `Movido para ${title?.toLowerCase()}.`);
+    };
+
+    const setDealStatus = (deal: CrmDeal, next: DealStatus) => {
+        const msg = next === 'WON' ? 'Negócio marcado como ganho.' : next === 'LOST' ? 'Negócio marcado como perdido.' : 'Negócio reaberto.';
+        optimistic(deal.id, { status: next }, () => crmService.updateDealStatus(deal.id, next), msg);
+        setSelected(null);
+    };
+
+    const onDrop = (e: DragEvent, stage: DealStage) => {
         e.preventDefault();
-        
-        if (!formData.clientId || !formData.title.trim()) {
-            toast.error('Preencha os campos obrigatórios.');
-            return;
-        }
+        const deal = deals.find((d) => d.id === (dragId || e.dataTransfer.getData('text/plain')));
+        setDragId(null);
+        setOverStage(null);
+        if (deal) moveTo(deal, stage);
+    };
 
-        if (formData.title.trim().length < 3) {
-            toast.error('O título deve ter ao menos 3 caracteres.');
-            return;
-        }
-
+    const onCreate = async (e: FormEvent) => {
+        e.preventDefault();
         try {
-            setIsSubmitting(true);
-            await crmService.createDeal(formData);
-            toast.success('Oportunidade criada com sucesso!');
-            setIsModalOpen(false);
-            setFormData({ clientId: '', title: '', expectedValue: 0, probability: 50 });
-            fetchData();
+            setSaving(true);
+            await crmService.createDeal({
+                clientId: form.clientId,
+                title: form.title.trim(),
+                expectedValue: Number(form.expectedValue) || 0,
+                probability: Math.round(Number(form.probability) || 0),
+            });
+            toast.success('Oportunidade criada em novos leads.');
+            setCreating(false);
+            setForm(EMPTY_FORM);
+            load();
         } catch (error) {
-            console.error('Erro ao criar oportunidade:', error);
-            toast.error('Erro ao salvar oportunidade.');
+            toast.error(errorMessage(error, 'Não foi possível criar a oportunidade.'));
         } finally {
-            setIsSubmitting(false);
+            setSaving(false);
         }
     };
 
-    /**
-     * Abre o WhatsApp do cliente com uma mensagem pré-formatada.
-     */
-    const handleOpenWhatsApp = (e: React.MouseEvent, clientName?: string, phone?: string) => {
-        e.stopPropagation(); // Previne que o click inicie um Drag ou outra ação do Card
-        
+    const openWhatsApp = (deal: CrmDeal) => {
+        const phone = deal.client?.whatsapp || deal.client?.phone;
         if (!phone) {
-            toast.error('Cliente não possui telefone/WhatsApp cadastrado.');
+            toast.error('Este cliente não tem telefone cadastrado.');
             return;
         }
-
-        // Limpa tudo que não for número
-        const cleanPhone = phone.replace(/\D/g, '');
-        const firstName = clientName ? clientName.split(' ')[0] : 'Cliente';
-        const defaultText = `Olá, ${firstName}! Aqui é do time comercial da T3 OOH.`;
-        
-        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(defaultText)}`;
-        window.open(waUrl, '_blank');
+        const first = deal.client?.name?.split(' ')[0] || '';
+        window.open(whatsappUrl(phone, `Olá, ${first}! Aqui é do comercial da T3 OOH.`), '_blank', 'noopener');
     };
 
-    /**
-     * Inicializa a API nativa de Drag and Drop do HTML5.
-     */
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, dealId: string) => {
-        setDraggedDealId(dealId);
-        e.dataTransfer.setData('text/plain', dealId); 
-        e.dataTransfer.effectAllowed = 'move';
+    const DealCard = ({ deal }: { deal: CrmDeal }) => {
+        const days = daysSince(deal.updatedAt);
+        return (
+            <li
+                draggable={view === 'OPEN'}
+                onDragStart={(e) => { setDragId(deal.id); e.dataTransfer.setData('text/plain', deal.id); e.dataTransfer.effectAllowed = 'move'; }}
+                onDragEnd={() => { setDragId(null); setOverStage(null); }}
+                className={`border border-brand-border bg-brand-surface transition-colors hover:border-brand-muted ${dragId === deal.id ? 'opacity-40' : ''} ${view === 'OPEN' ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            >
+                <button type="button" onClick={() => setSelected(deal)} className="block w-full p-4 text-left">
+                    <p className="line-clamp-2 text-sm font-medium text-brand-text">{deal.title}</p>
+                    <p className="mt-1 truncate text-xs text-brand-muted">{deal.client?.name || 'Cliente'}</p>
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-brand-border pt-3">
+                        <span className="font-mono text-sm text-brand-text">{formatBRL(deal.expectedValue)}</span>
+                        <span className={`font-mono text-xs ${days > 7 && view === 'OPEN' ? 'text-red-500' : 'text-brand-muted'}`} title="Dias sem movimentação">
+                            {days}d
+                        </span>
+                    </div>
+                </button>
+            </li>
+        );
     };
 
-    /**
-     * Previne o comportamento padrão do navegador para habilitar áreas de soltura (drop zones).
-     */
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault(); 
-        e.dataTransfer.dropEffect = 'move';
-    };
-
-    /**
-     * Processa a finalização do evento de Drag and Drop (Desktop).
-     */
-    const handleDrop = async (e: React.DragEvent<HTMLDivElement>, targetStage: DealStage) => {
-        e.preventDefault();
-        if (!draggedDealId) return;
-        await changeDealStage(draggedDealId, targetStage);
-        setDraggedDealId(null);
-    };
-
-    /**
-     * Altera o estágio de uma oportunidade de negócio com UI Otimista.
-     */
-    const changeDealStage = async (dealId: string, targetStage: DealStage) => {
-        const dealToMove = deals.find(d => d.id === dealId);
-        if (!dealToMove || dealToMove.stage === targetStage) return;
-
-        const originalDeals = [...deals];
-        
-        // UI Otimista
-        setDeals(prevDeals => prevDeals.map(d => 
-            d.id === dealId ? { ...d, stage: targetStage } : d
-        ));
-
-        try {
-            await crmService.updateDealStage(dealId, targetStage);
-            toast.success('Oportunidade movida com sucesso.');
-        } catch (error) {
-            console.error('Erro ao mover card:', error);
-            toast.error('Erro de conexão. Card retornou ao estágio original.');
-            setDeals(originalDeals); 
-        }
-    };
-
-    // Progressão visual do funil: neutro nas etapas iniciais, laranja perto do fechamento
-    const stages: { id: DealStage; title: string; color: string; border: string }[] = [
-        { id: 'NEW_LEAD', title: 'Novos leads', color: 'text-brand-muted', border: 'border-brand-border' },
-        { id: 'FIRST_CONTACT', title: 'Primeiro contato', color: 'text-brand-muted', border: 'border-brand-muted/50' },
-        { id: 'NEGOTIATION', title: 'Em negociação', color: 'text-brand-text', border: 'border-brand-text/40' },
-        { id: 'WAITING_REPLY', title: 'Aguardando retorno', color: 'text-brand-text', border: 'border-brand-text/70' },
-        { id: 'PROPOSAL_SENT', title: 'Proposta enviada', color: 'text-brand-neon', border: 'border-brand-neon/60' },
-        { id: 'POST_SALES', title: 'Pós-venda', color: 'text-brand-neon', border: 'border-brand-neon' },
-    ];
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
-
-    const calculateDaysInStage = (updatedAt: string) => {
-        const diffTime = Math.abs(new Date().getTime() - new Date(updatedAt).getTime());
-        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    };
+    const selectedStage = STAGES.find((s) => s.id === selected?.stage);
 
     return (
-        <div className="w-full h-full flex flex-col relative animate-fade-in gap-6">
-            
-            {/* OVERLAY DE LOADING GLOBAL */}
-            {isLoading && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/80 backdrop-blur-sm">
-                    <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
-                        <span className="text-brand-muted text-xs font-bold tracking-widest uppercase">Carregando Funil...</span>
-                    </div>
-                </div>
+        <CrmPage
+            wide
+            eyebrow="Vendas"
+            title="Funil"
+            description={view === 'OPEN' ? 'Arraste os cards entre as etapas, ou abra um card para mudar a etapa e fechar o negócio.' : 'Negócios encerrados. Abra um card para reabrir.'}
+            actions={<button type="button" onClick={() => setCreating(true)} className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Nova oportunidade</button>}
+        >
+            <div role="tablist" aria-label="Situação" className="flex gap-px self-start border border-brand-border bg-brand-border">
+                {STATUS_TABS.map((t) => (
+                    <button key={t.id} role="tab" aria-selected={view === t.id} onClick={() => setView(t.id)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm ${view === t.id ? 'bg-brand-surface text-brand-text' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                        {t.label} <span className="font-mono text-xs text-brand-muted">{counts[t.id]}</span>
+                    </button>
+                ))}
+            </div>
+
+            {status === 'loading' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">{STAGES.map((s) => <Skeleton key={s.id} className="h-64" />)}</div>
             )}
 
-            {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP                                         */}
-            {/* ========================================================= */}
-            <div className="hidden lg:flex flex-col h-full max-w-[1600px] mx-auto w-full">
-                
-                <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            <Filter className="w-6 h-6 text-brand-neon" /> Funil de Vendas
-                        </h1>
-                        <p className="text-sm text-brand-muted mt-1 font-medium">Arraste os cards para avançar as oportunidades no fluxo comercial.</p>
-                    </div>
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-brand-neon text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-neonHover transition-colors shadow-sm"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Nova Oportunidade
-                    </button>
-                </div>
+            {status === 'error' && (
+                <EmptyState title="Não foi possível carregar o funil" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />
+            )}
 
-                <div className="flex-1 overflow-x-auto custom-scrollbar pb-4">
-                    <div className="flex gap-4 h-full min-h-[500px]">
-                        {stages.map((stage) => {
-                            const stageDeals = deals.filter((d) => d.stage === stage.id);
-                            const totalValue = stageDeals.reduce((acc, curr) => acc + Number(curr.expectedValue), 0);
+            {status === 'ready' && deals.length === 0 && (
+                <EmptyState
+                    title="Nenhuma oportunidade ainda"
+                    text={clients.length ? 'Crie a primeira oportunidade para um cliente da sua carteira.' : 'Cadastre um cliente e depois crie uma oportunidade para ele. Leads do site chegam pela fila, na tela inicial.'}
+                    action={clients.length
+                        ? <button type="button" onClick={() => setCreating(true)} className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Nova oportunidade</button>
+                        : <Link to="/crm/clientes" className={crmBtn.primary}>Cadastrar cliente</Link>}
+                />
+            )}
 
+            {/* ============================ QUADRO (abertos) ============================ */}
+            {status === 'ready' && deals.length > 0 && view === 'OPEN' && (
+                <>
+                    {/* Celular: uma etapa por vez */}
+                    <div className="-mx-4 flex gap-px overflow-x-auto border-y border-brand-border bg-brand-border px-0 md:hidden">
+                        {STAGES.map((s) => {
+                            const n = byStatus.filter((d) => d.stage === s.id).length;
                             return (
-                                <div 
-                                    key={stage.id} 
-                                    className={`flex flex-col w-[320px] flex-shrink-0 bg-brand-background border border-brand-border rounded-none overflow-hidden transition-colors shadow-sm ${
-                                        draggedDealId ? 'hover:bg-brand-surface/50 hover:border-brand-neon/50' : ''
-                                    }`}
-                                    onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, stage.id)}
-                                >
-                                    <div className={`p-5 border-b-2 bg-brand-surface/80 backdrop-blur-sm ${stage.border}`}>
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <h3 className={`font-bold text-[13px] tracking-wide uppercase ${stage.color}`}>{stage.title}</h3>
-                                            <span className="bg-brand-background text-brand-text text-[11px] font-bold px-2.5 py-1 rounded-lg border border-brand-border">
-                                                {stageDeals.length}
-                                            </span>
-                                        </div>
-                                        <div className="text-[12px] text-brand-muted font-bold tracking-wider">
-                                            {formatCurrency(totalValue)}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-4 min-h-[100px]">
-                                        {stageDeals.map((deal) => {
-                                            const daysInStage = calculateDaysInStage(deal.updatedAt);
-                                            const isDragging = draggedDealId === deal.id;
-                                            
-                                            return (
-                                                <div 
-                                                    key={deal.id} 
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, deal.id)}
-                                                    className={`bg-brand-surface border border-brand-border p-5 rounded-none cursor-grab active:cursor-grabbing hover:border-brand-neon/50 transition-all group shadow-sm ${
-                                                        isDragging ? 'opacity-40 border-brand-neon border-dashed' : 'opacity-100'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        <h4 className="text-[14px] font-bold text-brand-text group-hover:text-brand-neon transition-colors leading-tight line-clamp-2 pr-2">
-                                                            {deal.title}
-                                                        </h4>
-                                                        <button 
-                                                            onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
-                                                            className="text-[#FF5E00] hover:text-white bg-[#FF5E00]/10 hover:bg-[#FF5E00] p-2 rounded-full transition-colors shrink-0 shadow-sm"
-                                                            title="Chamar no WhatsApp"
-                                                        >
-                                                            <MessageCircle className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    <p className="text-[12px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name || 'Cliente desconhecido'}</p>
-                                                    
-                                                    <div className="flex flex-col gap-3">
-                                                        <div className="flex items-center justify-between text-xs">
-                                                            <span className="flex items-center gap-1.5 text-brand-text font-bold">
-                                                                <DollarSign className="w-3.5 h-3.5 text-brand-neon" />
-                                                                {formatCurrency(Number(deal.expectedValue))}
-                                                            </span>
-                                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                                                                deal.probability > 70 ? 'bg-[#FF5E00]/10 text-[#FF5E00]' : 
-                                                                deal.probability > 30 ? 'bg-brand-text/5 text-brand-text' : 'bg-red-500/10 text-red-500'
-                                                            }`}>
-                                                                {deal.probability}%
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between mt-1 pt-3 border-t border-brand-border">
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-brand-muted font-bold">
-                                                                <Clock className="w-3.5 h-3.5" />
-                                                                {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}
-                                                            </div>
-                                                            {daysInStage > 7 && (
-                                                                <span title="Estagnado há mais de 7 dias" className="cursor-help">
-                                                                    <AlertCircle className="w-4 h-4 text-red-500" />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-
-                                        <button 
-                                            onClick={() => setIsModalOpen(true)}
-                                            className="w-full py-4 rounded-none border-2 border-dashed border-brand-border text-[11px] font-bold uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-neon/50 hover:bg-brand-surface transition-colors flex items-center justify-center gap-2 mt-2"
-                                        >
-                                            <Plus className="w-4 h-4" /> Adicionar
-                                        </button>
-                                    </div>
-                                </div>
+                                <button key={s.id} type="button" onClick={() => setMobileStage(s.id)} aria-pressed={mobileStage === s.id}
+                                    className={`shrink-0 px-4 py-2.5 text-sm ${mobileStage === s.id ? 'bg-brand-surface text-brand-text shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-brand-background text-brand-muted'}`}>
+                                    {s.title} <span className="font-mono text-xs">{n}</span>
+                                </button>
                             );
                         })}
                     </div>
-                </div>
-            </div>
 
-            {/* ========================================================= */}
-            {/* VIEWPORT: MOBILE (APP PATTERN NATIVO)                       */}
-            {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col w-full h-full pb-4">
-                
-                <div className="flex items-center justify-between mb-6 px-2 mt-2">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            <Filter className="w-6 h-6 text-brand-neon" /> Funil
-                        </h1>
-                        <p className="text-[11px] font-medium text-brand-muted mt-0.5">Gestão de oportunidades</p>
-                    </div>
-                    <button aria-label="Adicionar" 
-                        onClick={() => setIsModalOpen(true)}
-                        className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
-                    >
-                        <Plus className="w-6 h-6" />
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                    {stages.map((stage) => {
-                        const stageDeals = deals.filter((d) => d.stage === stage.id);
-                        if (stageDeals.length === 0) return null; // Oculta estágios vazios no mobile
-
-                        return (
-                            <div key={stage.id} className="flex flex-col">
-                                <div className={`flex items-center justify-between border-b-2 ${stage.border} pb-3 mb-4 px-2`}>
-                                    <h3 className={`font-semibold text-[12px] uppercase tracking-widest ${stage.color}`}>{stage.title}</h3>
-                                    <span className="bg-brand-surface border border-brand-border text-brand-text text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
-                                        {stageDeals.length}
-                                    </span>
-                                </div>
-
-                                <div className="flex flex-col gap-4">
-                                    {stageDeals.map((deal) => {
-                                        const daysInStage = calculateDaysInStage(deal.updatedAt);
-                                        
-                                        return (
-                                            <div key={deal.id} className="bg-brand-surface border border-brand-border p-5 rounded-none flex flex-col shadow-sm transition-colors">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <h4 className="text-[15px] font-bold text-brand-text leading-tight line-clamp-2 pr-3">
-                                                        {deal.title}
-                                                    </h4>
-                                                    <button 
-                                                        onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
-                                                        className="text-[#FF5E00] hover:text-white bg-[#FF5E00]/10 hover:bg-[#FF5E00] p-2 rounded-full transition-colors shrink-0 shadow-sm"
-                                                        title="Chamar no WhatsApp"
-                                                    >
-                                                        <MessageCircle className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                                <p className="text-[12px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name}</p>
-                                                
-                                                <div className="flex items-center justify-between mb-4 bg-brand-background p-3.5 rounded-none border border-brand-border shadow-sm">
-                                                    <span className="flex items-center gap-1.5 text-brand-text font-bold text-[14px]">
-                                                        <DollarSign className="w-4 h-4 text-brand-neon" />
-                                                        {formatCurrency(Number(deal.expectedValue))}
-                                                    </span>
-                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold ${
-                                                        deal.probability > 70 ? 'bg-[#FF5E00]/10 text-[#FF5E00]' : 
-                                                        deal.probability > 30 ? 'bg-brand-text/5 text-brand-text' : 'bg-red-500/10 text-red-500'
-                                                    }`}>
-                                                        {deal.probability}% Prob.
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <div className="flex-1">
-                                                        <select 
-                                                            value={deal.stage}
-                                                            onChange={(e) => changeDealStage(deal.id, e.target.value as DealStage)}
-                                                            className="w-full bg-brand-background border border-brand-border rounded-none px-4 py-3.5 text-[12px] font-bold text-brand-muted focus:outline-none focus:border-brand-neon appearance-none shadow-sm transition-colors"
-                                                        >
-                                                            {stages.map(s => (
-                                                                <option key={s.id} value={s.id}>{s.title}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-center justify-center shrink-0 px-4 border border-brand-border bg-brand-background rounded-none h-[46px] text-[11px] text-brand-muted font-bold gap-2 shadow-sm">
-                                                        <Clock className="w-4 h-4 text-brand-neon" />
-                                                        {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Espaçador fantasma Mobile */}
-                <div className="h-[200px] w-full shrink-0 pointer-events-none" aria-hidden="true" />
-            </div>
-
-            {/* ========================================================= */}
-            {/* MODAL GLOBAL (CRIAÇÃO DE OPORTUNIDADE)                      */}
-            {/* ========================================================= */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center bg-brand-background/80 backdrop-blur-md p-0 lg:p-4">
-                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-none w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
-                        
-                        <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface sticky top-0 z-20">
-                            <h2 className="text-xl font-bold text-brand-text flex items-center gap-2 tracking-tight">
-                                <Plus className="w-6 h-6 text-brand-neon" /> Nova Oportunidade
-                            </h2>
-                            <button aria-label="Fechar" 
-                                onClick={() => setIsModalOpen(false)}
-                                className="text-brand-muted hover:text-brand-text bg-brand-background p-2.5 rounded-full border border-brand-border transition-colors active:scale-95 shadow-sm"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
-                            <form id="pipelineForm" onSubmit={handleCreateDeal} className="flex flex-col gap-5 relative z-10">
-                                <div>
-                                    <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Vincular ao Cliente *</label>
-                                    <select
-                                        required
-                                        className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors appearance-none shadow-sm"
-                                        value={formData.clientId}
-                                        onChange={(e) => setFormData({...formData, clientId: e.target.value})}
+                    <div className="-mx-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+                        <div className="flex gap-3">
+                            {STAGES.map((stage) => {
+                                const list = byStatus.filter((d) => d.stage === stage.id);
+                                const total = list.reduce((sum, d) => sum + Number(d.expectedValue), 0);
+                                return (
+                                    <section
+                                        key={stage.id}
+                                        aria-label={stage.title}
+                                        onDragOver={(e) => { e.preventDefault(); setOverStage(stage.id); }}
+                                        onDragLeave={() => setOverStage((s) => (s === stage.id ? null : s))}
+                                        onDrop={(e) => onDrop(e, stage.id)}
+                                        className={`w-full shrink-0 flex-col border bg-brand-background md:flex md:w-72 ${mobileStage === stage.id ? 'flex' : 'hidden'} ${overStage === stage.id ? 'border-brand-neon' : 'border-brand-border'}`}
                                     >
-                                        <option value="" disabled>Selecione um cliente...</option>
-                                        {clients.map(client => (
-                                            <option key={client.id} value={client.id}>{client.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Título da Oportunidade *</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                                        placeholder="Ex: Contrato Anual Painéis BR-153"
-                                        value={formData.title}
-                                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Valor Estimado (R$)</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                                            placeholder="0.00"
-                                            value={formData.expectedValue || ''}
-                                            onChange={(e) => setFormData({...formData, expectedValue: Number(e.target.value)})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-brand-muted mb-2 uppercase tracking-widest ml-1">Probabilidade (%)</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 lg:py-3.5 text-[14px] font-medium text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                                            value={formData.probability}
-                                            onChange={(e) => setFormData({...formData, probability: Number(e.target.value)})}
-                                        />
-                                    </div>
-                                </div>
-                            </form>
-                            
-                            {/* Spacer Interno Modal Mobile */}
-                            <div className="h-[30px] lg:hidden w-full shrink-0" />
-                        </div>
-                        
-                        <div className="p-6 lg:p-8 border-t border-brand-border shrink-0 bg-brand-surface z-20">
-                            <button
-                                type="submit"
-                                form="pipelineForm"
-                                disabled={isSubmitting}
-                                className="w-full bg-brand-neon text-white py-4 rounded-xl text-[14px] font-bold uppercase tracking-widest hover:bg-brand-neonHover transition-all flex items-center justify-center shadow-md disabled:opacity-50 disabled:shadow-none active:scale-[0.98]"
-                            >
-                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Negócio'}
-                            </button>
+                                        <header className="border-b border-brand-border px-4 py-3">
+                                            <div className="flex items-center justify-between">
+                                                <h2 className="text-sm font-medium text-brand-text">{stage.title}</h2>
+                                                <span className="font-mono text-xs text-brand-muted">{list.length}</span>
+                                            </div>
+                                            <p className="mt-1 font-mono text-xs text-brand-muted">{formatBRL(total)}</p>
+                                        </header>
+                                        <ul className="flex min-h-[8rem] flex-col gap-2 p-2">
+                                            {list.map((deal) => <DealCard key={deal.id} deal={deal} />)}
+                                            {list.length === 0 && <li className="px-2 py-6 text-center text-xs text-brand-muted">Solte um card aqui</li>}
+                                        </ul>
+                                    </section>
+                                );
+                            })}
                         </div>
                     </div>
-                </div>
+                </>
             )}
-        </div>
+
+            {/* ============================ LISTA (ganhos / perdidos) ============================ */}
+            {status === 'ready' && deals.length > 0 && view !== 'OPEN' && (
+                byStatus.length === 0
+                    ? <EmptyState title={view === 'WON' ? 'Nenhum negócio ganho ainda' : 'Nenhum negócio perdido'} text="Abra um card no funil para marcar o resultado." />
+                    : <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">{byStatus.map((deal) => <DealCard key={deal.id} deal={deal} />)}</ul>
+            )}
+
+            {/* ============================ DETALHES ============================ */}
+            <Sheet
+                open={Boolean(selected)}
+                onClose={() => setSelected(null)}
+                eyebrow={selected ? (selected.status === 'OPEN' ? selectedStage?.title : selected.status === 'WON' ? 'Ganho' : 'Perdido') : undefined}
+                title={selected?.title ?? ''}
+                size="lg"
+                footer={selected && (selected.status === 'OPEN' ? <>
+                    <button type="button" onClick={() => setDealStatus(selected, 'LOST')} className={crmBtn.secondary}><XCircle className="h-4 w-4" aria-hidden="true" /> Marcar como perdido</button>
+                    <button type="button" onClick={() => setDealStatus(selected, 'WON')} className={crmBtn.primary}><Trophy className="h-4 w-4" aria-hidden="true" /> Marcar como ganho</button>
+                </> : (
+                    <button type="button" onClick={() => setDealStatus(selected, 'OPEN')} className={crmBtn.secondary}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Reabrir negócio</button>
+                ))}
+            >
+                {selected && (
+                    <div className="flex flex-col gap-6">
+                        <dl className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border sm:grid-cols-4">
+                            {[
+                                ['Valor', formatBRL(selected.expectedValue)],
+                                ['Probabilidade', `${selected.probability}%`],
+                                ['Prazo', selected.contractMonths ? `${selected.contractMonths} ${selected.contractMonths === 1 ? 'mês' : 'meses'}` : '—'],
+                                ['Criado em', formatDate(selected.createdAt)],
+                            ].map(([k, v]) => (
+                                <div key={k} className="bg-brand-surface p-3">
+                                    <dt className="text-xs text-brand-muted">{k}</dt>
+                                    <dd className="mt-1 font-mono text-sm text-brand-text">{v}</dd>
+                                </div>
+                            ))}
+                        </dl>
+
+                        <div>
+                            <p className="mb-2 text-sm text-brand-muted">Cliente</p>
+                            <div className="flex flex-wrap items-center justify-between gap-3 border border-brand-border p-4">
+                                <div className="min-w-0">
+                                    <p className="font-medium text-brand-text">{selected.client?.name}</p>
+                                    <p className="truncate text-sm text-brand-muted">{[selected.client?.company, selected.client?.email, selected.client?.whatsapp || selected.client?.phone].filter(Boolean).join(' · ') || 'Sem contato cadastrado'}</p>
+                                </div>
+                                <button type="button" onClick={() => openWhatsApp(selected)} className={crmBtn.secondary}><MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp</button>
+                            </div>
+                        </div>
+
+                        {selected.status === 'OPEN' && (
+                            <Field label="Etapa" htmlFor="deal-stage">
+                                <select id="deal-stage" value={selected.stage} onChange={(e) => moveTo(selected, e.target.value as DealStage)} className={crmInput}>
+                                    {STAGES.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                                </select>
+                            </Field>
+                        )}
+
+                        {Boolean(selected.items?.length) && (
+                            <div>
+                                <p className="mb-2 text-sm text-brand-muted">Painéis ({selected.items!.length})</p>
+                                <ul className="divide-y divide-brand-border border border-brand-border">
+                                    {selected.items!.map((item) => (
+                                        <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                                            <span className="min-w-0 truncate text-brand-text">{item.panel?.name}<span className="text-brand-muted"> · {[item.panel?.city, item.panel?.state].filter(Boolean).join(' - ')}</span></span>
+                                            <span className="shrink-0 font-mono text-brand-muted">{formatBRL(item.priceSnapshot)}/mês</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <p className="text-xs text-brand-muted">
+                            Responsável: {selected.seller?.name || 'você'}. <Link to={`/crm/clientes?dealId=${selected.id}`} className="underline underline-offset-4 hover:text-brand-text">Abrir ficha do cliente</Link>
+                        </p>
+                    </div>
+                )}
+            </Sheet>
+
+            {/* ============================ NOVA OPORTUNIDADE ============================ */}
+            <Sheet
+                open={creating}
+                onClose={() => setCreating(false)}
+                eyebrow="Funil"
+                title="Nova oportunidade"
+                footer={<>
+                    <button type="button" onClick={() => setCreating(false)} className={crmBtn.secondary}>Cancelar</button>
+                    <button type="submit" form="deal-form" disabled={saving || !clients.length} className={crmBtn.primary}>{saving ? 'Criando…' : 'Criar oportunidade'}</button>
+                </>}
+            >
+                {clients.length === 0 ? (
+                    <EmptyState title="Nenhum cliente na carteira" text="A oportunidade precisa de um cliente." action={<Link to="/crm/clientes" className={crmBtn.primary}>Cadastrar cliente</Link>} />
+                ) : (
+                    <form id="deal-form" onSubmit={onCreate} className="grid grid-cols-2 gap-4">
+                        <Field label="Cliente" htmlFor="d-client" className="col-span-2">
+                            <select id="d-client" required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className={crmInput}>
+                                <option value="" disabled>Selecione</option>
+                                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>)}
+                            </select>
+                        </Field>
+                        <Field label="Título" htmlFor="d-title" className="col-span-2">
+                            <input id="d-title" required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={crmInput} placeholder="Ex.: Pacote anual Av. T-63" />
+                        </Field>
+                        <Field label="Valor estimado (R$)" htmlFor="d-value">
+                            <input id="d-value" type="number" inputMode="decimal" min="0" step="0.01" value={form.expectedValue} onChange={(e) => setForm({ ...form, expectedValue: e.target.value })} className={`${crmInput} font-mono`} />
+                        </Field>
+                        <Field label="Probabilidade (%)" htmlFor="d-prob">
+                            <input id="d-prob" type="number" inputMode="numeric" min="0" max="100" step="1" value={form.probability} onChange={(e) => setForm({ ...form, probability: e.target.value })} className={`${crmInput} font-mono`} />
+                        </Field>
+                    </form>
+                )}
+            </Sheet>
+        </CrmPage>
     );
 }

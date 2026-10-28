@@ -1,464 +1,276 @@
-import { toDateKey, dateKeyToISO } from '@/lib/date';
-import { useState, useEffect, useMemo } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight, Circle, MessageSquare, Pencil, PhoneCall, Plus, Trash2, Users, ListTodo } from 'lucide-react';
 import { agendaService, Task } from '@/services/agenda.service';
+import { crmService } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
-import { 
-    Calendar as CalendarIcon, 
-    Clock, 
-    PhoneCall, 
-    Users, 
-    MessageSquare,
-    CheckCircle, 
-    Plus, 
-    ChevronLeft, 
-    ChevronRight,
-    Circle,
-    X,
-    Loader2
-} from 'lucide-react';
-import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { toDateKey, dateKeyToISO } from '@/lib/date';
+import { ConfirmSheet, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/crm/ui';
+import { crmBtn, crmInput } from '@/components/crm/tokens';
+
+const WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const TYPES = [
+    { id: 'meeting', label: 'Reunião', icon: Users },
+    { id: 'call', label: 'Ligação', icon: PhoneCall },
+    { id: 'message', label: 'Mensagem', icon: MessageSquare },
+    { id: 'task', label: 'Tarefa', icon: ListTodo },
+] as const;
+type TaskType = typeof TYPES[number]['id'];
+
+const EMPTY_FORM = { title: '', client: '', time: '09:00', type: 'meeting' as TaskType, date: '' };
+const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const fullDate = (d: Date) => capFirst(new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(d));
+const monthLabel = (d: Date) => capFirst(new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(d));
+const errorMessage = (error: unknown, fallback: string) =>
+    (error as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
 
 export function CrmAgenda() {
     const { addToast } = useToast();
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    
+    const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+    const [selected, setSelected] = useState(() => new Date());
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
-    
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
-    const [newTask, setNewTask] = useState({
-        title: '', client: '', time: '09:00', type: 'meeting'
-    });
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [clientNames, setClientNames] = useState<string[]>([]);
 
-    const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const [formOpen, setFormOpen] = useState(false);
+    const [editing, setEditing] = useState<Task | null>(null);
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [saving, setSaving] = useState(false);
+    const [toDelete, setToDelete] = useState<Task | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayIndex = new Date(year, month, 1).getDay();
-
-    const blanks = Array.from({ length: firstDayIndex }, (_, i) => i);
-    const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-    const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-    const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-    const fetchTasks = async () => {
+    const load = async () => {
         try {
-            setLoading(true);
-            const data = await agendaService.getTasks();
-            setTasks(data);
-        } catch (error) {
-            console.error("Erro ao buscar tarefas", error);
-            addToast('Não foi possível carregar a agenda.', 'error');
-        } finally {
-            setLoading(false);
+            setStatus('loading');
+            setTasks(await agendaService.getTasks());
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
     };
 
     useEffect(() => {
-        fetchTasks();
+        load();
+        // Sugestões do campo "cliente"; a agenda funciona sem elas
+        crmService.getClients().then((c) => setClientNames(c.map((x) => x.name))).catch(() => {});
     }, []);
 
-    // Datas locais: toISOString() mudaria o dia após as 21h no horário de Brasília
-    const selectedDateString = toDateKey(selectedDate);
-    const filteredTasks = useMemo(() => {
-        return tasks.filter(t => t.date.startsWith(selectedDateString));
-    }, [tasks, selectedDateString]);
+    const selectedKey = toDateKey(selected);
+    const todayKey = toDateKey(new Date());
 
-    const toggleTaskStatus = async (id: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as any } : t));
+    const countByDay = useMemo(() => {
+        const map = new Map<string, number>();
+        tasks.forEach((t) => {
+            if (t.status === 'completed') return;
+            const key = t.date.slice(0, 10);
+            map.set(key, (map.get(key) ?? 0) + 1);
+        });
+        return map;
+    }, [tasks]);
 
-        try {
-            await agendaService.toggleTaskStatus(id, newStatus);
-        } catch (error) {
-            console.error("Erro ao atualizar status", error);
-            addToast('Não foi possível atualizar a tarefa.', 'error');
-            fetchTasks(); 
-        }
+    const dayTasks = useMemo(
+        () => tasks.filter((t) => t.date.startsWith(selectedKey)).sort((a, b) => a.time.localeCompare(b.time)),
+        [tasks, selectedKey],
+    );
+    const pending = dayTasks.filter((t) => t.status !== 'completed').length;
+
+    const year = month.getFullYear();
+    const m = month.getMonth();
+    const blanks = new Date(year, m, 1).getDay();
+    const days = new Date(year, m + 1, 0).getDate();
+
+    const goToday = () => { const d = new Date(); setSelected(d); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); };
+
+    const openCreate = () => { setEditing(null); setForm({ ...EMPTY_FORM, date: selectedKey }); setFormOpen(true); };
+    const openEdit = (task: Task) => {
+        setEditing(task);
+        setForm({ title: task.title, client: task.client, time: task.time, type: (task.type as TaskType) || 'task', date: task.date.slice(0, 10) });
+        setFormOpen(true);
     };
 
-    const handleCreateTask = async (e: React.FormEvent) => {
+    const onSave = async (e: FormEvent) => {
         e.preventDefault();
+        if (saving) return;
+        const payload = { title: form.title.trim(), client: form.client.trim(), time: form.time, type: form.type, date: dateKeyToISO(form.date) };
         try {
-            const createdTask = await agendaService.createTask({
-                ...newTask,
-                date: dateKeyToISO(selectedDateString)
-            });
-            setTasks(prev => [...prev, createdTask]);
-            setIsModalOpen(false);
-            setNewTask({ title: '', client: '', time: '09:00', type: 'meeting' });
+            setSaving(true);
+            if (editing) {
+                const updated = await agendaService.updateTask(editing.id, payload);
+                setTasks((prev) => prev.map((t) => (t.id === editing.id ? updated : t)));
+                addToast('Compromisso atualizado.', 'success');
+            } else {
+                const created = await agendaService.createTask(payload);
+                setTasks((prev) => [...prev, created]);
+                addToast('Compromisso marcado.', 'success');
+            }
+            setFormOpen(false);
         } catch (error) {
-            console.error("Erro ao criar tarefa", error);
-            addToast('Não foi possível criar a tarefa.', 'error');
+            addToast(errorMessage(error, 'Não foi possível salvar o compromisso.'), 'error');
+        } finally {
+            setSaving(false);
         }
     };
 
-    const getIconForType = (type: string) => {
-        switch(type) {
-            case 'call': return <PhoneCall className="w-4 h-4 text-brand-text" />;
-            case 'meeting': return <Users className="w-4 h-4 text-brand-text" />;
-            case 'message': return <MessageSquare className="w-4 h-4 text-[#FF5E00]" />;
-            default: return <Clock className="w-4 h-4 text-brand-muted" />;
+    const toggle = async (task: Task) => {
+        const next = task.status === 'completed' ? 'pending' : 'completed';
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)));
+        try {
+            await agendaService.toggleTaskStatus(task.id, next);
+        } catch {
+            setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+            addToast('Não foi possível atualizar a tarefa.', 'error');
+        }
+    };
+
+    const onDelete = async () => {
+        if (!toDelete) return;
+        try {
+            setDeleting(true);
+            await agendaService.deleteTask(toDelete.id);
+            setTasks((prev) => prev.filter((t) => t.id !== toDelete.id));
+            setToDelete(null);
+            setFormOpen(false);
+            addToast('Compromisso excluído.', 'success');
+        } catch (error) {
+            addToast(errorMessage(error, 'Não foi possível excluir.'), 'error');
+        } finally {
+            setDeleting(false);
         }
     };
 
     return (
-        <div className="w-full h-full flex flex-col relative animate-fade-in gap-6">
-            
-            {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP                                         */}
-            {/* ========================================================= */}
-            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full gap-6">
-                
-                {/* CABEÇALHO */}
-                <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            <CalendarIcon className="w-6 h-6 text-brand-neon" />
-                            Agenda & Tarefas
-                        </h1>
-                        <p className="text-sm text-brand-muted mt-1 font-medium">Acompanhe seus compromissos e follow-ups comerciais.</p>
-                    </div>
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 bg-brand-neon text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-neonHover transition-colors shadow-sm"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Novo Compromisso
-                    </button>
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-6 h-[calc(100%-5rem)] min-h-[600px] pb-8">
-                    
-                    {/* COLUNA ESQUERDA: CALENDÁRIO */}
-                    <div className="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-6">
-                        <div className="bg-brand-surface p-6 rounded-none border border-brand-border shadow-sm transition-colors">
-                            
-                            <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
-                                <h2 className="text-brand-text font-bold tracking-tight capitalize text-lg">{months[month]} {year}</h2>
-                                <div className="flex gap-2">
-                                    <button aria-label="Voltar" onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
-                                    <button aria-label="Avançar" onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronRight className="w-4 h-4" /></button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                {weekDays.map(day => (
-                                    <div key={day} className="text-[10px] font-bold text-brand-muted uppercase tracking-widest mb-3">
-                                        {day.substring(0, 3)}
-                                    </div>
-                                ))}
-                                
-                                {blanks.map((blank) => (
-                                    <div key={`blank-${blank}`} className="p-2"></div>
-                                ))}
-                                
-                                {calendarDays.map(day => {
-                                    const loopDate = new Date(year, month, day);
-                                    const isSelected = loopDate.toDateString() === selectedDate.toDateString();
-                                    const isToday = loopDate.toDateString() === new Date().toDateString();
-                                    const dateString = toDateKey(loopDate);
-                                    const hasEvent = tasks.some(t => t.date.startsWith(dateString));
-
-                                    return (
-                                        <button 
-                                            key={day}
-                                            onClick={() => setSelectedDate(loopDate)}
-                                            className={`p-2 rounded-xl text-sm font-bold transition-all relative flex flex-col items-center justify-center h-10 w-full
-                                                ${isSelected 
-                                                    ? 'bg-brand-neon text-white shadow-md' 
-                                                    : isToday 
-                                                        ? 'border border-brand-neon text-brand-neon bg-brand-neon/5' 
-                                                        : 'text-brand-text hover:bg-brand-background hover:border-brand-border border border-transparent'}
-                                            `}
-                                        >
-                                            {day}
-                                            {hasEvent && !isSelected && (
-                                                <div className="w-1 h-1 bg-brand-neon rounded-full absolute bottom-1"></div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+        <CrmPage
+            eyebrow="Ferramentas"
+            title="Agenda"
+            description="Compromissos e follow-ups da equipe comercial."
+            actions={<button type="button" onClick={openCreate} className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo compromisso</button>}
+        >
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+                {/* ============================ CALENDÁRIO ============================ */}
+                <Panel
+                    title={monthLabel(month)}
+                    action={
+                        <div className="flex items-center">
+                            <button type="button" onClick={() => setMonth(new Date(year, m - 1, 1))} className={crmBtn.icon} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></button>
+                            <button type="button" onClick={goToday} className="px-2 text-xs text-brand-muted hover:text-brand-text">Hoje</button>
+                            <button type="button" onClick={() => setMonth(new Date(year, m + 1, 1))} className={crmBtn.icon} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></button>
                         </div>
-                    </div>
-
-                    {/* COLUNA DIREITA: LISTA DE TAREFAS */}
-                    <div className="flex-1 bg-brand-surface rounded-none border border-brand-border p-6 md:p-8 flex flex-col relative overflow-hidden shadow-sm transition-colors">
-                        
-                        <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-5 shrink-0">
-                            <div>
-                                <h2 className="text-xl font-bold text-brand-text capitalize tracking-tight">
-                                    {weekDays[selectedDate.getDay()]}-feira, {selectedDate.getDate()} de {months[selectedDate.getMonth()]}
-                                </h2>
-                                <p className="text-sm text-brand-muted font-medium mt-1">
-                                    {filteredTasks.filter(t => t.status === 'pending').length} tarefas pendentes para hoje
-                                </p>
-                            </div>
-                            <div className="bg-brand-background p-3 rounded-none border border-brand-border shadow-sm">
-                                <CalendarIcon className="w-6 h-6 text-brand-neon" />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 relative">
-                            {loading ? (
-                                <div className="flex flex-col items-center justify-center py-20">
-                                    <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
-                                </div>
-                            ) : filteredTasks.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 bg-brand-background/50 border-2 border-dashed border-brand-border rounded-none">
-                                    <CalendarIcon className="w-10 h-10 text-brand-muted opacity-50 mb-3" />
-                                    <p className="text-brand-muted font-bold">Nenhuma tarefa para este dia.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Linha do tempo visual (opcional/decorativa) */}
-                                    <div className="absolute left-[39px] top-4 bottom-4 w-px bg-brand-border z-0 hidden sm:block"></div>
-                                    
-                                    <div className="flex flex-col gap-5 relative z-10">
-                                        {filteredTasks.map((task) => (
-                                            <div key={task.id} className="flex gap-4 sm:gap-6 group">
-                                                
-                                                <div className="flex flex-col items-end w-12 sm:w-16 flex-shrink-0 pt-3">
-                                                    <span className={`text-sm font-semibold tracking-tight ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
-                                                        {task.time}
-                                                    </span>
-                                                </div>
-
-                                                <div className="relative flex-shrink-0 w-8 justify-center mt-3 hidden sm:flex">
-                                                    <div className={`w-3 h-3 rounded-full border-2 ${
-                                                        task.status === 'completed' ? 'bg-brand-surface border-brand-border' : 'bg-brand-background border-brand-neon shadow-[0_0_8px_rgba(255,94,0,0.4)]'
-                                                    } z-10`}></div>
-                                                </div>
-
-                                                <div className={`flex-1 p-5 rounded-none border shadow-sm transition-all ${
-                                                    task.status === 'completed' 
-                                                        ? 'bg-brand-background/50 border-brand-border/50 opacity-70' 
-                                                        : 'bg-brand-background border-brand-border hover:border-brand-neon/40'
-                                                }`}>
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="flex flex-col">
-                                                            <h3 className={`text-base font-bold mb-1.5 leading-tight ${task.status === 'completed' ? 'text-brand-muted' : 'text-brand-text'}`}>
-                                                                {task.title}
-                                                            </h3>
-                                                            <div className="flex items-center gap-3 text-sm text-brand-muted font-medium">
-                                                                <span className="flex items-center gap-1.5 bg-brand-surface border border-brand-border px-2 py-1 rounded-md">
-                                                                    {getIconForType(task.type)}
-                                                                    {task.client}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <button 
-                                                            onClick={() => toggleTaskStatus(task.id, task.status)}
-                                                            className={`p-2.5 rounded-full transition-all border ${
-                                                                task.status === 'completed' 
-                                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
-                                                                    : 'text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 border-transparent hover:border-brand-neon/20 bg-brand-surface shadow-sm'
-                                                            }`} 
-                                                            title={task.status === 'completed' ? "Marcar como pendente" : "Concluir tarefa"}
-                                                        >
-                                                            {task.status === 'completed' ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ========================================================= */}
-            {/* VIEWPORT: MOBILE (APP PATTERN NATIVO)                       */}
-            {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col w-full gap-4 pb-[100px]">
-                
-                {/* Cabeçalho Mobile */}
-                <div className="flex items-center justify-between mt-2 px-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            Agenda
-                        </h1>
-                        <p className="text-[11px] font-medium text-brand-muted mt-0.5">Seus compromissos</p>
-                    </div>
-                    <button aria-label="Adicionar" 
-                        onClick={() => setIsModalOpen(true)}
-                        className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                    >
-                        <Plus className="w-6 h-6" />
-                    </button>
-                </div>
-
-                {/* Calendário Mobile */}
-                <div className="bg-brand-surface p-5 rounded-none border border-brand-border shadow-sm mx-4 transition-colors">
-                    <div className="flex items-center justify-between mb-5 border-b border-brand-border pb-3">
-                        <h2 className="text-brand-text font-bold tracking-tight capitalize text-[15px]">{months[month]} {year}</h2>
-                        <div className="flex gap-2">
-                            <button aria-label="Voltar" onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
-                            <button aria-label="Avançar" onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronRight className="w-4 h-4" /></button>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 text-center mb-1">
-                        {weekDays.map(day => (
-                            <div key={day} className="text-[9px] font-bold text-brand-muted uppercase tracking-widest mb-2">
-                                {day.substring(0, 3)}
-                            </div>
-                        ))}
-                        
-                        {blanks.map((blank) => (
-                            <div key={`blank-${blank}`} className="p-1.5"></div>
-                        ))}
-                        
-                        {calendarDays.map(day => {
-                            const loopDate = new Date(year, month, day);
-                            const isSelected = loopDate.toDateString() === selectedDate.toDateString();
-                            const isToday = loopDate.toDateString() === new Date().toDateString();
-                            const dateString = toDateKey(loopDate);
-                            const hasEvent = tasks.some(t => t.date.startsWith(dateString));
-
+                    }
+                    bodyClassName="p-3"
+                    className="self-start"
+                >
+                    <div className="grid grid-cols-7 text-center">
+                        {WEEK.map((d) => <span key={d} className="pb-2 font-mono text-[11px] uppercase text-brand-muted">{d}</span>)}
+                        {Array.from({ length: blanks }, (_, i) => <span key={`b${i}`} />)}
+                        {Array.from({ length: days }, (_, i) => {
+                            const date = new Date(year, m, i + 1);
+                            const key = toDateKey(date);
+                            const isSelected = key === selectedKey;
+                            const isToday = key === todayKey;
+                            const count = countByDay.get(key) ?? 0;
                             return (
-                                <button 
-                                    key={day}
-                                    onClick={() => setSelectedDate(loopDate)}
-                                    className={`p-1.5 rounded-xl text-[13px] font-bold transition-all relative flex flex-col items-center justify-center h-10 w-full
-                                        ${isSelected 
-                                            ? 'bg-brand-neon text-white shadow-md' 
-                                            : isToday 
-                                                ? 'border border-brand-neon text-brand-neon bg-brand-neon/5' 
-                                                : 'text-brand-text bg-brand-background border border-transparent'
-                                        }
-                                    `}
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setSelected(date)}
+                                    aria-pressed={isSelected}
+                                    aria-label={`${fullDate(date)}${count ? `, ${count} pendente${count > 1 ? 's' : ''}` : ''}`}
+                                    className={`relative flex h-10 items-center justify-center font-mono text-sm transition-colors ${isSelected ? 'bg-brand-neon text-ink-950' : isToday ? 'text-brand-neon ring-1 ring-inset ring-brand-neon' : 'text-brand-text hover:bg-brand-background'}`}
                                 >
-                                    {day}
-                                    {hasEvent && !isSelected && (
-                                        <div className="w-1 h-1 bg-brand-neon rounded-full absolute bottom-1"></div>
-                                    )}
+                                    {i + 1}
+                                    {count > 0 && <span className={`absolute bottom-1 h-1 w-1 ${isSelected ? 'bg-ink-950' : 'bg-brand-neon'}`} aria-hidden="true" />}
                                 </button>
                             );
                         })}
                     </div>
-                </div>
+                </Panel>
 
-                {/* Lista de Tarefas Mobile */}
-                <div className="flex flex-col px-4">
-                    <div className="flex items-center justify-between mb-4 border-b border-brand-border pb-3">
-                        <h2 className="text-[15px] font-bold text-brand-text capitalize tracking-tight">
-                            {weekDays[selectedDate.getDay()]}, {selectedDate.getDate()} de {months[selectedDate.getMonth()].substring(0, 3)}
-                        </h2>
-                        <span className="text-[10px] font-bold text-brand-muted bg-brand-surface border border-brand-border px-2.5 py-1 rounded-md shadow-sm">
-                            {filteredTasks.filter(t => t.status === 'pending').length} pendentes
-                        </span>
-                    </div>
-
-                    <div className="flex flex-col gap-3 relative min-h-[150px]">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center py-6">
-                                <Loader2 className="w-6 h-6 text-brand-neon animate-spin mb-2" />
-                                <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
-                            </div>
-                        ) : filteredTasks.length === 0 ? (
-                            <div className="bg-brand-surface border border-brand-border rounded-none p-6 flex flex-col items-center text-center shadow-sm">
-                                <CalendarIcon className="w-8 h-8 text-brand-muted opacity-50 mb-2" />
-                                <h3 className="text-[13px] font-bold text-brand-text mb-1">Dia livre</h3>
-                                <p className="text-[11px] text-brand-muted font-medium">Sem compromissos nesta data.</p>
-                            </div>
-                        ) : (
-                            filteredTasks.map((task) => (
-                                <div key={task.id} className={`bg-brand-surface border rounded-none p-4 flex gap-3 shadow-sm transition-all ${
-                                    task.status === 'completed' ? 'border-brand-border/50 opacity-70 bg-brand-background/50' : 'border-brand-border'
-                                }`}>
-                                    <div className="flex flex-col items-center min-w-[45px] shrink-0 pt-0.5">
-                                        <span className={`text-[13px] font-semibold ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
-                                            {task.time}
-                                        </span>
-                                        <div className="mt-2 flex items-center justify-center w-8 h-8 rounded-full bg-brand-background border border-brand-border shadow-sm">
-                                            {getIconForType(task.type)}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex flex-col flex-1 justify-center border-l border-brand-border pl-4">
-                                        <h3 className={`text-[14px] font-bold leading-tight mb-1.5 ${task.status === 'completed' ? 'text-brand-muted' : 'text-brand-text'}`}>
-                                            {task.title}
-                                        </h3>
-                                        <span className="text-[11px] font-bold text-brand-muted bg-brand-background w-fit px-2 py-1 rounded border border-brand-border shadow-sm">
-                                            {task.client}
-                                        </span>
-                                    </div>
-
-                                    <div className="shrink-0 flex items-center">
-                                        <button 
-                                            onClick={() => toggleTaskStatus(task.id, task.status)}
-                                            className={`p-2.5 rounded-full transition-colors border shadow-sm ${
-                                                task.status === 'completed' 
-                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
-                                                    : 'text-brand-muted bg-brand-background border-brand-border active:scale-95'
-                                            }`} 
-                                        >
-                                            {task.status === 'completed' ? <CheckCircle className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                {/* ============================ DIA ============================ */}
+                <Panel
+                    title={fullDate(selected)}
+                    action={<span className="text-sm text-brand-muted">{pending} {pending === 1 ? 'pendente' : 'pendentes'}</span>}
+                >
+                    {status === 'loading' && <div className="flex flex-col gap-2 p-5">{[0, 1].map((i) => <Skeleton key={i} className="h-14" />)}</div>}
+                    {status === 'error' && <div className="p-5"><EmptyState title="Não foi possível carregar a agenda" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} /></div>}
+                    {status === 'ready' && dayTasks.length === 0 && (
+                        <div className="p-5">
+                            <p className="text-sm text-brand-muted">Nenhum compromisso neste dia.</p>
+                            <button type="button" onClick={openCreate} className={`mt-4 ${crmBtn.secondary}`}><Plus className="h-4 w-4" aria-hidden="true" /> Marcar neste dia</button>
+                        </div>
+                    )}
+                    {status === 'ready' && dayTasks.length > 0 && (
+                        <ul className="divide-y divide-brand-border">
+                            {dayTasks.map((task) => {
+                                const done = task.status === 'completed';
+                                const type = TYPES.find((t) => t.id === task.type) ?? TYPES[3];
+                                return (
+                                    <li key={task.id} className="flex items-center gap-4 px-5 py-4">
+                                        <button type="button" onClick={() => toggle(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="shrink-0 text-brand-muted hover:text-brand-neon">
+                                            {done ? <Check className="h-5 w-5 text-brand-neon" /> : <Circle className="h-5 w-5" strokeWidth={1.5} />}
                                         </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
+                                        <span className={`w-12 shrink-0 font-mono text-sm ${done ? 'text-brand-muted line-through' : 'text-brand-text'}`}>{task.time}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`truncate text-sm ${done ? 'text-brand-muted line-through' : 'text-brand-text'}`}>{task.title}</p>
+                                            <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-brand-muted">
+                                                <type.icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden="true" /> {type.label}{task.client ? ` · ${task.client}` : ''}
+                                            </p>
+                                        </div>
+                                        <button type="button" onClick={() => openEdit(task)} className={crmBtn.icon} aria-label={`Editar ${task.title}`}><Pencil className="h-4 w-4" strokeWidth={1.75} /></button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </Panel>
             </div>
 
-            {/* ========================================================= */}
-            {/* MODAL GLOBAL (CRIAÇÃO DE TAREFA)                            */}
-            {/* ========================================================= */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-brand-background/80 backdrop-blur-md p-4">
-                    <div className="bg-brand-surface border border-brand-border rounded-none p-6 md:p-8 w-full max-w-md shadow-2xl relative overflow-hidden transition-colors">
-                        <div className="flex items-center justify-between mb-6 relative z-10 border-b border-brand-border pb-4">
-                            <h3 className="text-lg font-bold text-brand-text tracking-tight flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-brand-neon" /> Novo Compromisso
-                            </h3>
-                            <button aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-neon/50 transition-colors shadow-sm">
-                                <X className="w-4 h-4" />
-                            </button>
+            {/* ============================ FORMULÁRIO ============================ */}
+            <Sheet
+                open={formOpen}
+                onClose={() => setFormOpen(false)}
+                eyebrow="Agenda"
+                title={editing ? 'Editar compromisso' : 'Novo compromisso'}
+                footer={<>
+                    {editing && <button type="button" onClick={() => setToDelete(editing)} className={`${crmBtn.ghost} sm:mr-auto`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Excluir</button>}
+                    <button type="button" onClick={() => setFormOpen(false)} className={crmBtn.secondary}>Cancelar</button>
+                    <button type="submit" form="task-form" disabled={saving} className={crmBtn.primary}>{saving ? 'Salvando…' : editing ? 'Salvar' : 'Marcar'}</button>
+                </>}
+            >
+                <form id="task-form" onSubmit={onSave} className="grid grid-cols-2 gap-4">
+                    <Field label="O que fazer" htmlFor="t-title" className="col-span-2">
+                        <input id="t-title" required maxLength={160} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={crmInput} placeholder="Ex.: Apresentar proposta do pacote anual" />
+                    </Field>
+                    <Field label="Cliente" htmlFor="t-client" className="col-span-2" hint="Opcional.">
+                        <input id="t-client" list="agenda-clients" maxLength={160} value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} className={crmInput} />
+                        <datalist id="agenda-clients">{clientNames.map((n) => <option key={n} value={n} />)}</datalist>
+                    </Field>
+                    <Field label="Dia" htmlFor="t-date">
+                        <input id="t-date" required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={crmInput} />
+                    </Field>
+                    <Field label="Horário" htmlFor="t-time">
+                        <input id="t-time" required type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={`${crmInput} font-mono`} />
+                    </Field>
+                    <fieldset className="col-span-2">
+                        <legend className="mb-1.5 text-sm text-brand-text">Tipo</legend>
+                        <div className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border sm:grid-cols-4">
+                            {TYPES.map((t) => (
+                                <label key={t.id} className={`flex cursor-pointer items-center justify-center gap-2 px-3 py-2.5 text-sm ${form.type === t.id ? 'bg-brand-surface text-brand-text shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-brand-background text-brand-muted'}`}>
+                                    <input type="radio" name="t-type" value={t.id} checked={form.type === t.id} onChange={() => setForm({ ...form, type: t.id })} className="sr-only" />
+                                    <t.icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {t.label}
+                                </label>
+                            ))}
                         </div>
-                        
-                        <form onSubmit={handleCreateTask} className="flex flex-col gap-4 relative z-10">
-                            <div>
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1.5 block ml-1">Título</label>
-                                <input required type="text" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} className="w-full bg-brand-background border border-brand-border rounded-xl p-3.5 text-[13px] text-brand-text outline-none focus:border-brand-neon transition-colors shadow-sm" placeholder="Ex: Apresentação de Proposta" />
-                            </div>
-                            <div>
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1.5 block ml-1">Cliente</label>
-                                <input required type="text" value={newTask.client} onChange={e => setNewTask({...newTask, client: e.target.value})} className="w-full bg-brand-background border border-brand-border rounded-xl p-3.5 text-[13px] text-brand-text outline-none focus:border-brand-neon transition-colors shadow-sm" placeholder="Ex: Construtora Apex" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1.5 block ml-1">Horário</label>
-                                    <input required type="time" value={newTask.time} onChange={e => setNewTask({...newTask, time: e.target.value})} className="w-full bg-brand-background border border-brand-border rounded-xl p-3.5 text-[13px] text-brand-text outline-none focus:border-brand-neon transition-colors shadow-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1.5 block ml-1">Tipo</label>
-                                    <select value={newTask.type} onChange={e => setNewTask({...newTask, type: e.target.value as any})} className="w-full bg-brand-background border border-brand-border rounded-xl p-3.5 text-[13px] text-brand-text outline-none focus:border-brand-neon transition-colors shadow-sm">
-                                        <option value="meeting">Reunião</option>
-                                        <option value="call">Ligação</option>
-                                        <option value="message">Mensagem</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" className="mt-6 w-full bg-brand-neon text-white font-bold uppercase tracking-widest text-[13px] py-4 rounded-xl hover:bg-brand-neonHover transition-all shadow-md active:scale-[0.98]">
-                                Confirmar Agendamento
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
+                    </fieldset>
+                </form>
+            </Sheet>
+
+            <ConfirmSheet
+                open={Boolean(toDelete)}
+                title="Excluir compromisso?"
+                text={`"${toDelete?.title ?? ''}" sai da agenda de toda a equipe.`}
+                busy={deleting}
+                onConfirm={onDelete}
+                onClose={() => setToDelete(null)}
+            />
+        </CrmPage>
     );
 }
