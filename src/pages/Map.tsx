@@ -356,7 +356,7 @@ export function Map() {
                             onClick={() => toggleInCart(panel)}
                             aria-pressed={inCart}
                             aria-label={inCart ? `Remover ${panel.name} do orçamento` : `Adicionar ${panel.name} ao orçamento`}
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center transition-colors ${inCart ? 'border border-white/40 text-ink-100 hover:border-white' : 'bg-brand-neon text-ink-950 hover:bg-brand-neonHover'}`}
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center transition-colors md:h-9 md:w-9 ${inCart ? 'border border-white/40 text-ink-100 hover:border-white' : 'bg-brand-neon text-ink-950 hover:bg-brand-neonHover'}`}
                         >
                             {inCart ? <Check className="h-4 w-4" strokeWidth={2} /> : <Plus className="h-4 w-4" strokeWidth={2} />}
                         </button>

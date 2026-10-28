@@ -87,7 +87,7 @@ export function Header() {
             )}
         >
             <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-6 px-4 md:px-8">
-                <Link to="/" className="relative z-10 shrink-0" aria-label="T3 OOH, página inicial">
+                <Link to="/" className="relative z-10 -m-1.5 shrink-0 p-1.5" aria-label="T3 OOH, página inicial">
                     <img src="/t3-logo.webp" alt="" className="h-9 w-auto" />
                 </Link>
 

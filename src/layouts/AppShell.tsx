@@ -96,7 +96,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                             <p className="truncate text-sm font-medium">{user?.name || 'Equipe T3'}</p>
                             <p className="truncate text-xs text-brand-muted">{roleLabel(user?.role)}</p>
                         </div>
-                        <button type="button" onClick={handleLogout} aria-label="Sair" title="Sair" className="p-2 text-brand-muted hover:text-brand-text">
+                        <button type="button" onClick={handleLogout} aria-label="Sair" title="Sair" className="p-3 text-brand-muted hover:text-brand-text">
                             <LogOut className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                     </div>
@@ -110,7 +110,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                         <img src={logo} alt="T3 OOH" className="h-6 w-auto" />
                         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-muted">{area}</span>
                     </div>
-                    <button type="button" onClick={toggleTheme} aria-label={themeLabel} className="p-2 text-brand-muted hover:text-brand-text">
+                    <button type="button" onClick={toggleTheme} aria-label={themeLabel} className="p-3 text-brand-muted hover:text-brand-text">
                         <ThemeIcon className="h-5 w-5" strokeWidth={1.75} />
                     </button>
                 </header>
@@ -153,7 +153,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                     >
                         <div className="flex h-14 shrink-0 items-center justify-between border-b border-brand-border px-4">
                             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-brand-muted">{area}</span>
-                            <button type="button" aria-label="Fechar" onClick={() => setMenuOpen(false)} className="p-2 text-brand-muted hover:text-brand-text"><X className="h-5 w-5" strokeWidth={1.75} /></button>
+                            <button type="button" aria-label="Fechar" onClick={() => setMenuOpen(false)} className="p-3 text-brand-muted hover:text-brand-text"><X className="h-5 w-5" strokeWidth={1.75} /></button>
                         </div>
                         <div className="flex items-center gap-3 border-b border-brand-border px-4 py-4">
                             <span className="flex h-10 w-10 items-center justify-center bg-brand-neon font-mono font-semibold text-ink-950" aria-hidden="true">{user?.name?.charAt(0).toUpperCase() || 'T'}</span>

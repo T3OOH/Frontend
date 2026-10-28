@@ -151,7 +151,7 @@ export function CrmAgenda() {
                     action={
                         <div className="flex items-center">
                             <button type="button" onClick={() => setMonth(new Date(year, m - 1, 1))} className={crmBtn.icon} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></button>
-                            <button type="button" onClick={goToday} className="px-2 text-xs text-brand-muted hover:text-brand-text">Hoje</button>
+                            <button type="button" onClick={goToday} className="min-h-[44px] px-2 text-xs text-brand-muted hover:text-brand-text md:min-h-0">Hoje</button>
                             <button type="button" onClick={() => setMonth(new Date(year, m + 1, 1))} className={crmBtn.icon} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></button>
                         </div>
                     }
@@ -204,7 +204,7 @@ export function CrmAgenda() {
                                 const type = TYPES.find((t) => t.id === task.type) ?? TYPES[3];
                                 return (
                                     <li key={task.id} className="flex items-center gap-4 px-5 py-4">
-                                        <button type="button" onClick={() => toggle(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="shrink-0 text-brand-muted hover:text-brand-neon">
+                                        <button type="button" onClick={() => toggle(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="-m-2.5 shrink-0 p-2.5 text-brand-muted hover:text-brand-neon">
                                             {done ? <Check className="h-5 w-5 text-brand-neon" /> : <Circle className="h-5 w-5" strokeWidth={1.5} />}
                                         </button>
                                         <span className={`w-12 shrink-0 font-mono text-sm ${done ? 'text-brand-muted line-through' : 'text-brand-text'}`}>{task.time}</span>

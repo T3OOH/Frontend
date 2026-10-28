@@ -1,401 +1,245 @@
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, MessageCircle, Pencil } from 'lucide-react';
 import { DEFAULT_SALES_PHONE } from '@/lib/contacts';
-import { useState, useEffect, useCallback } from 'react';
-import { 
-    User as UserIcon, 
-    Mail, 
-    ShoppingBag, 
-    MapPin, 
-    Edit2, 
-    Check, 
-    Loader2, 
-    Calendar, 
-    ArrowRight,
-    ArrowLeft,
-    MessageCircle,
-    Building,
-    Phone
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/contexts/ToastContext';
-import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
 import { profileService } from '@/services/profile.service';
-import { useNavigate } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
+import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 
-// Utilitário para formatar o WhatsApp em tempo real
-const maskPhone = (value: string) => {
-    let v = value.replace(/\D/g, ""); 
-    if (v.length > 11) v = v.substring(0, 11); 
-    if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
-    else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
-    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-    else if (v.length > 0) v = v.replace(/^(\d*)/, "($1");
-    return v;
+type Status = 'IN_REVIEW' | 'PROPOSAL_SENT' | 'APPROVED' | 'CANCELLED';
+
+interface MyOrder {
+    id: string;
+    source: 'MAP' | 'CATALOG';
+    createdAt: string;
+    status: Status;
+    total: number;
+    months: number;
+    seller?: { name?: string; phone?: string | null } | null;
+    items: { id: string; priceSnapshot: number; panel?: { name?: string; city?: string; state?: string; images?: string[] } | null }[];
+}
+
+const STATUS: Record<Status, { label: string; className: string }> = {
+    IN_REVIEW: { label: 'Em análise', className: 'border-white/20 text-ink-100' },
+    PROPOSAL_SENT: { label: 'Proposta enviada', className: 'border-brand-neon/50 bg-brand-neon/10 text-brand-neon' },
+    APPROVED: { label: 'Aprovado', className: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
+    CANCELLED: { label: 'Cancelado', className: 'border-white/10 text-ink-500' },
 };
+
+const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
+const date = (v: string) => new Date(v).toLocaleDateString('pt-BR');
+const shortId = (id: string) => id.slice(0, 6).toUpperCase();
+
+const maskPhone = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 10) return v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+    if (v.length > 6) return v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    if (v.length > 2) return v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+    return v ? `(${v}` : '';
+};
+
+const field = 'w-full border border-white/15 bg-ink-900 px-4 py-3.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none disabled:border-white/[0.06] disabled:bg-ink-950 disabled:text-ink-400';
 
 export function UserProfile() {
     const { addToast } = useToast();
-    const navigate = useNavigate();
-    
-    const [activeTab, setActiveTab] = useState<'data' | 'orders'>('data');
-    const [isLoading, setIsLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const [myOrders, setMyOrders] = useState<any[]>([]);
-    
-    const [formData, setFormData] = useState({
-        name: '', email: '', phone: '', companyName: '',
-    });
+    const [tab, setTab] = useState<'data' | 'orders'>('data');
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [orders, setOrders] = useState<MyOrder[]>([]);
+    const [open, setOpen] = useState<MyOrder | null>(null);
+    const [form, setForm] = useState({ name: '', email: '', phone: '', companyName: '' });
+    const [saved, setSaved] = useState(form);
 
-    const [activeOrder, setActiveOrder] = useState<any | null>(null);
-
-    const fetchProfileData = useCallback(async () => {
+    const load = useCallback(async () => {
         try {
-            setIsLoading(true);
-            const [profileData, ordersData] = await Promise.all([
-                profileService.getProfile(),
-                profileService.getMyOrders()
-            ]);
-            
-            setFormData({
-                name: profileData.name || '', 
-                email: profileData.email || '',
-                phone: profileData.phone || profileData.whatsapp || '', 
-                // Captura do campo legado ou novo para exibir em tela
-                companyName: profileData.companyName || profileData.company || '',
-            });
-            setMyOrders(ordersData);
-        } catch (error) {
-            console.error("Profile data fetch failed:", error);
-            addToast('Erro ao carregar dados do perfil.', 'error');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [addToast]);
-
-    useEffect(() => {
-        fetchProfileData();
-    }, [fetchProfileData]);
-
-    const handleSaveProfile = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            // CORREÇÃO DO ERRO 500:
-            // Enviamos apenas "companyName". Se enviarmos "company", o Prisma tenta
-            // acessar a Tabela de Relação Company e causa colisão de tipo.
-            const payload = {
-                name: formData.name, 
-                phone: formData.phone, 
-                companyName: formData.companyName
+            setStatus('loading');
+            const [profile, list] = await Promise.all([profileService.getProfile(), profileService.getMyOrders()]);
+            const data = {
+                name: profile.name || '',
+                email: profile.email || '',
+                phone: profile.phone || profile.whatsapp || '',
+                companyName: profile.companyName || (typeof profile.company === 'string' ? profile.company : '') || '',
             };
+            setForm(data);
+            setSaved(data);
+            setOrders(Array.isArray(list) ? list : []);
+            setStatus('ready');
+        } catch {
+            setStatus('error');
+        }
+    }, []);
 
-            await profileService.updateProfile(payload as any);
-            
-            addToast('Perfil atualizado com sucesso!', 'success');
-            setIsEditing(false);
-        } catch (error) {
-            console.error(error);
-            addToast('Erro ao atualizar o perfil. Verifique os dados.', 'error');
+    useEffect(() => { load(); }, [load]);
+
+    const onSave = async (e: FormEvent) => {
+        e.preventDefault();
+        try {
+            setSaving(true);
+            await profileService.updateProfile({ name: form.name.trim(), phone: form.phone, companyName: form.companyName.trim() });
+            setSaved(form);
+            setEditing(false);
+            addToast('Dados atualizados.', 'success');
+        } catch {
+            addToast('Não foi possível salvar. Confira os dados e tente de novo.', 'error');
         } finally {
-            setIsSubmitting(false);
+            setSaving(false);
         }
     };
 
-    const handleContactSupport = (order: any) => {
-        const sellerPhone = order.seller?.phone || order.seller?.whatsapp || DEFAULT_SALES_PHONE;
-        
-        let cleanPhone = String(sellerPhone).replace(/\D/g, '');
-        if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
-            cleanPhone = '55' + cleanPhone;
-        }
-
-        const text = `Olá! Gostaria de falar sobre o meu orçamento *#${order.id.substring(0,6).toUpperCase()}*.\n\nStatus atual: *${translateStatus(order.status).text}*`;
-        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
-        
-        window.open(waUrl, '_blank');
+    const talkToSeller = (order: MyOrder) => {
+        let phone = String(order.seller?.phone || DEFAULT_SALES_PHONE).replace(/\D/g, '');
+        if (!phone.startsWith('55') && phone.length <= 11) phone = `55${phone}`;
+        const text = `Olá! Quero falar sobre o meu orçamento #${shortId(order.id)} (${STATUS[order.status].label.toLowerCase()}).`;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
     };
 
-    const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-    const translateStatus = (status: string) => {
-        if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#FF5E00]/10 text-[#FF5E00] border-[#FF5E00]/20' };
-        if (status === 'LOST') return { text: 'Cancelado', color: 'bg-red-500/10 text-red-500 border-red-500/20' };
-        return { text: 'Em Análise', color: 'bg-brand-neon/10 text-brand-neon border-brand-neon/20' };
-    };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#0A0A0B]">
-                <Loader2 className="w-10 h-10 text-[#FF5E00] animate-spin mb-4" />
-                <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Carregando Perfil...</span>
-            </div>
-        );
-    }
+    const openOrders = orders.filter((o) => o.status === 'IN_REVIEW' || o.status === 'PROPOSAL_SENT').length;
 
     return (
         <>
-        <Seo title="Meu perfil" description="Seus dados e orçamentos na plataforma T3 OOH." path="/perfil" noIndex />
-        <div className="min-h-[100dvh] bg-[#0A0A0B] pt-10 pb-12 px-4 sm:px-6 relative overflow-x-hidden">
-            
-            {/* Background Effects */}
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#FF5E00]/5 rounded-full blur-[120px]" />
-            </div>
+            <Seo title="Meu perfil" description="Seus dados e orçamentos na plataforma T3 OOH." path="/perfil" noIndex />
 
-            <div className="max-w-5xl mx-auto w-full relative z-10">
-                
-                {/* Profile Header */}
-                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center text-4xl font-black text-[#FF5E00] shadow-[0_0_30px_rgba(255,94,0,0.15)] flex-shrink-0 z-10">
-                        {formData.name?.charAt(0).toUpperCase() || 'U'}
+            <section className="mx-auto max-w-[1000px] px-4 pb-20 pt-10 md:px-8 md:pt-16">
+                {/* ============================ CABEÇALHO ============================ */}
+                <header className="flex items-center gap-4 border-b border-white/[0.08] pb-8 md:gap-6">
+                    <span className="flex h-16 w-16 shrink-0 items-center justify-center bg-brand-neon font-mono text-2xl font-semibold text-ink-950 md:h-20 md:w-20 md:text-3xl" aria-hidden="true">
+                        {(saved.name || 'U').charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                        <p className={eyebrow}>Minha conta</p>
+                        <h1 className="mt-2 truncate text-3xl font-light uppercase leading-none tracking-tight text-ink-100 md:text-5xl">{saved.name || 'Meu perfil'}</h1>
+                        <p className="mt-2 truncate text-sm text-ink-400">{[saved.companyName, saved.email].filter(Boolean).join(' · ')}</p>
                     </div>
-                    <div className="flex-1 text-center sm:text-left z-10 min-w-0 flex flex-col justify-center h-full">
-                        <h1 className="text-3xl sm:text-4xl font-light uppercase text-white tracking-tight mb-2 truncate">{formData.name}</h1>
-                        <p className="text-[#FF5E00] text-xs font-bold uppercase tracking-widest mb-5">Conta Corporativa</p>
-                        
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-5 text-[13px] text-[#8F8F91] font-medium">
-                            <span className="flex items-center gap-2 truncate"><Mail className="w-4 h-4 flex-shrink-0" /> {formData.email}</span>
-                            {formData.phone && <span className="flex items-center gap-2 flex-shrink-0"><Phone className="w-4 h-4 flex-shrink-0" /> {formData.phone}</span>}
-                            {formData.companyName && <span className="flex items-center gap-2 flex-shrink-0"><Building className="w-4 h-4 flex-shrink-0" /> {formData.companyName}</span>}
-                        </div>
-                    </div>
+                </header>
+
+                {/* ============================ ABAS ============================ */}
+                <div role="tablist" aria-label="Seções do perfil" className="mt-6 grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08]">
+                    {([['data', 'Meus dados'], ['orders', `Meus orçamentos`]] as const).map(([id, label]) => (
+                        <button key={id} role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setOpen(null); }}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 text-sm transition-colors ${tab === id ? 'bg-ink-900 text-ink-100 shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-ink-950 text-ink-400 hover:text-ink-100'}`}>
+                            {label} {id === 'orders' && status === 'ready' && <span className="font-mono text-xs text-ink-500">{orders.length}</span>}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Tabs Navigation */}
-                <div className="flex items-center gap-4 mb-8 border-b border-white/5 pb-px overflow-x-auto custom-scrollbar px-2">
-                    <button 
-                        onClick={() => { setActiveTab('data'); setActiveOrder(null); }}
-                        className={`flex items-center gap-2 px-4 py-4 text-[13px] uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'data' ? 'text-[#FF5E00]' : 'text-[#8F8F91] hover:text-white'}`}
-                    >
-                        <UserIcon className="w-4 h-4" /> Meus Dados
-                        {activeTab === 'data' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-1 bg-[#FF5E00] rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('orders')}
-                        className={`flex items-center gap-2 px-4 py-4 text-[13px] uppercase tracking-widest font-black transition-all relative whitespace-nowrap ${activeTab === 'orders' ? 'text-[#FF5E00]' : 'text-[#8F8F91] hover:text-white'}`}
-                    >
-                        <ShoppingBag className="w-4 h-4" /> Meus Orçamentos
-                        {activeTab === 'orders' && <motion.div layoutId="profileTab" className="absolute bottom-0 left-0 w-full h-1 bg-[#FF5E00] rounded-t-full shadow-[0_-2px_10px_rgba(255,94,0,0.5)]" />}
-                    </button>
-                </div>
+                {status === 'loading' && <div className="mt-6 flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse bg-ink-900" />)}</div>}
 
-                <AnimatePresence mode="wait">
-                    {/* MEUS DADOS TAB */}
-                    {activeTab === 'data' && (
-                        <motion.div 
-                            key="data"
-                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
-                        >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 border-b border-white/5 pb-8">
-                                <div>
-                                    <h2 className="text-2xl font-black text-white tracking-tight">Informações Pessoais</h2>
-                                    <p className="text-sm text-[#8F8F91] mt-2">Mantenha seus dados de contato atualizados para facilitar as negociações.</p>
-                                </div>
-                                <Button 
-                                    variant={isEditing ? 'primary' : 'secondary'} 
-                                    onClick={() => !isEditing ? setIsEditing(true) : handleSaveProfile(new Event('submit') as any)} 
-                                    disabled={isSubmitting}
-                                    className={`shrink-0 uppercase tracking-widest font-bold text-xs px-6 py-4 rounded-xl transition-all ${isEditing ? 'bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] border-none shadow-[0_4px_15px_rgba(255,94,0,0.3)]' : 'bg-[#0A0A0B] text-white border-white/10 hover:border-[#FF5E00] hover:bg-[#FF5E00]/5'}`}
-                                >
-                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditing ? <><Check className="w-4 h-4 mr-2" /> Salvar Alterações</> : <><Edit2 className="w-4 h-4 mr-2" /> Editar Dados</>}
-                                </Button>
+                {status === 'error' && (
+                    <div className="mt-6 border border-dashed border-white/15 p-8">
+                        <p className="text-ink-100">Não foi possível carregar seu perfil</p>
+                        <button type="button" onClick={load} className={`mt-4 ${btnGhost}`}>Tentar de novo</button>
+                    </div>
+                )}
+
+                {/* ============================ DADOS ============================ */}
+                {status === 'ready' && tab === 'data' && (
+                    <form onSubmit={onSave} className="mt-6 border border-white/[0.08] bg-ink-950/90">
+                        <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2 md:p-8">
+                            <div className="md:col-span-2">
+                                <label htmlFor="pf-name" className="mb-2 block text-sm text-ink-300">Nome completo</label>
+                                <input id="pf-name" required minLength={2} autoComplete="name" disabled={!editing} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} />
                             </div>
+                            <div>
+                                <label htmlFor="pf-email" className="mb-2 block text-sm text-ink-300">E-mail <span className="text-ink-500">(não pode ser alterado)</span></label>
+                                <input id="pf-email" type="email" disabled value={form.email} className={field} />
+                            </div>
+                            <div>
+                                <label htmlFor="pf-phone" className="mb-2 block text-sm text-ink-300">WhatsApp</label>
+                                <input id="pf-phone" type="tel" inputMode="tel" autoComplete="tel" disabled={!editing} value={form.phone} onChange={(e) => setForm({ ...form, phone: maskPhone(e.target.value) })} placeholder="(62) 9 0000-0000" className={field} />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="pf-company" className="mb-2 block text-sm text-ink-300">Empresa ou marca</label>
+                                <input id="pf-company" autoComplete="organization" disabled={!editing} value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className={field} />
+                            </div>
+                        </div>
+                        <div className="flex flex-col-reverse gap-2 border-t border-white/[0.08] p-5 sm:flex-row sm:justify-end md:px-8">
+                            {editing ? (
+                                <>
+                                    <button type="button" onClick={() => { setForm(saved); setEditing(false); }} className={btnGhost}>Cancelar</button>
+                                    <button type="submit" disabled={saving} className={btnPrimary}>{saving ? 'Salvando…' : 'Salvar dados'}</button>
+                                </>
+                            ) : (
+                                <button type="button" onClick={() => setEditing(true)} className={btnGhost}><Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Editar dados</button>
+                            )}
+                        </div>
+                    </form>
+                )}
 
-                            <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">Nome Completo</label>
-                                    <Input 
-                                        value={formData.name} 
-                                        onChange={e => setFormData({...formData, name: e.target.value})} 
-                                        disabled={!isEditing} 
-                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">E-mail Corporativo</label>
-                                    <Input 
-                                        type="email" 
-                                        value={formData.email} 
-                                        disabled={true} 
-                                        className="h-14 rounded-xl text-sm opacity-40 cursor-not-allowed bg-[#0A0A0B] border-white/5" 
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">WhatsApp</label>
-                                    <Input 
-                                        placeholder="(00) 00000-0000" 
-                                        value={formData.phone} 
-                                        onChange={e => {
-                                            // Aplica a máscara em tempo real
-                                            setFormData({...formData, phone: maskPhone(e.target.value)})
-                                        }} 
-                                        disabled={!isEditing} 
-                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-white/70 ml-1">Empresa / Marca</label>
-                                    <Input 
-                                        placeholder="Sua empresa" 
-                                        value={formData.companyName} 
-                                        onChange={e => setFormData({...formData, companyName: e.target.value})} 
-                                        disabled={!isEditing} 
-                                        className={`h-14 rounded-xl text-sm ${!isEditing ? 'opacity-50 bg-[#0A0A0B] border-white/5' : 'bg-[#111113]/50 border-white/10 focus:border-[#FF5E00] text-white'}`} 
-                                    />
-                                </div>
-                            </form>
-                        </motion.div>
-                    )}
-
-                    {/* MEUS ORÇAMENTOS TAB */}
-                    {activeTab === 'orders' && (
-                        <motion.div 
-                            key="orders"
-                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
-                        >
-                            {activeOrder ? (
-                                /* ORDER DETAILS VIEW */
-                                <div className="flex flex-col h-full w-full">
-                                    {/* Header do Detalhe */}
-                                    <div className="p-6 md:p-8 border-b border-white/5 bg-[#0A0A0B]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                                        <div className="flex items-center gap-4 min-w-0">
-                                            <button aria-label="Voltar" 
-                                                onClick={() => setActiveOrder(null)} 
-                                                className="w-10 h-10 flex items-center justify-center bg-[#111113] border border-white/10 hover:border-[#FF5E00]/50 hover:bg-[#FF5E00]/10 rounded-full text-[#8F8F91] hover:text-[#FF5E00] transition-all flex-shrink-0"
-                                            >
-                                                <ArrowLeft className="w-5 h-5" />
-                                            </button>
-                                            <div className="min-w-0">
-                                                <h2 className="text-xl font-black text-white truncate tracking-tight">Orçamento #{activeOrder.id.substring(0,6).toUpperCase()}</h2>
-                                                <p className="text-[11px] text-[#8F8F91] uppercase tracking-widest font-bold mt-1 flex items-center gap-2">
-                                                    <Calendar className="w-3.5 h-3.5" /> {new Date(activeOrder.createdAt).toLocaleDateString('pt-BR')}
+                {/* ============================ ORÇAMENTOS ============================ */}
+                {status === 'ready' && tab === 'orders' && !open && (
+                    orders.length === 0 ? (
+                        <div className="mt-6 border border-dashed border-white/15 p-8">
+                            <p className="text-2xl font-light uppercase tracking-tight text-ink-100">Nenhum orçamento ainda</p>
+                            <p className="mt-3 max-w-[48ch] text-ink-400">Escolha os pontos no mapa ou no catálogo e envie o orçamento. Ele aparece aqui para você acompanhar.</p>
+                            <Link to="/mapa" className={`mt-6 ${btnPrimary}`}>Ver painéis no mapa <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="mt-6 text-sm text-ink-400"><span className="font-mono text-ink-100">{openOrders}</span> {openOrders === 1 ? 'orçamento em andamento' : 'orçamentos em andamento'}</p>
+                            <ul className="mt-3 divide-y divide-white/[0.08] border border-white/[0.08] bg-ink-950/90">
+                                {orders.map((o) => (
+                                    <li key={`${o.source}-${o.id}`}>
+                                        <button type="button" onClick={() => setOpen(o)} className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-ink-900">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-mono text-sm text-ink-100">#{shortId(o.id)}</span>
+                                                    <span className={`border px-2 py-0.5 text-[11px] ${STATUS[o.status].className}`}>{STATUS[o.status].label}</span>
+                                                </div>
+                                                <p className="mt-1 truncate text-xs text-ink-400">
+                                                    {o.source === 'MAP' ? 'Pelo mapa' : 'Pelo catálogo'} · {date(o.createdAt)} · {o.items.length} {o.items.length === 1 ? 'painel' : 'painéis'}
                                                 </p>
                                             </div>
-                                        </div>
-                                        <div className={`px-4 py-2 rounded-xl border flex items-center justify-center text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${translateStatus(activeOrder.status).color}`}>
-                                            {translateStatus(activeOrder.status).text}
-                                        </div>
-                                    </div>
+                                            <span className="shrink-0 text-right font-mono text-sm text-ink-100">{brl(o.total)}<span className="block text-xs text-ink-500">{o.months} {o.months === 1 ? 'mês' : 'meses'}</span></span>
+                                            <ArrowRight className="h-4 w-4 shrink-0 text-ink-500" aria-hidden="true" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
+                    )
+                )}
 
-                                    {/* Corpo do Detalhe */}
-                                    <div className="p-6 md:p-8 flex flex-col gap-8">
-                                        
-                                        <div>
-                                            <h3 className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest mb-4 border-b border-white/5 pb-2">Painéis Solicitados</h3>
-                                            <div className="flex flex-col gap-3">
-                                                {activeOrder.items?.map((item: any, idx: number) => (
-                                                    <div key={item.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#0A0A0B] border border-white/5 rounded-2xl">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 rounded-xl bg-[#111113] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-                                                                {item.panel?.images?.[0] ? (
-                                                                    <img src={item.panel.images[0]} alt="Painel" className="w-full h-full object-cover opacity-70" />
-                                                                ) : (
-                                                                    <MapPin className="w-5 h-5 text-[#8F8F91]" />
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col">
-                                                                <span className="text-sm font-bold text-white">{item.panel?.name || 'Painel Removido'}</span>
-                                                                <span className="text-[11px] text-[#8F8F91] font-medium mt-0.5">{item.panel?.city} - {item.panel?.state}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right shrink-0">
-                                                            <span className="text-[10px] font-bold text-[#FF5E00] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
-                                                            <span className="text-sm font-black text-white">{formatCurrency(item.priceSnapshot || 0)}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                {status === 'ready' && tab === 'orders' && open && (
+                    <div className="mt-6 border border-white/[0.08] bg-ink-950/90">
+                        <div className="flex items-center gap-3 border-b border-white/[0.08] p-4 md:p-6">
+                            <button type="button" onClick={() => setOpen(null)} className="flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 text-ink-300 hover:text-ink-100" aria-label="Voltar para a lista">
+                                <ArrowLeft className="h-4 w-4" />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-mono text-lg text-ink-100">#{shortId(open.id)}</p>
+                                <p className="text-xs text-ink-400">{open.source === 'MAP' ? 'Pelo mapa' : 'Pelo catálogo'} · {date(open.createdAt)}</p>
+                            </div>
+                            <span className={`shrink-0 border px-2 py-0.5 text-[11px] ${STATUS[open.status].className}`}>{STATUS[open.status].label}</span>
+                        </div>
 
-                                        <div className="bg-[#0A0A0B] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-inner">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Resumo Financeiro</span>
-                                                <span className="text-2xl font-black text-[#FF5E00] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
-                                                <span className="text-xs text-[#8F8F91] font-medium mt-1">Duração: {activeOrder.contractMonths || 1} Meses</span>
-                                            </div>
-                                            
-                                            <Button 
-                                                onClick={() => handleContactSupport(activeOrder)}
-                                                size="lg"
-                                                className="w-full sm:w-auto bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
-                                                rightIcon={<MessageCircle className="w-4 h-4" />}
-                                            >
-                                                Falar com Consultor
-                                            </Button>
-                                        </div>
+                        <ul className="divide-y divide-white/[0.08]">
+                            {open.items.map((item) => (
+                                <li key={item.id} className="flex items-center gap-3 px-4 py-3 md:px-6">
+                                    <img src={item.panel?.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-ink-900 object-cover" />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm text-ink-100">{item.panel?.name || 'Painel removido'}</span>
+                                        <span className="block truncate text-xs text-ink-400">{[item.panel?.city, item.panel?.state].filter(Boolean).join(' - ')}</span>
+                                    </span>
+                                    <span className="shrink-0 font-mono text-sm text-ink-100">{brl(item.priceSnapshot)}<span className="text-xs text-ink-500">/mês</span></span>
+                                </li>
+                            ))}
+                        </ul>
 
-                                    </div>
-                                </div>
-                            ) : (
-                                /* LISTA DE ORÇAMENTOS */
-                                <div className="p-6 sm:p-10">
-                                    <div className="mb-10 border-b border-white/5 pb-8">
-                                        <h2 className="text-2xl font-black text-white tracking-tight">Histórico de Orçamentos</h2>
-                                        <p className="text-sm text-[#8F8F91] mt-2">Acompanhe o status das suas solicitações feitas no mapa de painéis.</p>
-                                    </div>
-
-                                    {myOrders.length === 0 ? (
-                                        <div className="py-20 flex flex-col items-center justify-center text-center">
-                                            <div className="w-20 h-20 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center mb-6 shadow-inner">
-                                                <ShoppingBag className="w-8 h-8 text-[#8F8F91]" />
-                                            </div>
-                                            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Nenhum orçamento solicitado</h3>
-                                            <p className="text-sm text-[#8F8F91] max-w-md mb-8">Navegue pelo nosso catálogo e solicite um orçamento para iniciar sua campanha.</p>
-                                            <Button 
-                                                onClick={() => navigate('/mapa')} 
-                                                className="bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-xs px-8 py-4 h-auto rounded-xl border-none shadow-[0_4px_20px_rgba(255,255,255,0.1)]"
-                                                rightIcon={<MapPin className="w-4 h-4" />}
-                                            >
-                                                Explorar Painéis
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {myOrders.map(order => {
-                                                const statusBadge = translateStatus(order.status);
-                                                return (
-                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-none p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
-                                                        <div className="flex flex-col gap-1.5 min-w-0">
-                                                            <div className="flex items-center gap-4 mb-1">
-                                                                <h4 className="font-black text-white text-base truncate">#{order.id.substring(0, 6).toUpperCase()}</h4>
-                                                                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border flex-shrink-0 ${statusBadge.color}`}>
-                                                                    {statusBadge.text}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex flex-wrap items-center gap-4 text-[12px] text-[#8F8F91] font-medium">
-                                                                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-white/40" /> {new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#FF5E00]/60" /> {order.items?.length || 0} Painéis</span>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center gap-6 justify-between lg:justify-end border-t lg:border-t-0 border-white/5 pt-5 lg:pt-0 mt-2 lg:mt-0 w-full lg:w-auto">
-                                                            <div className="flex flex-col lg:items-end">
-                                                                <span className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold mb-0.5">Total Orçado</span>
-                                                                <span className="text-xl font-black text-white">{formatCurrency(order.expectedValue || 0)}</span>
-                                                            </div>
-                                                            <div className="w-12 h-12 rounded-full bg-[#111113] border border-white/10 flex items-center justify-center text-[#8F8F91] hover:bg-[#FF5E00] hover:text-[#0A0A0B] hover:border-[#FF5E00] transition-colors shrink-0">
-                                                                <ArrowRight className="w-5 h-5" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </div>
+                        <div className="flex flex-col gap-4 border-t border-white/[0.08] p-4 md:flex-row md:items-end md:justify-between md:p-6">
+                            <dl className="font-mono">
+                                <dt className="text-xs text-ink-500">Total do contrato · {open.months} {open.months === 1 ? 'mês' : 'meses'}</dt>
+                                <dd className="mt-1 text-2xl text-brand-neon">{brl(open.total)}</dd>
+                                {open.seller?.name && <dd className="mt-1 font-sans text-xs text-ink-400">Consultor: {open.seller.name}</dd>}
+                            </dl>
+                            <button type="button" onClick={() => talkToSeller(open)} className={`${btnPrimary} w-full md:w-auto`}>
+                                <MessageCircle className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Falar com o consultor
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </section>
         </>
     );
 }

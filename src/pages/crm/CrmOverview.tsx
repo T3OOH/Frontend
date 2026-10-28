@@ -171,7 +171,7 @@ export function CrmOverview() {
                     </Panel>
 
                     {/* ============================ PEDIDOS COMIGO ============================ */}
-                    <Panel title="Pedidos do catálogo com você" action={<Link to="/crm/propostas" className="text-sm text-brand-muted hover:text-brand-text">Propostas</Link>}>
+                    <Panel title="Pedidos do catálogo com você" action={<Link to="/crm/propostas" className="-my-2.5 py-2.5 text-sm text-brand-muted hover:text-brand-text">Propostas</Link>}>
                         {loading ? (
                             <div className="p-5"><Skeleton className="h-14" /></div>
                         ) : myOrders.length === 0 ? (
@@ -200,7 +200,7 @@ export function CrmOverview() {
 
                 <div className="flex flex-col gap-6">
                     {/* ============================ HOJE ============================ */}
-                    <Panel title="Hoje na agenda" action={<Link to="/crm/agenda" className="text-sm text-brand-muted hover:text-brand-text">Agenda</Link>}>
+                    <Panel title="Hoje na agenda" action={<Link to="/crm/agenda" className="-my-2.5 py-2.5 text-sm text-brand-muted hover:text-brand-text">Agenda</Link>}>
                         {loading ? (
                             <div className="p-5"><Skeleton className="h-10" /></div>
                         ) : todayTasks.length === 0 ? (
@@ -214,7 +214,7 @@ export function CrmOverview() {
                                     const done = task.status === 'completed';
                                     return (
                                         <li key={task.id} className="flex items-center gap-3 px-5 py-3">
-                                            <button type="button" onClick={() => toggleTask(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="text-brand-muted hover:text-brand-neon">
+                                            <button type="button" onClick={() => toggleTask(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="-m-2.5 p-2.5 text-brand-muted hover:text-brand-neon">
                                                 {done ? <Check className="h-5 w-5 text-brand-neon" /> : <Circle className="h-5 w-5" strokeWidth={1.5} />}
                                             </button>
                                             <span className="font-mono text-sm text-brand-muted">{task.time}</span>
