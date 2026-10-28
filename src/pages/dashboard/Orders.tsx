@@ -1,3 +1,4 @@
+import { COMPANY_FOOTER } from '@/lib/company';
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -315,7 +316,7 @@ export function Orders() {
                 doc.setFontSize(8);
                 doc.setTextColor(150, 150, 150);
                 const footerY = pageHeight - 15;
-                doc.text("T3 LED Mídia e Tecnologia • CNPJ: 00.000.000/0000-00", pageWidth / 2, footerY, { align: "center" });
+                doc.text(COMPANY_FOOTER, pageWidth / 2, footerY, { align: "center" });
             }
 
             doc.save(`Contrato_${clientName.replace(/\s+/g, '_')}.pdf`);
@@ -507,7 +508,7 @@ export function Orders() {
                                                                 return (
                                                                     <div key={i} className="flex items-center gap-4 bg-brand-surface p-3 rounded-xl border border-brand-border">
                                                                         <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0">
-                                                                            <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-80" />
+                                                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-80" />
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
                                                                             <p className="text-sm font-bold text-brand-text truncate">{panel.name || 'Painel sem nome'}</p>

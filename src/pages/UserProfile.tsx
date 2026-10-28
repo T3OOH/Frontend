@@ -21,6 +21,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { profileService } from '@/services/profile.service';
 import { useNavigate } from 'react-router-dom';
+import { Seo } from '@/components/Seo';
 
 // Utilitário para formatar o WhatsApp em tempo real
 const maskPhone = (value: string) => {
@@ -135,7 +136,9 @@ export function UserProfile() {
     }
 
     return (
-        <div className="min-h-[100dvh] bg-[#0A0A0B] pt-[100px] pb-12 px-4 sm:px-6 relative overflow-x-hidden">
+        <>
+        <Seo title="Meu perfil" description="Seus dados e orçamentos na plataforma T3 OOH." path="/perfil" noIndex />
+        <div className="min-h-[100dvh] bg-[#0A0A0B] pt-10 pb-12 px-4 sm:px-6 relative overflow-x-hidden">
             
             {/* Background Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -263,7 +266,7 @@ export function UserProfile() {
                                     {/* Header do Detalhe */}
                                     <div className="p-6 md:p-8 border-b border-white/5 bg-[#0A0A0B]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                                         <div className="flex items-center gap-4 min-w-0">
-                                            <button 
+                                            <button aria-label="Voltar" 
                                                 onClick={() => setActiveOrder(null)} 
                                                 className="w-10 h-10 flex items-center justify-center bg-[#111113] border border-white/10 hover:border-[#FF5E00]/50 hover:bg-[#FF5E00]/10 rounded-full text-[#8F8F91] hover:text-[#FF5E00] transition-all flex-shrink-0"
                                             >
@@ -393,5 +396,6 @@ export function UserProfile() {
                 </AnimatePresence>
             </div>
         </div>
+        </>
     );
 }

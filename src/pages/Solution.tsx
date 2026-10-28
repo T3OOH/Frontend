@@ -10,6 +10,8 @@ import { Button } from '@/components/Button';
 import { CustomSelect } from '@/components/CustomSelect';
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
+import { Seo } from '@/components/Seo';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // ==========================================
 // MOCK DATA (Fallback caso o banco esteja vazio)
@@ -36,6 +38,7 @@ export function Solution() {
 
     // Estados do Formulário Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
+    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
     const { addToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -133,7 +136,9 @@ export function Solution() {
     };
 
     return (
-        <main className="relative min-h-screen bg-[#0A0A0B] text-white selection:bg-[#FF5E00] selection:text-[#0A0A0B] font-sans overflow-x-hidden">
+        <>
+        <Seo title="T3 Solution" description="Painéis de LED sob medida para empresas e eventos: projeto, instalação e suporte com a T3 Solution." path="/solution" />
+        <div className="relative min-h-screen bg-[#0A0A0B] text-white selection:bg-[#FF5E00] selection:text-[#0A0A0B] font-sans overflow-x-hidden">
             
             {/* BACKGROUND ANIMADO */}
             <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-screen">
@@ -155,7 +160,7 @@ export function Solution() {
                         className="w-[95%] max-w-[1000px] xl:max-w-[1200px] origin-center flex flex-col items-center"
                     >
                         <img 
-                            src="/T3 Solution3D.png" 
+                            src="/t3-solution-3d.webp" 
                             alt="T3 Solution Logo" 
                             className="w-full h-auto object-contain"
                         />
@@ -366,7 +371,7 @@ export function Solution() {
                                     <h3 className="text-lg font-black text-white uppercase tracking-widest">Enviar Projeto</h3>
                                     <p className="text-[11px] text-[#8F8F91] font-medium mt-1">Preencha os dados e entraremos em contato.</p>
                                 </div>
-                                <button onClick={closeModal} className="text-[#8F8F91] hover:text-white p-2 bg-white/5 hover:bg-[#FF5E00] transition-colors rounded-sm">
+                                <button aria-label="Fechar" onClick={closeModal} className="text-[#8F8F91] hover:text-white p-2 bg-white/5 hover:bg-[#FF5E00] transition-colors rounded-sm">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
@@ -444,6 +449,7 @@ export function Solution() {
                 )}
             </AnimatePresence>
 
-        </main>
+        </div>
+        </>
     );
 }

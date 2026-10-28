@@ -14,6 +14,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
+import { Seo } from '@/components/Seo';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 const formatCurrency = (value: number | string) => {
     const numericValue = Number(value) || 0;
@@ -41,6 +43,7 @@ export function Services() {
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [selectedPanel, setSelectedPanel] = useState<CartPanel | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    useEscapeKey(Boolean(selectedPanel) || isSidebarOpen, () => { setSelectedPanel(null); setIsSidebarOpen(false); });
 
     const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm' | 'success'>('cart');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -289,7 +292,7 @@ export function Services() {
                 className={`bg-[#111113] rounded-md overflow-hidden border transition-all flex flex-col cursor-pointer ${inCart ? 'border-[#FF5E00]' : 'border-white/10 hover:border-white/30'}`}
             >
                 <div className="h-[220px] relative bg-black shrink-0 w-full border-b border-white/5 group">
-                    <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105" />
+                    <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105" />
 
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div className="bg-transparent text-white font-bold px-6 py-2.5 rounded-md border border-white/40 flex items-center gap-2 text-sm uppercase tracking-widest">
@@ -297,12 +300,12 @@ export function Services() {
                         </div>
                     </div>
 
-                    <button onClick={(e) => toggleFavorite(e, panel.id)} className="absolute top-3 right-3 bg-[#0A0A0B] p-2 rounded-md border border-white/10 z-10 hover:border-[#FF5E00]/50 transition-colors">
+                    <button aria-label="Favoritar" onClick={(e) => toggleFavorite(e, panel.id)} className="absolute top-3 right-3 bg-[#0A0A0B] p-2 rounded-md border border-white/10 z-10 hover:border-[#FF5E00]/50 transition-colors">
                         <Heart className={`w-4 h-4 transition-colors ${isFavorite ? 'fill-[#FF5E00] text-[#FF5E00]' : 'text-white'}`} />
                     </button>
                     
                     <div className="absolute top-3 left-3 bg-[#FF5E00] text-white font-black px-2 py-1 rounded-sm text-[10px] uppercase tracking-widest">
-                        -30% OFF Anual
+                        Até 30% OFF no plano anual
                     </div>
                 </div>
                 
@@ -333,6 +336,8 @@ export function Services() {
     };
 
     return (
+        <>
+        <Seo title="Catálogo de painéis" description="Catálogo de painéis de LED e mídia exterior com localização, formato e investimento. Monte seu pacote e solicite orçamento." path="/servicos" />
         <div className="relative w-full min-h-screen bg-[#0A0A0B] flex flex-col overflow-x-hidden selection:bg-[#FF5E00]/30 selection:text-[#FF5E00]">
 
             <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
@@ -385,10 +390,10 @@ export function Services() {
                         
                         <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="w-full max-w-[900px] bg-[#0A0A0B] border border-white/10 rounded-md overflow-hidden relative z-10 flex flex-col md:flex-row max-h-[90vh]">
                             
-                            <button onClick={() => setSelectedPanel(null)} className="absolute top-4 right-4 z-50 bg-[#111113] border border-white/10 p-2 rounded-sm text-[#8F8F91] hover:text-white hover:border-[#FF5E00] transition-colors"><X className="w-5 h-5" /></button>
+                            <button aria-label="Fechar" onClick={() => setSelectedPanel(null)} className="absolute top-4 right-4 z-50 bg-[#111113] border border-white/10 p-2 rounded-sm text-[#8F8F91] hover:text-white hover:border-[#FF5E00] transition-colors"><X className="w-5 h-5" /></button>
                             
                             <div className="w-full md:w-1/2 h-[250px] md:h-auto bg-black relative border-b md:border-b-0 md:border-r border-white/5">
-                                <img src={selectedPanel.images?.[0] || '/placeholder.jpg'} alt={selectedPanel.name} className="w-full h-full object-cover opacity-80" />
+                                <img src={selectedPanel.images?.[0] || '/placeholder.svg'} alt={selectedPanel.name} className="w-full h-full object-cover opacity-80" />
                                 <div className="absolute bottom-4 left-4 bg-[#FF5E00] text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-sm">
                                     Ponto Auditado
                                 </div>
@@ -448,7 +453,7 @@ export function Services() {
                                 <h2 className="text-lg font-black text-white uppercase tracking-widest">
                                     {checkoutStep === 'success' ? 'Pedido Registrado!' : checkoutStep === 'cart' ? 'Resumo do Projeto' : 'Identificação'}
                                 </h2>
-                                <button onClick={() => { setIsSidebarOpen(false); if(checkoutStep === 'success') setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white p-1 bg-white/5 rounded-sm"><X className="w-5 h-5" /></button>
+                                <button aria-label="Fechar" onClick={() => { setIsSidebarOpen(false); if(checkoutStep === 'success') setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white p-1 bg-white/5 rounded-sm"><X className="w-5 h-5" /></button>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
@@ -471,7 +476,7 @@ export function Services() {
 
                                             return (
                                                 <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-md relative">
-                                                    <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-24 h-full min-h-[90px] rounded-sm object-cover shrink-0 bg-black opacity-80" />
+                                                    <img src={p.images?.[0] || '/placeholder.svg'} alt={p.name} className="w-24 h-full min-h-[90px] rounded-sm object-cover shrink-0 bg-black opacity-80" />
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
                                                         <h4 className="text-sm font-bold text-white truncate uppercase">{p.name}</h4>
                                                         <p className="text-[10px] text-[#8F8F91] uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-[#FF5E00]"/> {p.city} - {p.state}</p>
@@ -577,5 +582,6 @@ export function Services() {
                 )}
             </AnimatePresence>
         </div>
+        </>
     );
 }

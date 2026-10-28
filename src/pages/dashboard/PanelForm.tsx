@@ -15,7 +15,7 @@ const neonMarker = L.divIcon({
     className: 'custom-marker',
     html: `
       <div style="background-color: #0f0f11; border: 2px solid #FF5E00; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 94, 0, 0.4); overflow: hidden;">
-          <img src="/t3d 2.png" alt="T3" style="width: 22px; height: 22px; object-fit: contain;" />
+          <img src="/t3-marker.webp" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
       </div>
     `,
     iconSize: [36, 36],
@@ -207,10 +207,10 @@ export function PanelForm() {
             
             {/* HEADER */}
             <div className="flex items-center gap-4 mb-6 shrink-0">
-                <Link to="/dashboard/paineis">
-                    <button className="p-2 border border-white/10 rounded-md bg-[#111113] hover:border-[#FF5E00] hover:text-[#FF5E00] transition-colors text-[#8F8F91]">
+                <Link aria-label="Voltar" to="/dashboard/paineis">
+                    <span className="p-2 border border-white/10 rounded-md bg-[#111113] hover:border-[#FF5E00] hover:text-[#FF5E00] transition-colors text-[#8F8F91]" aria-hidden="true">
                         <ArrowLeft className="w-5 h-5" />
-                    </button>
+                    </span>
                 </Link>
                 <div>
                     <h1 className="text-2xl font-black text-white tracking-tight uppercase">

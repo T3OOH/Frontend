@@ -202,9 +202,9 @@ export function CrmOverview() {
                                     </div>
 
                                     <div className="mt-2 lg:mt-0 flex w-full lg:w-auto">
-                                        <button className="w-full lg:w-auto bg-brand-background text-brand-text border border-brand-border group-hover:bg-brand-neon group-hover:text-black group-hover:border-brand-neon px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm">
+                                        <span className="w-full lg:w-auto bg-brand-background text-brand-text border border-brand-border group-hover:bg-brand-neon group-hover:text-black group-hover:border-brand-neon px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm" aria-hidden="true">
                                             Analisar Proposta <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                        </span>
                                     </div>
                                 </Link>
                             ))

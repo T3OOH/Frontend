@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Plus, DollarSign, Clock, AlertCircle, Loader2, X, Filter, MessageCircle } from 'lucide-react';
 import { crmService, CrmDeal, CrmClient, CreateDealData, DealStage } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 /**
  * Componente principal do Funil de Vendas (Kanban / Pipeline).
@@ -16,6 +17,7 @@ export function CrmPipeline() {
     const [isLoading, setIsLoading] = useState(true);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
+    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState<CreateDealData>({
         clientId: '',
@@ -323,7 +325,7 @@ export function CrmPipeline() {
                         </h1>
                         <p className="text-[11px] font-medium text-brand-muted mt-0.5">Gestão de oportunidades</p>
                     </div>
-                    <button 
+                    <button aria-label="Adicionar" 
                         onClick={() => setIsModalOpen(true)}
                         className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
                     >
@@ -419,7 +421,7 @@ export function CrmPipeline() {
                             <h2 className="text-xl font-bold text-brand-text flex items-center gap-2 tracking-tight">
                                 <Plus className="w-6 h-6 text-brand-neon" /> Nova Oportunidade
                             </h2>
-                            <button 
+                            <button aria-label="Fechar" 
                                 onClick={() => setIsModalOpen(false)}
                                 className="text-brand-muted hover:text-brand-text bg-brand-background p-2.5 rounded-full border border-brand-border transition-colors active:scale-95 shadow-sm"
                             >
