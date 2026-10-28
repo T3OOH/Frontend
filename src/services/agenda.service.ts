@@ -32,6 +32,15 @@ export const agendaService = {
         return response.data;
     },
 
+    async updateTask(id: string, data: CreateTaskDTO): Promise<Task> {
+        const response = await api.put(`/agenda/${id}`, data);
+        return response.data;
+    },
+
+    async deleteTask(id: string): Promise<void> {
+        await api.delete(`/agenda/${id}`);
+    },
+
     // Alterna o status da tarefa
     async toggleTaskStatus(id: string, status: string): Promise<Task> {
         const response = await api.patch(`/agenda/${id}/toggle`, { status });

@@ -1,229 +1,262 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, Check, Circle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { api } from '@/lib/axios';
-import { 
-    Target, DollarSign, TrendingUp, Users, Clock, 
-    CheckCircle2, Loader2, ArrowRight, Briefcase 
-} from 'lucide-react';
+import { toDateKey } from '@/lib/date';
+import { crmService, CrmDeal, CrmMetrics } from '@/services/crm.service';
+import { agendaService, Task } from '@/services/agenda.service';
+import { Badge, CrmPage, EmptyState, Panel, Skeleton, Stat } from '@/components/crm/ui';
+import { crmBtn, formatBRL, formatDate } from '@/components/crm/tokens';
 
-const formatCurrency = (value: number | string) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+interface Order {
+    id: string;
+    createdAt: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+    totalValue: number;
+    sellerId?: string | null;
+    seller?: { id: string; name: string } | null;
+    user?: { name?: string; phone?: string; companyName?: string; company?: { corporateName?: string } | null } | null;
+    items?: unknown[];
+}
+
+/** Item da fila: orçamento do mapa (deal) ou pedido do catálogo (order). */
+type QueueItem =
+    | { kind: 'deal'; id: string; createdAt: string; name: string; detail: string; value: number }
+    | { kind: 'order'; id: string; createdAt: string; name: string; detail: string; value: number };
+
+const STALE_DAYS = 7;
+const daysSince = (date: string) => Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+const ago = (date: string) => { const d = daysSince(date); return d === 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`; };
+
+const greeting = () => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
 };
 
 export function CrmOverview() {
     const { user } = useAuth();
     const { addToast } = useToast();
-    
-    // =========================================================
-    // ESTADOS
-    // =========================================================
-    const [metrics, setMetrics] = useState({
-        totalExpectedValue: 0,
-        totalActiveDeals: 0,
-        totalClients: 0,
-        totalWonValue: 0
-    });
-    
-    const [myDeals, setMyDeals] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [metrics, setMetrics] = useState<CrmMetrics | null>(null);
+    const [deals, setDeals] = useState<CrmDeal[]>([]);
+    const [queueDeals, setQueueDeals] = useState<CrmDeal[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [claiming, setClaiming] = useState<string | null>(null);
 
-    // =========================================================
-    // EFEITOS E BUSCA DE DADOS
-    // =========================================================
-    useEffect(() => {
-        fetchData();
-    }, [user]);
+    const load = useCallback(async () => {
+        setLoading(true);
+        // Cada bloco carrega de forma independente: uma falha não apaga o resto da tela
+        const [m, d, q, o, t] = await Promise.allSettled([
+            crmService.getMetrics(),
+            crmService.getDeals(),
+            crmService.getGlobalDeals(),
+            api.get<Order[]>('/orders').then((r) => r.data),
+            agendaService.getTasks(),
+        ]);
+        if (m.status === 'fulfilled') setMetrics(m.value);
+        if (d.status === 'fulfilled') setDeals(d.value);
+        if (q.status === 'fulfilled') setQueueDeals(q.value);
+        if (o.status === 'fulfilled') setOrders(o.value);
+        if (t.status === 'fulfilled') setTasks(t.value);
+        if ([m, d, q, o, t].some((r) => r.status === 'rejected')) addToast('Parte dos dados não carregou. Atualize a página.', 'error');
+        setLoading(false);
+    }, [addToast]);
 
-    const fetchData = async () => {
+    useEffect(() => { load(); }, [load]);
+
+    const openOrders = orders.filter((o) => o.status === 'PENDING' || o.status === 'APPROVED');
+
+    const queue: QueueItem[] = useMemo(() => [
+        ...queueDeals.map((deal) => ({
+            kind: 'deal' as const,
+            id: deal.id,
+            createdAt: deal.createdAt,
+            name: deal.client?.name || 'Cliente do site',
+            detail: deal.title,
+            value: Number(deal.expectedValue),
+        })),
+        ...openOrders.filter((o) => !o.sellerId).map((order) => ({
+            kind: 'order' as const,
+            id: order.id,
+            createdAt: order.createdAt,
+            name: order.user?.name || 'Cliente do site',
+            detail: `Pedido do catálogo · ${order.items?.length ?? 0} ${order.items?.length === 1 ? 'painel' : 'painéis'}`,
+            value: Number(order.totalValue),
+        })),
+    ].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)), [queueDeals, openOrders]);
+
+    const myOrders = openOrders.filter((o) => o.sellerId === user?.id);
+    const openDeals = deals.filter((d) => d.status === 'OPEN');
+    const stale = openDeals.filter((d) => daysSince(d.updatedAt) > STALE_DAYS).slice(0, 5);
+    const todayKey = toDateKey(new Date());
+    const todayTasks = tasks.filter((t) => t.date.startsWith(todayKey)).sort((a, b) => a.time.localeCompare(b.time));
+
+    const claim = async (item: QueueItem) => {
         if (!user?.id) return;
-        
         try {
-            setIsLoading(true);
-            const ordersRes = await api.get('/orders');
-
-            // 1. Agrupamento de Pacotes (Igual ao Orders.tsx)
-            const groupedMap = new Map();
-
-            ordersRes.data.forEach((order: any) => {
-                const dateKey = new Date(order.createdAt).toISOString().substring(0, 16);
-                const groupKey = `${order.userId}-${dateKey}`;
-
-                const startDate = order.startDate ? new Date(order.startDate) : new Date();
-                const endDate = order.endDate ? new Date(order.endDate) : new Date();
-                const diffDays = Math.ceil(Math.abs(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)); 
-                const months = Math.max(1, Math.round(diffDays / 30));
-
-                if (!groupedMap.has(groupKey)) {
-                    groupedMap.set(groupKey, {
-                        id: order.id, 
-                        createdAt: order.createdAt,
-                        clientName: order.user?.name || 'Cliente Sem Nome',
-                        clientPhone: order.user?.phone || 'Não informado',
-                        company: order.company?.corporateName || order.user?.companyName || '',
-                        status: order.status, 
-                        expectedValue: order.totalValue,
-                        months: months,
-                        assignedTo: order.seller ? { id: order.seller.id, name: order.seller.name } : null,
-                        items: order.items || []
-                    });
-                } else {
-                    const group = groupedMap.get(groupKey);
-                    group.expectedValue += order.totalValue;
-                    if (order.items) {
-                        group.items = [...group.items, ...order.items];
-                    }
-                }
-            });
-
-            const allPackages = Array.from(groupedMap.values());
-
-            // 2. Filtra APENAS os pacotes atribuídos ao usuário logado (O Comercial)
-            const myAssignedPackages = allPackages.filter(pkg => pkg.assignedTo?.id === user.id);
-
-            // 3. Separa Ativos (Em negociação) de Concluídos (Ganhos)
-            const activeDeals = myAssignedPackages.filter(pkg => pkg.status !== 'COMPLETED' && pkg.status !== 'REJECTED');
-            const wonDeals = myAssignedPackages.filter(pkg => pkg.status === 'COMPLETED');
-
-            // 4. Calcula as Métricas da Tela
-            const totalExpectedValue = activeDeals.reduce((sum, pkg) => sum + pkg.expectedValue, 0);
-            const totalWonValue = wonDeals.reduce((sum, pkg) => sum + pkg.expectedValue, 0);
-            
-            // Calcula clientes únicos baseados no telefone
-            const uniqueClients = new Set(myAssignedPackages.map(pkg => pkg.clientPhone)).size;
-
-            // Ordena os ativos pelos mais recentes
-            activeDeals.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-            setMetrics({
-                totalExpectedValue,
-                totalWonValue,
-                totalActiveDeals: activeDeals.length,
-                totalClients: uniqueClients
-            });
-            
-            setMyDeals(activeDeals);
-
-        } catch (error: any) {
-            console.error("Erro ao carregar dados do CRM:", error);
-            addToast("Falha ao carregar a sua fila de pedidos.", "error");
+            setClaiming(item.id);
+            if (item.kind === 'deal') await crmService.claimDeal(item.id);
+            else await api.patch(`/orders/${item.id}`, { sellerId: user.id });
+            addToast(`${item.name} agora está com você.`, 'success');
+            load();
+        } catch (error: unknown) {
+            addToast((error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Não foi possível assumir.', 'error');
         } finally {
-            setIsLoading(false);
+            setClaiming(null);
         }
     };
 
-    const statCards = [
-        { title: 'Pipeline Ativo (Em aberto)', value: formatCurrency(metrics.totalExpectedValue), desc: 'Valor total em negociação', icon: Target, color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10' },
-        { title: 'Negócios Fechados (Ganhos)', value: formatCurrency(metrics.totalWonValue), desc: 'Seu faturamento consolidado', icon: DollarSign, color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10' },
-        { title: 'Oportunidades Abertas', value: metrics.totalActiveDeals, desc: 'Pacotes no seu funil', icon: TrendingUp, color: 'text-brand-text', bg: 'bg-brand-text/5' },
-        { title: 'Sua Carteira de Clientes', value: metrics.totalClients, desc: 'Total de clientes únicos', icon: Users, color: 'text-brand-text', bg: 'bg-brand-text/5' }
-    ];
+    const toggleTask = async (task: Task) => {
+        const next = task.status === 'completed' ? 'pending' : 'completed';
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)));
+        try {
+            await agendaService.toggleTaskStatus(task.id, next);
+        } catch {
+            setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+            addToast('Não foi possível atualizar a tarefa.', 'error');
+        }
+    };
 
     return (
-        <div className="w-full h-full flex flex-col relative gap-6 pb-10 max-w-7xl mx-auto">
-
-            {/* ========================================================= */}
-            {/* VIEWPORT: DESKTOP E MOBILE COMPARTILHADO                  */}
-            {/* ========================================================= */}
-            
-            <div className="flex flex-col gap-1 px-4 lg:px-0">
-                <h1 className="text-2xl md:text-3xl font-bold text-brand-text tracking-tight">Olá, {user?.name?.split(' ')[0]}!</h1>
-                <p className="text-sm text-brand-muted font-medium">Aqui está a sua fila de negociações delegadas pela gestão.</p>
+        <CrmPage
+            eyebrow={new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
+            title={`${greeting()}, ${user?.name?.split(' ')[0] ?? ''}`}
+            description="Fila de atendimento, suas negociações e a agenda de hoje."
+            actions={<Link to="/crm/pipeline" className={crmBtn.secondary}>Abrir funil <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
+        >
+            {/* ============================ NÚMEROS ============================ */}
+            <div className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border lg:grid-cols-4 [&>*]:border-0">
+                {loading && !metrics ? (
+                    [0, 1, 2, 3].map((i) => <div key={i} className="bg-brand-surface p-5"><Skeleton className="h-3 w-24" /><Skeleton className="mt-6 h-7 w-32" /></div>)
+                ) : (
+                    <>
+                        <Stat label="Em negociação" value={formatBRL(metrics?.totalExpectedValue ?? 0)} hint={`${metrics?.totalActiveDeals ?? 0} oportunidades abertas`} accent />
+                        <Stat label="Ganhos" value={formatBRL(metrics?.totalWonValue ?? 0)} hint="Negócios marcados como ganhos" />
+                        <Stat label="Na fila" value={queue.length} hint="Leads e pedidos sem consultor" />
+                        <Stat label="Clientes" value={metrics?.totalClients ?? 0} hint="Na sua carteira" />
+                    </>
+                )}
             </div>
 
-            {/* METRICS GRID */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 px-4 lg:px-0">
-                {statCards.map((stat, i) => (
-                    <div key={i} className="bg-brand-surface p-4 lg:p-6 rounded-none border border-brand-border shadow-sm hover:shadow-md transition-all h-[140px] lg:h-auto flex flex-col justify-between">
-                        <div className="flex justify-between items-start mb-2 lg:mb-4">
-                            <div className={`p-2.5 lg:p-3 rounded-xl ${stat.bg}`}>
-                                <stat.icon className={`w-4 h-4 lg:w-5 lg:h-5 ${stat.color}`} />
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-[10px] lg:text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1 lg:mb-1.5 line-clamp-2">{stat.title}</h3>
-                            <p className="text-xl lg:text-2xl font-semibold text-brand-text tracking-tight mb-0 lg:mb-2">{stat.value}</p>
-                            <p className="hidden lg:block text-[10px] text-brand-muted/80 uppercase tracking-wider font-bold">{stat.desc}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                <div className="flex flex-col gap-6">
+                    {/* ============================ FILA ============================ */}
+                    <Panel title="Fila de atendimento" action={<Badge tone={queue.length ? 'accent' : 'muted'}>{queue.length}</Badge>}>
+                        {loading ? (
+                            <div className="flex flex-col gap-2 p-5">{[0, 1].map((i) => <Skeleton key={i} className="h-14" />)}</div>
+                        ) : queue.length === 0 ? (
+                            <p className="p-5 text-sm text-brand-muted">Nenhum orçamento esperando consultor. Os pedidos do site aparecem aqui assim que chegam.</p>
+                        ) : (
+                            <ul className="divide-y divide-brand-border">
+                                {queue.map((item) => (
+                                    <li key={`${item.kind}-${item.id}`} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="truncate font-medium text-brand-text">{item.name}</span>
+                                                <Badge tone="muted">{item.kind === 'deal' ? 'Mapa' : 'Catálogo'}</Badge>
+                                            </div>
+                                            <p className="mt-1 truncate text-sm text-brand-muted">{item.detail} · {ago(item.createdAt)}</p>
+                                        </div>
+                                        <span className="font-mono text-sm text-brand-text">{formatBRL(item.value)}</span>
+                                        <button type="button" onClick={() => claim(item)} disabled={claiming === item.id} className={crmBtn.primary}>
+                                            {claiming === item.id ? 'Assumindo…' : 'Assumir'}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Panel>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px] px-4 lg:px-0">
-                
-                {/* FILA DE PEDIDOS DO COMERCIAL */}
-                <div className="lg:col-span-2 bg-brand-surface rounded-none border border-brand-border shadow-sm flex flex-col overflow-hidden transition-colors h-[500px]">
-                    <div className="p-5 lg:p-6 border-b border-brand-border flex justify-between items-center bg-brand-background/50 shrink-0">
-                        <div>
-                            <h2 className="text-[15px] lg:text-lg font-bold text-brand-text flex items-center gap-2">
-                                <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 text-brand-neon" /> Sua Fila de Atendimento
-                            </h2>
-                            <p className="hidden lg:block text-xs text-brand-muted font-medium mt-1">Pacotes atribuídos a você aguardando negociação.</p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6 bg-brand-background/30 flex flex-col gap-4">
-                        {isLoading ? (
-                            <div className="h-full flex items-center justify-center">
-                                <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
-                            </div>
-                        ) : myDeals.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-brand-muted">
-                                <CheckCircle2 className="w-12 h-12 mb-3 opacity-20" />
-                                <p className="font-medium text-sm">Nenhum pacote pendente na sua fila.</p>
+                    {/* ============================ PEDIDOS COMIGO ============================ */}
+                    <Panel title="Pedidos do catálogo com você" action={<Link to="/crm/propostas" className="text-sm text-brand-muted hover:text-brand-text">Propostas</Link>}>
+                        {loading ? (
+                            <div className="p-5"><Skeleton className="h-14" /></div>
+                        ) : myOrders.length === 0 ? (
+                            <p className="p-5 text-sm text-brand-muted">Nenhum pedido aberto atribuído a você.</p>
+                        ) : (
+                            <ul className="divide-y divide-brand-border">
+                                {myOrders.map((order) => (
+                                    <li key={order.id}>
+                                        <Link to={`/crm/proposta/${order.id}`} className="group flex flex-col gap-2 px-5 py-4 hover:bg-brand-background sm:flex-row sm:items-center">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate font-medium text-brand-text group-hover:text-brand-neon">{order.user?.name || 'Cliente'}</p>
+                                                <p className="mt-1 truncate text-sm text-brand-muted">
+                                                    {order.user?.company?.corporateName || order.user?.companyName || 'Sem empresa'} · {formatDate(order.createdAt)}
+                                                </p>
+                                            </div>
+                                            <Badge tone={order.status === 'APPROVED' ? 'accent' : 'neutral'}>{order.status === 'APPROVED' ? 'Proposta enviada' : 'Novo'}</Badge>
+                                            <span className="font-mono text-sm text-brand-text">{formatBRL(order.totalValue)}</span>
+                                            <ArrowRight className="hidden h-4 w-4 text-brand-muted group-hover:text-brand-neon sm:block" aria-hidden="true" />
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Panel>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                    {/* ============================ HOJE ============================ */}
+                    <Panel title="Hoje na agenda" action={<Link to="/crm/agenda" className="text-sm text-brand-muted hover:text-brand-text">Agenda</Link>}>
+                        {loading ? (
+                            <div className="p-5"><Skeleton className="h-10" /></div>
+                        ) : todayTasks.length === 0 ? (
+                            <div className="p-5">
+                                <p className="text-sm text-brand-muted">Nada marcado para hoje.</p>
+                                <Link to="/crm/agenda" className={`mt-4 ${crmBtn.secondary}`}>Marcar compromisso</Link>
                             </div>
                         ) : (
-                            myDeals.map(deal => (
-                                <Link 
-                                    to={`/crm/proposta/${deal.id}`} 
-                                    key={deal.id} 
-                                    className="p-5 rounded-2xl border bg-brand-surface border-brand-border hover:border-brand-neon/60 transition-all shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 group"
-                                >
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                            <span className="text-sm font-bold text-brand-text group-hover:text-brand-neon transition-colors">{deal.clientName}</span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded font-semibold uppercase tracking-widest bg-[#FF5E00]/10 text-[#FF5E00] border border-[#FF5E00]/20">
-                                                Aberto
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-xs text-brand-muted font-medium">
-                                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {new Date(deal.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                            <span className="font-bold text-brand-text">{formatCurrency(deal.expectedValue)}</span>
-                                            <span>({deal.items?.length || 0} Painéis)</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-2 lg:mt-0 flex w-full lg:w-auto">
-                                        <span className="w-full lg:w-auto bg-brand-background text-brand-text border border-brand-border group-hover:bg-brand-neon group-hover:text-black group-hover:border-brand-neon px-5 py-2.5 rounded-xl text-[11px] font-semibold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm" aria-hidden="true">
-                                            Analisar Proposta <ArrowRight className="w-4 h-4" />
-                                        </span>
-                                    </div>
-                                </Link>
-                            ))
+                            <ul className="divide-y divide-brand-border">
+                                {todayTasks.map((task) => {
+                                    const done = task.status === 'completed';
+                                    return (
+                                        <li key={task.id} className="flex items-center gap-3 px-5 py-3">
+                                            <button type="button" onClick={() => toggleTask(task)} aria-pressed={done} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`} className="text-brand-muted hover:text-brand-neon">
+                                                {done ? <Check className="h-5 w-5 text-brand-neon" /> : <Circle className="h-5 w-5" strokeWidth={1.5} />}
+                                            </button>
+                                            <span className="font-mono text-sm text-brand-muted">{task.time}</span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`truncate text-sm ${done ? 'text-brand-muted line-through' : 'text-brand-text'}`}>{task.title}</p>
+                                                {task.client && <p className="truncate text-xs text-brand-muted">{task.client}</p>}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         )}
-                    </div>
-                </div>
+                    </Panel>
 
-                {/* PRÓXIMOS PASSOS */}
-                <div className="lg:col-span-1 bg-brand-surface rounded-none border border-brand-border shadow-sm flex flex-col transition-colors h-[500px]">
-                    <div className="p-5 lg:p-6 border-b border-brand-border flex justify-between items-center bg-brand-background/50 shrink-0">
-                        <h2 className="text-[15px] lg:text-lg font-bold text-brand-text">Próximos Passos</h2>
-                        <span className="bg-brand-neon/10 text-brand-neon text-[9px] lg:text-[10px] font-semibold px-2.5 py-1 rounded uppercase tracking-widest border border-brand-neon/20">Hoje</span>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-8 text-center bg-brand-background/30">
-                        <CheckCircle2 className="w-10 h-10 lg:w-12 lg:h-12 text-brand-muted opacity-30 mb-3 lg:mb-4" />
-                        <p className="text-xs lg:text-sm font-medium text-brand-muted mb-5 lg:mb-6">Nenhuma tarefa pendente para hoje.</p>
-                        <button className="w-full py-3 rounded-xl border border-brand-border text-xs lg:text-sm font-bold text-brand-text hover:text-brand-neon hover:border-brand-neon/50 bg-brand-background active:bg-brand-surface transition-colors shadow-sm">
-                            + Adicionar Lembrete
-                        </button>
-                    </div>
+                    {/* ============================ PARADOS ============================ */}
+                    <Panel title={`Parados há mais de ${STALE_DAYS} dias`}>
+                        {loading ? (
+                            <div className="p-5"><Skeleton className="h-10" /></div>
+                        ) : stale.length === 0 ? (
+                            <p className="p-5 text-sm text-brand-muted">Nenhuma oportunidade parada. Bom ritmo.</p>
+                        ) : (
+                            <ul className="divide-y divide-brand-border">
+                                {stale.map((deal) => (
+                                    <li key={deal.id}>
+                                        <Link to="/crm/pipeline" className="flex items-center gap-3 px-5 py-3 hover:bg-brand-background">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm text-brand-text">{deal.title}</p>
+                                                <p className="truncate text-xs text-brand-muted">{deal.client?.name}</p>
+                                            </div>
+                                            <Badge tone="danger">{daysSince(deal.updatedAt)} dias</Badge>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Panel>
                 </div>
-
             </div>
-            
-            {/* Spacer Mobile */}
-            <div className="h-[50px] w-full shrink-0 pointer-events-none lg:hidden" />
-        </div>
+
+            {!loading && !metrics && !queue.length && !deals.length && (
+                <EmptyState title="Não foi possível carregar o painel" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />
+            )}
+        </CrmPage>
     );
 }

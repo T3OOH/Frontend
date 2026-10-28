@@ -14,6 +14,7 @@ export interface CrmClient {
     id: string;
     sellerId: string;
     name: string;
+    company?: string;
     document?: string;
     email?: string;
     phone?: string;
@@ -40,14 +41,24 @@ export interface CrmDeal {
     expectedDate?: string;
     createdAt: string;
     updatedAt: string;
+    contractMonths?: number;
+    originalValue?: number;
     client?: {
         name: string;
         avatarUrl?: string;
+        email?: string;
+        phone?: string;
+        whatsapp?: string;
+        company?: string;
+        document?: string;
     };
+    seller?: { name: string } | null;
+    items?: { id: string; panelId: string; priceSnapshot: number; panel?: { name: string; city?: string; state?: string } }[];
 }
 
 export interface CreateClientData {
     name: string;
+    company?: string;
     document?: string;
     email?: string;
     phone?: string;
@@ -98,7 +109,8 @@ export const crmService = {
         return response.data;
     },
 
-    async getGlobalDeals(): Promise<any[]> {
+    /** Fila: orçamentos do site ainda sem consultor. */
+    async getGlobalDeals(): Promise<CrmDeal[]> {
         const response = await api.get('/crm/deals/global');
         return response.data;
     },
