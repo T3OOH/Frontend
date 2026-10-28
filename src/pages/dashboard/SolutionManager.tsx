@@ -125,7 +125,7 @@ export function SolutionManager() {
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-black text-brand-text flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-brand-text flex items-center gap-2">
                         <Images className="w-6 h-6 text-brand-neon" /> Gestão T3 Solution
                     </h1>
                     <p className="text-sm text-brand-muted mt-1">Gerencie as imagens exibidas no carrossel de portfólio da página T3 Solution.</p>
@@ -135,13 +135,13 @@ export function SolutionManager() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* COLUNA ESQUERDA: FORMULÁRIO */}
-                <div className="lg:col-span-1 bg-brand-surface p-6 rounded-[24px] border border-brand-border shadow-sm flex flex-col h-fit">
+                <div className="lg:col-span-1 bg-brand-surface p-6 rounded-none border border-brand-border shadow-sm flex flex-col h-fit">
                     <h3 className="text-xs font-bold text-brand-muted uppercase tracking-widest mb-6 flex items-center gap-2">
                         <Plus className="w-4 h-4 text-brand-neon" /> Nova Imagem
                     </h3>
                     
                     <form onSubmit={handleSave} className="flex flex-col gap-4">
-                        <label className="border-2 border-dashed border-brand-border hover:border-brand-neon/50 bg-brand-background/50 rounded-[16px] flex flex-col items-center justify-center p-8 cursor-pointer transition-all aspect-[4/5] group relative overflow-hidden">
+                        <label className="border-2 border-dashed border-brand-border hover:border-brand-neon/50 bg-brand-background/50 rounded-none flex flex-col items-center justify-center p-8 cursor-pointer transition-all aspect-[4/5] group relative overflow-hidden">
                             {previewUrl ? (
                                 <>
                                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover absolute inset-0 opacity-90" />
@@ -186,7 +186,7 @@ export function SolutionManager() {
                                     <Button 
                                         type="submit" 
                                         disabled={isSaving}
-                                        className="w-2/3 bg-brand-neon hover:bg-brand-neonHover text-[#0A0A0B] font-black uppercase tracking-widest text-[11px] rounded-xl h-12 shadow-[0_0_15px_rgba(255,94,0,0.15)] flex items-center justify-center"
+                                        className="w-2/3 bg-brand-neon hover:bg-brand-neonHover text-[#0A0A0B] font-semibold uppercase tracking-widest text-[11px] rounded-xl h-12 shadow-[0_0_15px_rgba(255,94,0,0.15)] flex items-center justify-center"
                                     >
                                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UploadCloud className="w-4 h-4 mr-2" />}
                                         Salvar
@@ -198,7 +198,7 @@ export function SolutionManager() {
                 </div>
 
                 {/* COLUNA DIREITA: GRID DE IMAGENS ATUAIS */}
-                <div className="lg:col-span-2 bg-brand-surface p-6 md:p-8 rounded-[24px] border border-brand-border shadow-sm flex flex-col h-fit lg:min-h-[500px]">
+                <div className="lg:col-span-2 bg-brand-surface p-6 md:p-8 rounded-none border border-brand-border shadow-sm flex flex-col h-fit lg:min-h-[500px]">
                     <div className="flex justify-between items-center mb-6 shrink-0 border-b border-brand-border pb-4">
                         <h3 className="text-xs font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
                             Imagens em Exibição
@@ -214,7 +214,7 @@ export function SolutionManager() {
                             <p className="text-sm text-brand-muted font-medium">Buscando no servidor...</p>
                         </div>
                     ) : images.length === 0 ? (
-                        <div className="flex-1 border-2 border-dashed border-brand-border rounded-[16px] bg-brand-background/50 flex flex-col items-center justify-center py-12">
+                        <div className="flex-1 border-2 border-dashed border-brand-border rounded-none bg-brand-background/50 flex flex-col items-center justify-center py-12">
                             <Images className="w-8 h-8 text-brand-muted/50 mb-3" />
                             <p className="text-sm text-brand-muted font-medium">Nenhuma imagem no carrossel.</p>
                         </div>

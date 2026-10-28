@@ -84,7 +84,7 @@ export function CrmLayout() {
 
                 {/* NAVEGAÇÃO PRINCIPAL */}
                 <nav className="flex-1 flex flex-col gap-1.5 custom-scrollbar overflow-y-auto p-5">
-                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-2">Visão Geral</span>
+                    <span className="text-[10px] font-semibold uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-2">Visão Geral</span>
                     <Link to="/crm" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/crm', true)}`}>
                         <LayoutDashboard className="w-[18px] h-[18px]" /> Dashboard
                     </Link>
@@ -97,7 +97,7 @@ export function CrmLayout() {
                         <Users className="w-[18px] h-[18px]" /> Minha Carteira
                     </Link>
 
-                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Ferramentas</span>
+                    <span className="text-[10px] font-semibold uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Ferramentas</span>
                     <Link to="/crm/propostas" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/crm/propostas')}`}>
                         <FileText className="w-[18px] h-[18px]" /> Propostas Comerciais
                     </Link>
@@ -138,7 +138,7 @@ export function CrmLayout() {
                     {/* Perfil e Saída */}
                     <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-9 h-9 rounded-full bg-brand-neon/10 text-brand-neon font-black text-sm flex items-center justify-center shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-brand-neon/10 text-brand-neon font-semibold text-sm flex items-center justify-center shrink-0">
                                 {user?.name?.charAt(0).toUpperCase() || 'C'}
                             </div>
                             <div className="flex flex-col min-w-0">
@@ -234,8 +234,8 @@ export function CrmLayout() {
                         <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar">
                             
                             {/* Card Resumo do Usuário */}
-                            <div className="bg-brand-surface border border-brand-border rounded-[24px] p-4 flex items-center gap-4 shadow-sm mb-8">
-                                <div className="w-12 h-12 rounded-full bg-brand-neon/10 border border-brand-neon flex items-center justify-center text-brand-neon font-black text-xl shadow-sm">
+                            <div className="bg-brand-surface border border-brand-border rounded-none p-4 flex items-center gap-4 shadow-sm mb-8">
+                                <div className="w-12 h-12 rounded-full bg-brand-neon/10 border border-brand-neon flex items-center justify-center text-brand-neon font-semibold text-xl shadow-sm">
                                     {user?.name?.charAt(0).toUpperCase() || 'C'}
                                 </div>
                                 <div className="flex flex-col flex-1">
@@ -246,7 +246,7 @@ export function CrmLayout() {
 
                             {/* Menu de Navegação Secundária */}
                             <div className="flex flex-col gap-2 mb-8">
-                                <h4 className="text-[10px] font-black uppercase text-brand-muted tracking-widest pl-2 mb-2">Ferramentas</h4>
+                                <h4 className="text-[10px] font-semibold uppercase text-brand-muted tracking-widest pl-2 mb-2">Ferramentas</h4>
                                 
                                 <Link onClick={() => setIsMobileMenuOpen(false)} to="/crm/propostas" className="flex items-center justify-between p-4 rounded-xl border bg-brand-surface border-brand-border hover:border-brand-neon/50 transition-all">
                                     <div className="flex items-center gap-3">
@@ -272,7 +272,7 @@ export function CrmLayout() {
                                     <ChevronRight className="w-4 h-4 text-brand-muted" />
                                 </Link>
 
-                                <h4 className="text-[10px] font-black uppercase text-brand-muted tracking-widest pl-2 mt-6 mb-2">Sistema</h4>
+                                <h4 className="text-[10px] font-semibold uppercase text-brand-muted tracking-widest pl-2 mt-6 mb-2">Sistema</h4>
 
                                 <Link onClick={() => setIsMobileMenuOpen(false)} to="/" className="flex items-center justify-between p-4 rounded-xl border bg-brand-surface border-brand-border hover:border-brand-neon/50 transition-all">
                                     <div className="flex items-center gap-3">

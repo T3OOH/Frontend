@@ -322,7 +322,7 @@ export function Services() {
                                 <span className="line-through">{formatCurrency(basePrice)}</span>
                             </div>
                             <div className="flex justify-between items-end">
-                                <span className="text-2xl font-black text-[#25D366]">{formatCurrency(marketingPrice)}</span>
+                                <span className="text-2xl font-black text-[#FF5E00]">{formatCurrency(marketingPrice)}</span>
                             </div>
                         </div>
 
@@ -346,10 +346,10 @@ export function Services() {
             <div className="flex flex-col max-w-[1400px] mx-auto px-6 relative z-10 w-full pt-10 pb-16">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div>
-                        <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight flex items-center gap-3">
-                            Catálogo De Painéis
+                        <h1 className="text-3xl md:text-5xl font-light uppercase text-white tracking-tight flex items-center gap-3">
+                            Catálogo de painéis
                         </h1>
-                        <p className="text-[#8F8F91] mt-3 font-medium text-sm md:text-base">Escolha Os Melhores Pontos Para Sua Campanha E Personalize A Duração No Carrinho.</p>
+                        <p className="text-[#8F8F91] mt-3 font-medium text-sm md:text-base">Escolha os pontos da sua campanha e defina o prazo no carrinho.</p>
                     </div>
                     
                     <button onClick={() => setIsSidebarOpen(true)} className="relative bg-[#111113] border border-white/10 px-8 py-4 rounded-md text-white font-bold hover:border-[#FF5E00] hover:text-white uppercase tracking-widest text-xs transition-colors flex items-center justify-center gap-2">
@@ -429,7 +429,7 @@ export function Services() {
                                         <span className="text-[10px] text-[#8F8F91] line-through">{formatCurrency(Number(selectedPanel.price))}</span>
                                     </div>
                                     <div className="flex justify-between items-end mb-6">
-                                        <span className="text-3xl font-black text-[#25D366]">{formatCurrency(Number(selectedPanel.price) * 0.70)}</span>
+                                        <span className="text-3xl font-black text-[#FF5E00]">{formatCurrency(Number(selectedPanel.price) * 0.70)}</span>
                                     </div>
                                     
                                     <Button onClick={() => { toggleInCart(selectedPanel); setSelectedPanel(null); }} className={`w-full py-4 text-xs tracking-widest font-black uppercase rounded-md border ${isInCart(selectedPanel.id) ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' : 'bg-[#FF5E00] text-white border-transparent hover:bg-[#e05300]'}`}>
@@ -459,7 +459,7 @@ export function Services() {
                             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
                                 {checkoutStep === 'success' ? (
                                     <div className="flex flex-col items-center text-center mt-20">
-                                        <CheckCircle className="w-16 h-16 text-[#25D366] mb-6" />
+                                        <CheckCircle className="w-16 h-16 text-[#FF5E00] mb-6" />
                                         <h3 className="text-2xl font-black text-white mb-2 uppercase">Projeto Solicitado!</h3>
                                         <p className="text-[#8F8F91] text-sm leading-relaxed">Sua configuração de painéis foi enviada com sucesso para nossa equipe comercial. Entraremos em contato em breve.</p>
                                     </div>
@@ -489,7 +489,7 @@ export function Services() {
                                                         <div className="flex justify-between items-end mt-2 gap-2 border-t border-white/5 pt-2">
                                                             <div className="flex flex-col">
                                                                 {cartDiscount > 0 && <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(itemBasePrice)}</span>}
-                                                                <span className="text-sm font-black text-[#25D366] truncate">{formatCurrency(itemFinalPrice)} <span className="text-[9px] text-[#8F8F91] font-normal uppercase">/mês</span></span>
+                                                                <span className="text-sm font-black text-[#FF5E00] truncate">{formatCurrency(itemFinalPrice)} <span className="text-[9px] text-[#8F8F91] font-normal uppercase">/mês</span></span>
                                                             </div>
                                                             <button onClick={() => toggleInCart(p)} className="text-[10px] text-red-500 uppercase font-bold shrink-0 hover:text-red-400">Remover</button>
                                                         </div>
@@ -529,7 +529,7 @@ export function Services() {
                                         <div className="flex flex-col gap-1.5">
                                             <label className="text-[10px] text-[#8F8F91] uppercase font-bold tracking-widest block">Cupom de Desconto Extra</label>
                                             {appliedCoupon ? (
-                                                <div className="flex items-center justify-between gap-3 bg-[#25D366]/5 border border-[#25D366]/20 p-3 rounded-md text-[#25D366]">
+                                                <div className="flex items-center justify-between gap-3 bg-[#FF5E00]/5 border border-[#FF5E00]/20 p-3 rounded-md text-[#FF5E00]">
                                                     <div className="flex items-center gap-2.5 truncate">
                                                         <Tag className="w-4 h-4 shrink-0" />
                                                         <span className="text-xs font-bold truncate">{appliedCoupon.code} ({appliedCoupon.label})</span>
@@ -553,7 +553,7 @@ export function Services() {
                                         <div className="flex flex-col gap-1 bg-[#0A0A0B] p-4 rounded-md border border-white/5">
                                             <span className="text-[10px] font-bold text-[#8F8F91] uppercase tracking-widest mb-1">Investimento Mensal Total</span>
                                             <div className="flex justify-between items-end">
-                                                <span className="text-3xl font-black text-[#25D366]">{formatCurrency(finalCartMonthlyValue)}</span>
+                                                <span className="text-3xl font-black text-[#FF5E00]">{formatCurrency(finalCartMonthlyValue)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -567,7 +567,7 @@ export function Services() {
                                             Para finalizar o pedido, <Link to="/login" className="text-white underline">entre na sua conta</Link> ou <Link to="/cadastro" className="text-white underline">cadastre-se</Link>.
                                         </p>
                                     )}
-                                    <Button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className="w-full bg-[#25D366] py-4 rounded-md font-black text-[#0A0A0B] hover:bg-[#1eb858] text-xs uppercase tracking-widest">
+                                    <Button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className="w-full bg-[#FF5E00] py-4 rounded-md font-black text-[#0A0A0B] hover:bg-[#FF7A29] text-xs uppercase tracking-widest">
                                         {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : 'Finalizar Pedido'}
                                     </Button>
                                     <button onClick={() => setCheckoutStep('cart')} className="w-full text-center text-[10px] tracking-widest uppercase text-[#8F8F91] mt-4 hover:text-white font-bold">Voltar para o projeto</button>

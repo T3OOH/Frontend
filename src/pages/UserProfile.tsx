@@ -121,7 +121,7 @@ export function UserProfile() {
     const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
     const translateStatus = (status: string) => {
-        if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20' };
+        if (status === 'WON') return { text: 'Aprovado', color: 'bg-[#FF5E00]/10 text-[#FF5E00] border-[#FF5E00]/20' };
         if (status === 'LOST') return { text: 'Cancelado', color: 'bg-red-500/10 text-red-500 border-red-500/20' };
         return { text: 'Em Análise', color: 'bg-brand-neon/10 text-brand-neon border-brand-neon/20' };
     };
@@ -148,12 +148,12 @@ export function UserProfile() {
             <div className="max-w-5xl mx-auto w-full relative z-10">
                 
                 {/* Profile Header */}
-                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
+                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center text-4xl font-black text-[#FF5E00] shadow-[0_0_30px_rgba(255,94,0,0.15)] flex-shrink-0 z-10">
                         {formData.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 text-center sm:text-left z-10 min-w-0 flex flex-col justify-center h-full">
-                        <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2 truncate">{formData.name}</h1>
+                        <h1 className="text-3xl sm:text-4xl font-light uppercase text-white tracking-tight mb-2 truncate">{formData.name}</h1>
                         <p className="text-[#FF5E00] text-xs font-bold uppercase tracking-widest mb-5">Conta Corporativa</p>
                         
                         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-5 text-[13px] text-[#8F8F91] font-medium">
@@ -189,7 +189,7 @@ export function UserProfile() {
                             key="data"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 border-b border-white/5 pb-8">
                                 <div>
@@ -258,7 +258,7 @@ export function UserProfile() {
                             key="orders"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
                             {activeOrder ? (
                                 /* ORDER DETAILS VIEW */
@@ -306,7 +306,7 @@ export function UserProfile() {
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0">
-                                                            <span className="text-[10px] font-bold text-[#25D366] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
+                                                            <span className="text-[10px] font-bold text-[#FF5E00] uppercase tracking-widest block mb-0.5">Valor Mensal</span>
                                                             <span className="text-sm font-black text-white">{formatCurrency(item.priceSnapshot || 0)}</span>
                                                         </div>
                                                     </div>
@@ -317,14 +317,14 @@ export function UserProfile() {
                                         <div className="bg-[#0A0A0B] border border-white/5 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-inner">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[11px] font-bold text-[#8F8F91] uppercase tracking-widest">Resumo Financeiro</span>
-                                                <span className="text-2xl font-black text-[#25D366] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
+                                                <span className="text-2xl font-black text-[#FF5E00] tracking-tight">{formatCurrency(activeOrder.expectedValue || 0)}</span>
                                                 <span className="text-xs text-[#8F8F91] font-medium mt-1">Duração: {activeOrder.contractMonths || 1} Meses</span>
                                             </div>
                                             
                                             <Button 
                                                 onClick={() => handleContactSupport(activeOrder)}
                                                 size="lg"
-                                                className="w-full sm:w-auto bg-[#25D366] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
+                                                className="w-full sm:w-auto bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black uppercase tracking-widest text-[12px] h-14 rounded-xl shadow-[0_10px_25px_rgba(37,211,102,0.2)] border-none shrink-0 transition-all active:scale-[0.98]"
                                                 rightIcon={<MessageCircle className="w-4 h-4" />}
                                             >
                                                 Falar com Consultor
@@ -361,7 +361,7 @@ export function UserProfile() {
                                             {myOrders.map(order => {
                                                 const statusBadge = translateStatus(order.status);
                                                 return (
-                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-[24px] p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
+                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-none p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
                                                         <div className="flex flex-col gap-1.5 min-w-0">
                                                             <div className="flex items-center gap-4 mb-1">
                                                                 <h4 className="font-black text-white text-base truncate">#{order.id.substring(0, 6).toUpperCase()}</h4>

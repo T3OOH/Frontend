@@ -2,16 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, Send, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/Input';
 import { loginSchema, LoginFormData } from '@/schemas/login.schema';
 import { authService } from '@/services/auth.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { motion } from 'framer-motion';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { Seo } from '@/components/Seo';
+import { AuthShell, authInput } from '@/components/AuthShell';
+import { btnPrimary } from '@/lib/ui';
 
 export function Login() {
     const navigate = useNavigate();
@@ -57,100 +58,45 @@ export function Login() {
 
     return (
         <>
-        <Seo title="Entrar" description="Acesse sua conta na plataforma T3 OOH." path="/login" noIndex />
-        <div className="relative min-h-[100dvh] w-full flex items-center bg-[#0A0A0B] overflow-x-hidden">
-            
-            {/* BACKGROUND IMERSIVO */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <img 
-                    src="/cidade-t3-noite.webp" 
-                    alt="Background Cidade" 
-                    className="w-full h-full object-cover opacity-30 mix-blend-luminosity" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-[#0A0A0B]/90 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/40 to-transparent" />
-            </div>
-
-            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-24 lg:py-0 flex flex-col lg:flex-row lg:items-center justify-between gap-16 lg:gap-24 h-full min-h-screen">
-                
-                {/* COLUNA ESQUERDA: LOGO GIGANTE E TÍTULO */}
-                <div className="w-full lg:w-[45%] flex flex-col justify-center">
-                    <motion.img 
-                        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, ease: "easeOut" }}
-                        src="/t3-logo.webp" 
-                        alt="T3 OOH Logo Gigante" 
-                        className="w-[60%] md:w-[70%] max-w-[400px] h-auto object-contain drop-shadow-[0_0_40px_rgba(255,94,0,0.3)] origin-left mb-8"
+            <Seo title="Entrar" description="Acesse sua conta na plataforma T3 OOH." path="/login" noIndex />
+            <AuthShell
+                eyebrow="Área do cliente"
+                title={<>Entrar na<br />sua conta</>}
+                subtitle="Acompanhe seus orçamentos, pedidos e campanhas nos telões da T3."
+                footer={<>Ainda não tem conta? <Link to="/cadastro" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Criar conta</Link></>}
+            >
+                <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+                    <Input
+                        id="login-email"
+                        label="E-mail"
+                        type="email"
+                        placeholder="voce@empresa.com.br"
+                        autoComplete="email"
+                        error={errors.email?.message}
+                        className={authInput}
+                        {...register('email')}
                     />
-                    
-                    <motion.h1 
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-                        className="text-5xl lg:text-7xl font-black text-white tracking-tight leading-[1] mb-10"
-                    >
-                        Fazer Login
-                    </motion.h1>
+                    <div className="flex flex-col gap-2">
+                        <Input
+                            id="login-senha"
+                            label="Senha"
+                            type="password"
+                            placeholder="Sua senha"
+                            autoComplete="current-password"
+                            error={errors.password?.message}
+                            className={authInput}
+                            {...register('password')}
+                        />
+                        <Link to="/recuperar-senha" className="self-end text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
+                    </div>
 
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-                        <Link to="/" className="inline-flex items-center justify-center px-8 py-5 border border-white/20 text-white hover:bg-white/5 hover:border-white/40 uppercase tracking-widest text-xs font-bold transition-all">
-                            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar ao Início
-                        </Link>
-                    </motion.div>
-                </div>
+                    <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
 
-                {/* COLUNA DIREITA: FORMULÁRIO "NAKED" */}
-                <div className="w-full lg:w-[50%] flex flex-col justify-center">
-                    <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-6" autoComplete="off">
-                        
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">E-mail Corporativo *</label>
-                            <Input 
-                                type="email" 
-                                placeholder="seu@empresa.com.br" 
-                                leftIcon={<Mail className="w-4 h-4 text-white/40" />} 
-                                error={errors.email?.message} 
-                                {...register('email')} 
-                                className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                autoComplete="email"
-                            />
-                        </div>
-                        
-                        <div className="flex flex-col gap-2 relative">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Senha *</label>
-                            <Input 
-                                type="password" 
-                                placeholder="••••••••" 
-                                leftIcon={<Lock className="w-4 h-4 text-white/40" />} 
-                                error={errors.password?.message} 
-                                {...register('password')} 
-                                className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                autoComplete="current-password"
-                            />
-                            <div className="flex justify-end pt-1">
-                                <Link to="/recuperar-senha" className="text-[11px] font-bold text-[#8F8F91] hover:text-white transition-all uppercase tracking-widest">Esqueceu a senha?</Link>
-                            </div>
-                        </div>
-
-                        <div className="rounded-xl overflow-hidden mt-2 w-fit">
-                            <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isSubmitting || !RECAPTCHA_SITE_KEY}
-                            className="w-full bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-16 rounded-none transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar no Sistema <Send className="w-4 h-4" /></>}
-                        </button>
-
-                        <div className="text-center pt-2">
-                            <p className="text-[12px] text-[#8F8F91] uppercase tracking-widest font-bold">
-                                Não tem uma conta? <Link to="/cadastro" className="text-white hover:text-[#FF5E00] transition-colors underline decoration-white/20">Cadastre-se</Link>
-                            </p>
-                        </div>
-                    </form>
-                </div>
-
-            </div>
-        </div>
+                    <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} mt-2 h-12 w-full`}>
+                        {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Entrando…</> : <>Entrar <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
+                    </button>
+                </form>
+            </AuthShell>
         </>
     );
 }

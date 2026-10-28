@@ -61,7 +61,7 @@ export function DashboardLayout() {
 
                 {/* NAVEGAÇÃO PRINCIPAL */}
                 <nav className="flex-1 flex flex-col gap-1.5 custom-scrollbar overflow-y-auto p-5">
-                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-2">Geral</span>
+                    <span className="text-[10px] font-semibold uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-2">Geral</span>
                     <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard', true)}`}>
                         <LayoutDashboard className="w-[18px] h-[18px]" /> Visão Geral
                     </Link>
@@ -78,7 +78,7 @@ export function DashboardLayout() {
                         <MapIcon className="w-[18px] h-[18px]" /> Mapa de Cobertura
                     </Link>
 
-                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Produtos & Soluções</span>
+                    <span className="text-[10px] font-semibold uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Produtos & Soluções</span>
                     <Link to="/dashboard/solution" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/solution')}`}>
                         <Images className="w-[18px] h-[18px]" /> Gestão T3 Solution
                     </Link>
@@ -87,7 +87,7 @@ export function DashboardLayout() {
                         <Building2 className="w-[18px] h-[18px]" /> Gestão Institucional
                     </Link>
 
-                    <span className="text-[10px] font-black uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Administração</span>
+                    <span className="text-[10px] font-semibold uppercase text-brand-muted/70 tracking-widest pl-3 mb-2 mt-6">Administração</span>
                     <Link to="/dashboard/usuarios" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm ${getLinkStyle('/dashboard/usuarios')}`}>
                         <Users className="w-[18px] h-[18px]" /> Equipe
                     </Link>
@@ -122,7 +122,7 @@ export function DashboardLayout() {
 
                     <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-9 h-9 rounded-full bg-brand-neon/10 text-brand-neon font-black text-sm flex items-center justify-center shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-brand-neon/10 text-brand-neon font-semibold text-sm flex items-center justify-center shrink-0">
                                 {user?.name?.charAt(0).toUpperCase() || 'G'}
                             </div>
                             <div className="flex flex-col min-w-0">

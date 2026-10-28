@@ -331,10 +331,10 @@ export function Orders() {
     };
 
     const statusOptions = [
-        { value: 'PENDING', label: 'Pendente / Novo' },
-        { value: 'APPROVED', label: 'Aprovado / Em Venda' },
-        { value: 'COMPLETED', label: 'Concluído (Ganho)' },
-        { value: 'REJECTED', label: 'Rejeitado / Perdido' }
+        { value: 'PENDING', label: 'Novo' },
+        { value: 'APPROVED', label: 'Em venda' },
+        { value: 'COMPLETED', label: 'Ganho' },
+        { value: 'REJECTED', label: 'Perdido' }
     ];
 
     const filterOptions = [
@@ -358,7 +358,7 @@ export function Orders() {
             {/* Header Actions */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-black text-brand-text flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-brand-text flex items-center gap-2">
                         <ShoppingCart className="w-6 h-6 text-brand-neon" /> Gestão de Pacotes
                     </h1>
                     <p className="text-sm text-brand-muted mt-1">Acompanhe pacotes de orçamentos gerados pelos clientes na plataforma.</p>
@@ -387,7 +387,7 @@ export function Orders() {
             </div>
 
             {/* Lista de Pedidos (PACOTES) */}
-            <div className="flex-1 bg-brand-surface border border-brand-border rounded-[24px] overflow-hidden flex flex-col shadow-sm">
+            <div className="flex-1 bg-brand-surface border border-brand-border rounded-none overflow-hidden flex flex-col shadow-sm">
                 
                 {/* Tabela Header (Desktop) */}
                 <div className="hidden md:grid grid-cols-12 gap-4 p-5 border-b border-brand-border bg-brand-background/50 items-center">
@@ -420,7 +420,7 @@ export function Orders() {
                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 items-center cursor-pointer md:cursor-auto" onClick={() => window.innerWidth < 768 && setExpandedOrderId(isExpanded ? null : order.id)}>
                                         
                                         <div className="col-span-1 md:col-span-2 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start gap-1">
-                                            <span className="text-xs font-black text-brand-text bg-brand-background border border-brand-border px-2 py-1 rounded" title={order.id}>
+                                            <span className="text-xs font-semibold text-brand-text bg-brand-background border border-brand-border px-2 py-1 rounded" title={order.id}>
                                                 PKG-{order.id.substring(0, 6)}
                                             </span>
                                             <span className="text-[10px] text-brand-muted flex items-center gap-1">
@@ -435,7 +435,7 @@ export function Orders() {
 
                                         <div className="col-span-1 md:col-span-2 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start">
                                             <span className="md:hidden text-[10px] text-brand-muted uppercase font-bold">Investimento</span>
-                                            <span className="text-sm md:text-base font-black text-[#25D366]">{order.formattedValue}</span>
+                                            <span className="text-sm md:text-base font-semibold text-[#FF5E00]">{order.formattedValue}</span>
                                             <span className="hidden md:block text-[10px] text-brand-muted uppercase tracking-wider mt-0.5">{order.months} Meses</span>
                                         </div>
 
@@ -515,7 +515,7 @@ export function Orders() {
                                                                             <p className="text-[10px] text-brand-muted truncate flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" /> {panel.city || 'Cidade N/A'}</p>
                                                                         </div>
                                                                         <div className="shrink-0 flex flex-col items-end">
-                                                                            <span className="text-xs font-black text-brand-text">{formatCurrency(item.priceSnapshot || panel.price || 0)}</span>
+                                                                            <span className="text-xs font-semibold text-brand-text">{formatCurrency(item.priceSnapshot || panel.price || 0)}</span>
                                                                         </div>
                                                                     </div>
                                                                 )
@@ -553,7 +553,7 @@ export function Orders() {
                                                                     onClick={() => handleExportChat(order)}
                                                                     className={`w-full py-4 text-[11px] border ${
                                                                         currentStatus === 'COMPLETED' 
-                                                                        ? 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/30 hover:bg-[#25D366]/20' 
+                                                                        ? 'bg-[#FF5E00]/10 text-[#FF5E00] border-[#FF5E00]/30 hover:bg-[#FF5E00]/20' 
                                                                         : 'bg-brand-surface text-brand-muted border-brand-border opacity-50'
                                                                     }`}
                                                                 >

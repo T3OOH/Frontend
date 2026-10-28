@@ -1,752 +1,302 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import {
-    ArrowRight, MapPin, BarChart3, Shield, MonitorPlay, Activity,
-    Search, Filter, Heart, Compass, Flame
-} from 'lucide-react';
-import { Button } from '@/components/Button';
+import { useEffect, useMemo, useRef, useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { panelsService } from '@/services/panels.service';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { ArrowRight, ArrowUpRight, MapPin, Search } from 'lucide-react';
+
 import { Seo } from '@/components/Seo';
+import { LedScreen, LedScene } from '@/components/led/LedScreen';
+import { panelsService, PanelData } from '@/services/panels.service';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
 
-import AccordionGallery from '@/components/AccordionGallery';
+/** Desconto do plano de 12 meses (mesma regra do backend). */
+const ANNUAL_DISCOUNT = 0.3;
 
-/** Desconto progressivo do plano de 12 meses (mesma regra do backend). */
-const ANNUAL_DISCOUNT = 0.30;
+const CTA_SCENES: LedScene[] = [
+    { type: 'ticker', text: 'SEU ANÚNCIO NOS TELÕES DA T3  •  PLANO ANUAL COM ATÉ 30% DE DESCONTO', hold: 12000 },
+    { type: 'logo', hold: 2600 },
+];
+
+const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
+
+const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
+
+const STEPS = [
+    {
+        title: 'Escolha os pontos',
+        text: 'Filtre por cidade e avenida, veja fotos reais de cada painel e a estimativa de impactos por dia.',
+    },
+    {
+        title: 'Monte o pacote',
+        text: 'Adicione os painéis ao orçamento. Contratos de 3, 6 e 12 meses têm desconto progressivo de até 30%.',
+    },
+    {
+        title: 'Entre no ar',
+        text: 'O pedido chega ao comercial com os valores calculados. A gente confirma a disponibilidade e agenda a veiculação.',
+    },
+];
 
 export function Home() {
     const navigate = useNavigate();
+    const [panels, setPanels] = useState<PanelData[]>([]);
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [query, setQuery] = useState('');
 
-    // --- ESTADOS ---
-    const [allPanels, setAllPanels] = useState<any[]>([]);
+    // Frase grande que desliza na horizontal conforme a rolagem
+    const statementRef = useRef<HTMLElement>(null);
+    const { scrollYProgress } = useScroll({ target: statementRef, offset: ['start end', 'end start'] });
+    const lineA = useTransform(scrollYProgress, [0, 1], ['8%', '-14%']);
+    const lineB = useTransform(scrollYProgress, [0, 1], ['-12%', '6%']);
+    const skylineScale = useTransform(scrollYProgress, [0, 1], [1.18, 1]);
 
-    // Estados da Pesquisa Inteligente
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filteredPanels, setFilteredPanels] = useState<any[]>([]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-    const [favorites, setFavorites] = useState<Set<string>>(new Set());
-
-    // Estados de Localização
-    const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
-    const [locationStatus, setLocationStatus] = useState('Descubra os melhores pontos na sua região');
-
-    // Refs para fechar o dropdown ao clicar fora
-    const desktopDropdownRef = useRef<HTMLDivElement>(null);
-    const mobileDropdownRef = useRef<HTMLDivElement>(null);
-
-    // --- EFEITOS ---
     useEffect(() => {
-        // [SEGURANÇA] AbortController para prevenir Memory Leaks e fechar conexões
-        const controller = new AbortController(); 
-        
-        const fetchPanels = async () => {
-            try {
-                const data = await panelsService.getAllPanels();
-                // Só atualiza o estado se o componente ainda estiver montado na tela
-                if (!controller.signal.aborted && data && data.length > 0) {
-                    setAllPanels(data);
-                }
-            } catch (error) {
-                if (!controller.signal.aborted) {
-                    console.error("Erro ao carregar painéis", error);
-                }
-            }
-        };
-        
-        fetchPanels();
-        
-        // Cleanup function (acionado quando o usuário sai da página)
-        return () => {
-            controller.abort();
-        };
+        let active = true;
+        panelsService.getAllPanels()
+            .then((data) => { if (active) { setPanels(data); setStatus('ready'); } })
+            .catch(() => { if (active) setStatus('error'); });
+        return () => { active = false; };
     }, []);
 
-    // Solicita a localização do usuário ao montar o componente
-    useEffect(() => {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setUserLocation({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                    setLocationStatus('Mostrando painéis perto de você');
-                },
-                () => {
-                    setLocationStatus('Localização não permitida. Exibindo todos.');
-                }
-            );
-        }
-    }, []);
-
-    // Fecha o dropdown se clicar fora da barra de pesquisa ativa
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as Node;
-            const clickedOutsideDesktop = desktopDropdownRef.current && !desktopDropdownRef.current.contains(target);
-            const clickedOutsideMobile = mobileDropdownRef.current && !mobileDropdownRef.current.contains(target);
-
-            if (clickedOutsideDesktop && clickedOutsideMobile) {
-                setIsDropdownOpen(false);
-            }
+    const available = useMemo(() => panels.filter((p) => p.status === 'AVAILABLE'), [panels]);
+    const stats = useMemo(() => {
+        const cities = new Set(available.map((p) => p.city).filter(Boolean));
+        const impacts = available.reduce((sum, p) => sum + parseImpacts(p.impacts), 0);
+        const prices = available.map((p) => Number(p.price)).filter((v) => v > 0);
+        return {
+            count: available.length,
+            cities: cities.size,
+            impacts,
+            fromPrice: prices.length ? Math.min(...prices) * (1 - ANNUAL_DISCOUNT) : 0,
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [available]);
+    const featured = available.slice(0, 5);
+    const ready = status === 'ready';
 
-
-    // =========================================================
-    // LÓGICA DE DADOS "VIVOS" (REATIVOS)
-    // =========================================================
-
-    const activePanelsCount = allPanels.length;
-
-    const { formattedImpacts } = useMemo(() => {
-        const total = allPanels.reduce((sum, panel) => {
-            const val = panel.impacts || panel.dailyImpacts || panel.impact;
-            if (!val) return sum;
-            if (typeof val === 'number') return sum + val;
-
-            if (typeof val === 'string') {
-                const num = parseFloat(val.replace(/[^0-9.]/g, '')) || 0;
-                const lowerVal = val.toLowerCase();
-
-                if (lowerVal.includes('b')) return sum + (num * 1000000000);
-                if (lowerVal.includes('mil') || lowerVal.includes('k')) return sum + (num * 1000);
-                if (lowerVal.includes('m')) return sum + (num * 1000000);
-
-                return sum + num;
-            }
-            return sum;
-        }, 0);
-
-        let formatted = '0';
-        if (total >= 1000000000) {
-            formatted = (total / 1000000000).toFixed(1).replace('.0', '') + 'B';
-        } else if (total >= 1000000) {
-            formatted = (total / 1000000).toFixed(1).replace('.0', '') + 'M';
-        } else if (total >= 1000) {
-            formatted = (total / 1000).toFixed(1).replace('.0', '') + 'mil';
-        } else {
-            formatted = total.toString();
-        }
-
-        return { formattedImpacts: formatted };
-    }, [allPanels]);
-
-    // =========================================================
-    // LÓGICA: DISTÂNCIA REAL E DESTAQUES (CORRIGIDO)
-    // =========================================================
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    };
-
-    const nearbyPanels = useMemo(() => {
-        if (!userLocation || allPanels.length === 0) return [];
-
-        return allPanels
-            .map(panel => {
-                const dist = (panel.lat && panel.lng)
-                    ? calculateDistance(userLocation.lat, userLocation.lng, panel.lat, panel.lng)
-                    : Infinity;
-                return { ...panel, distance: dist };
-            })
-            .filter(panel => panel.distance < 50)
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, 3);
-    }, [allPanels, userLocation]);
-
-    const hasEnoughFavorites = favorites.size > 0;
-
-    // Painéis em Destaque Fixos (Prioriza favoritos e completa até 5 painéis)
-    const displayFeaturedPanels = useMemo(() => {
-        if (allPanels.length === 0) return [];
-
-        const favs = allPanels.filter(p => favorites.has(p.id));
-        const others = allPanels.filter(p => !favorites.has(p.id));
-
-        return [...favs, ...others].slice(0, 5);
-    }, [allPanels, favorites]);
-
-    // --- FUNÇÕES AUXILIARES ---
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-    };
-
-    const handleSearchSubmit = (e: React.FormEvent) => {
+    const onSearch = (e: FormEvent) => {
         e.preventDefault();
-        if (searchQuery.trim()) {
-            setIsDropdownOpen(false);
-            navigate(`/mapa?q=${encodeURIComponent(searchQuery)}`);
-        }
+        navigate(query.trim() ? `/mapa?q=${encodeURIComponent(query.trim())}` : '/mapa');
     };
-
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const query = e.target.value;
-        setSearchQuery(query);
-
-        if (query.trim().length > 0) {
-            const lowerQuery = query.toLowerCase();
-            const results = allPanels.filter(p =>
-                (p.name && p.name.toLowerCase().includes(lowerQuery)) ||
-                (p.city && p.city.toLowerCase().includes(lowerQuery)) ||
-                (p.state && p.state.toLowerCase().includes(lowerQuery))
-            ).slice(0, 5);
-
-            setFilteredPanels(results);
-            setIsDropdownOpen(true);
-        } else {
-            setFilteredPanels([]);
-            setIsDropdownOpen(false);
-        }
-    };
-
-    const toggleFavorite = (e: React.MouseEvent, panelId: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setFavorites(prev => {
-            const next = new Set(prev);
-            if (next.has(panelId)) next.delete(panelId);
-            else next.add(panelId);
-            return next;
-        });
-    };
-
-    // =========================================================
-    // COMPONENTE REUTILIZÁVEL: BARRA DE PESQUISA UNIFICADA
-    // =========================================================
-    const renderSearchBar = (refTarget: React.RefObject<HTMLDivElement | null>, isMobile: boolean) => (
-        <div className={`relative w-full ${isMobile ? '' : 'max-w-2xl mx-auto'} z-[60]`} ref={refTarget}>
-            <form onSubmit={handleSearchSubmit} className="flex items-center justify-between bg-[#111113]/90 backdrop-blur-xl border border-brand-border/40 rounded-full pl-5 pr-1.5 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.6)] focus-within:border-[#FF5E00]/50 transition-all duration-300">
-                <div className="flex items-center gap-3 flex-1">
-                    <button type="submit" aria-label="Pesquisar" className="p-0.5 flex items-center justify-center">
-                        <Search className="w-4 h-4 text-[#FF5E00]" />
-                    </button>
-                    <div className="flex flex-col flex-1 justify-center">
-                        <input
-                            type="text"
-                            placeholder="Para onde quer anunciar?"
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                            onFocus={() => {
-                                if (searchQuery.trim() && filteredPanels.length > 0) setIsDropdownOpen(true);
-                            }}
-                            className="bg-transparent border-none outline-none text-[13px] font-bold text-white leading-none placeholder:text-[#8F8F91] w-full"
-                        />
-                        <span className="text-[9px] text-[#8F8F91] font-medium mt-1 leading-none">Goiânia • Impacto Diário</span>
-                    </div>
-                </div>
-                <button aria-label="Filtros" type="button" className="w-8 h-8 flex items-center justify-center bg-[#1A1A1D] hover:bg-[#111113]/80 rounded-full border border-white/10 transition-colors duration-300 ml-2 shrink-0">
-                    <Filter className="w-3.5 h-3.5 text-[#8F8F91]" />
-                </button>
-            </form>
-
-            <AnimatePresence>
-                {isDropdownOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="absolute top-[110%] left-0 w-full bg-[#111113]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden z-[70]"
-                    >
-                        {filteredPanels.length > 0 ? (
-                            <ul className="flex flex-col max-h-[300px] overflow-y-auto custom-scrollbar">
-                                {filteredPanels.map((panel, idx) => (
-                                    <li key={panel.id || idx}>
-                                        <Link
-                                            to={`/servicos?panelId=${panel.id}`}
-                                            onClick={() => setIsDropdownOpen(false)}
-                                            className="flex items-center gap-4 px-5 py-3 hover:bg-white/5 border-b border-white/5 last:border-none transition-colors duration-300 group"
-                                        >
-                                            <div className="w-10 h-10 rounded-lg bg-black overflow-hidden shrink-0 border border-white/10 group-hover:border-[#FF5E00]/50 transition-colors duration-300">
-                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
-                                            </div>
-                                            <div className="flex flex-col flex-1">
-                                                <span className="text-sm font-bold text-white group-hover:text-[#FF5E00] transition-colors duration-300 line-clamp-1">{panel.name}</span>
-                                                <span className="text-xs text-[#8F8F91] flex items-center gap-1"><MapPin className="w-3 h-3" /> {panel.city} - {panel.state}</span>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-[#8F8F91] group-hover:text-[#FF5E00] transition-colors duration-300" />
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="px-6 py-6 text-center">
-                                <p className="text-sm text-[#8F8F91]">Nenhum painel encontrado para "{searchQuery}"</p>
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
 
     return (
         <>
             <Seo
                 title="T3 OOH | Mídia OOH e painéis de LED"
-                description="Escale sua marca com painéis de LED de alto impacto em Goiânia, no Centro-Oeste e em todo o Brasil. Veja o mapa, monte seu pacote e solicite orçamento."
+                description="Anuncie nos telões de LED da T3 em Goiânia e região. Veja os pontos no mapa, monte seu pacote e solicite o orçamento."
                 path="/"
             />
 
-            <div className="relative w-full min-h-screen bg-[#0A0A0B] overflow-x-hidden">
-                {/* Título principal da página para leitores de tela e buscadores (o layout é visual) */}
-                <h1 className="sr-only">T3 OOH: mídia exterior e painéis de LED em Goiânia, no Centro-Oeste e em todo o Brasil</h1>
+            {/* ============================ HERO (sobre a cidade) ============================ */}
+            <section className="relative">
+                <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-12 px-4 pb-16 pt-12 md:px-8 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-4 lg:pb-24">
+                    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="max-w-xl">
+                        <p className="mb-8 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-400">
+                            Mídia OOH <span className="text-brand-neon">/</span> Goiânia e região
+                        </p>
 
-                {/* --- EFEITOS DE FUNDO GLOBAIS (Leves e Otimizados) --- */}
-                {/* Glow Neon suave no topo */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[500px] bg-[#FF5E00]/5 blur-[150px] rounded-full pointer-events-none z-0" />
-                
-                {/* Grade (Grid) Sobreposta para Manter a Identidade Visual Tecnológica */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
+                        <h1 className="text-[2.75rem] font-light uppercase leading-[0.95] tracking-tight text-ink-100 sm:text-6xl xl:text-7xl">
+                            Sua marca<br />na cidade<br /><span className="text-brand-neon">que não para.</span>
+                        </h1>
 
+                        <p className="mt-8 max-w-[46ch] text-base leading-relaxed text-ink-300">
+                            Painéis de LED nos corredores mais movimentados de Goiânia e do interior de Goiás.
+                            Escolha os pontos no mapa e receba o orçamento com os valores do plano.
+                        </p>
 
-                {/* ========================================================= */}
-                {/* DESKTOP LAYOUT                                            */}
-                {/* ========================================================= */}
-                <div className="hidden lg:flex flex-col relative z-10 w-full pb-24 pt-[0px]">
+                        <form onSubmit={onSearch} role="search" className="mt-8 flex max-w-lg border border-white/15 bg-ink-950/70 backdrop-blur-sm focus-within:border-white/40">
+                            <label htmlFor="hero-search" className="sr-only">Buscar painéis por cidade ou avenida</label>
+                            <Search className="ml-4 mt-[15px] h-4 w-4 shrink-0 text-ink-400" strokeWidth={1.75} aria-hidden="true" />
+                            <input
+                                id="hero-search"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Cidade, bairro ou avenida"
+                                className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-sm text-ink-100 placeholder:text-ink-500 focus:outline-none"
+                            />
+                            <button type="submit" className="bg-brand-neon px-5 text-sm font-semibold text-ink-950 hover:bg-brand-neonHover">Buscar</button>
+                        </form>
 
-                    {/* BARRA DE PESQUISA INTELIGENTE (DESKTOP) */}
-                    <div className="w-full max-w-7xl mx-auto px-6 pt-6 pb-2 relative z-[60]">
-                        {renderSearchBar(desktopDropdownRef, false)}
-                    </div>
-
-                    {/* HERO SECTION */}
-                    <div className="grid max-w-7xl mx-auto px-6 w-full grid-cols-2 gap-8 items-center py-4 lg:py-6 relative z-10">
-                        <div className="flex flex-col items-start text-left">
-                            <div className="w-full max-w-xl flex justify-center mb-6 relative perspective-1000">
-                                <motion.div
-                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#FF5E00] rounded-full blur-[120px] opacity-20 pointer-events-none"
-                                    animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.25, 0.15] }}
-                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                />
-                                <motion.img
-                                    src="/t3-logo.webp"
-                                    alt="Logo T3 3D"
-                                    loading="eager"
-                                    className="w-[380px] h-[380px] object-contain mix-blend-screen relative z-10 drop-shadow-[0_0_40px_rgba(255,94,0,0.25)] cursor-pointer"
-                                    animate={{ y: [-8, 8, -8] }}
-                                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                                    style={{ transformStyle: 'preserve-3d' }}
-                                />
-                            </div>
-
-                            <p className="text-lg xl:text-xl text-[#8F8F91] max-w-xl mb-8 font-normal leading-relaxed relative z-20">
-                                <strong title="paineis de led">T3 LED</strong> sua empresa com inteligência por trás das campanhas em mídia digital outdoor. Gerencie, anuncie e acompanhe sua veiculação em uma rede de <strong title="aluguel de paineis" className="text-white font-semibold">painéis</strong> que cresce em Goiânia, no Centro-Oeste e em todo o país.
-                            </p>
-
-                            <div className="flex flex-row items-center gap-4 w-auto relative z-20">
-                                <Link to="/servicos" title="Aluguel de paineis e mídias out of home">
-                                    <Button as="span"
-                                        size="lg"
-                                        rightIcon={<ArrowRight className="w-5 h-5" />}
-                                        className="shadow-[0_0_20px_rgba(255,94,0,0.25)] hover:shadow-[0_0_30px_rgba(255,94,0,0.4)] transition-all duration-300"
-                                    >
-                                        Solicitar Orçamento
-                                    </Button>
-                                </Link>
-
-                                <Link
-                                    to="/mapa"
-                                    title="Mapa de Paineis de LED"
-                                    onMouseEnter={() => panelsService.getMapMarkers().catch(() => { })}
-                                >
-                                    <Button as="span"
-                                        size="lg"
-                                        variant="secondary"
-                                        leftIcon={
-                                            <svg 
-                                                className="w-5 h-5 text-[#8F8F91] group-hover:text-[#FF5E00] transition-transform duration-[1500ms] group-hover:rotate-[250deg]" 
-                                                viewBox="0 0 512 512" 
-                                                fill="currentColor" 
-                                                xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                                <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm50.7-186.9L162.4 380.6c-19.4 7.5-38.5-11.6-31-31l55.5-144.3c3.3-8.5 9.9-15.1 18.4-18.4l144.3-55.5c19.4-7.5 38.5 11.6 31 31L325.1 306.7c-3.2 8.5-9.9 15.1-18.4 18.4zM288 256a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"></path>
-                                            </svg>
-                                        }
-                                        className="group border-white/10 hover:bg-[#111113]/80 transition-all duration-500"
-                                    >
-                                        Explorar Mapa
-                                    </Button>
-                                </Link>
-                            </div>
+                        <div className="mt-6 flex flex-wrap items-center gap-6 text-sm">
+                            <Link to="/mapa" className="group inline-flex items-center gap-2 font-medium text-ink-100 hover:text-brand-neon">
+                                Ver painéis no mapa
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={1.75} aria-hidden="true" />
+                            </Link>
+                            <Link to="/contato" className="text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Falar com o comercial</Link>
                         </div>
+                    </motion.div>
 
-                        {/* Dashboards Flutuantes */}
-                        <div className="relative block w-full h-[450px]">
-                            <div className="absolute inset-0 border-l border-[#FF5E00]/20 ml-[40px] border-dashed pointer-events-none" />
-
-                            <div className="absolute top-4 left-0 w-64 glass-panel p-6 rounded-xl border border-white/10 hover:border-[#FF5E00]/50 bg-[#111113]/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-2.5 bg-[#FF5E00]/10 rounded-lg group-hover:bg-[#FF5E00]/20 transition-colors duration-300">
-                                        <MonitorPlay className="w-6 h-6 text-[#FF5E00]" />
-                                    </div>
-                                    <Activity className="w-4 h-4 text-[#8F8F91]/50 group-hover:text-[#FF5E00]/70 transition-colors duration-300" />
-                                </div>
-                                <h3 className="text-4xl font-black text-white mb-1 tracking-tight group-hover:text-[#FF5E00] transition-colors duration-300">
-                                    {activePanelsCount > 0 ? activePanelsCount : '—'}
-                                </h3>
-                                <p className="text-xs font-medium text-[#8F8F91] uppercase tracking-wider">Painéis Ativos</p>
-                            </div>
-
-                            <div className="absolute top-28 right-4 w-72 glass-panel p-6 rounded-xl border border-white/10 hover:border-[#FF5E00]/50 bg-[#111113]/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default z-10">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-2.5 bg-[#FF5E00]/10 rounded-lg group-hover:bg-[#FF5E00]/20 transition-colors duration-300">
-                                        <BarChart3 className="w-6 h-6 text-[#FF5E00]" />
-                                    </div>
-                                    <div className="flex items-center gap-1.5 bg-black/50 px-2 py-1 rounded-md border border-white/10">
-                                        <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-                                        <span className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest">Live</span>
-                                    </div>
-                                </div>
-                                <h3 className="text-4xl font-black text-white mb-1 tracking-tight group-hover:text-[#FF5E00] transition-colors duration-300">
-                                    {formattedImpacts !== '0' ? formattedImpacts : '—'}
-                                </h3>
-                                <p className="text-xs font-medium text-[#8F8F91] uppercase tracking-wider">Impactos Diários</p>
-
-                                <div className="mt-5 flex items-end gap-1.5 h-10 opacity-60">
-                                    <div className="w-full bg-[#FF5E00]/20 rounded-t-sm h-[40%] group-hover:h-[60%] transition-all duration-500 delay-75 ease-out" />
-                                    <div className="w-full bg-[#FF5E00]/40 rounded-t-sm h-[60%] group-hover:h-[80%] transition-all duration-500 delay-100 ease-out" />
-                                    <div className="w-full bg-[#FF5E00]/60 rounded-t-sm h-[30%] group-hover:h-[50%] transition-all duration-500 delay-150 ease-out" />
-                                    <div className="w-full bg-[#FF5E00]/80 rounded-t-sm h-[80%] group-hover:h-[100%] transition-all duration-500 delay-200 ease-out" />
-                                    <div className="w-full bg-[#FF5E00] rounded-t-sm h-[100%] group-hover:h-[90%] transition-all duration-500 delay-300 ease-out" />
-                                </div>
-                            </div>
-
-                            <div className="absolute bottom-6 left-12 w-[340px] glass-panel p-5 rounded-xl border border-white/10 hover:border-[#FF5E00]/50 bg-[#111113]/40 backdrop-blur-lg transform hover:-translate-y-2 transition-all duration-300 shadow-2xl group cursor-default">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-[#FF5E00]/10 rounded-lg border border-[#FF5E00]/20 group-hover:border-[#FF5E00]/50 transition-colors duration-300 shrink-0">
-                                        <Shield className="w-6 h-6 text-[#FF5E00]" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-bold text-white group-hover:text-[#FF5E00] transition-colors duration-300">Auditoria de Veiculação</h3>
-                                        <p className="text-xs text-[#8F8F91] mt-1 leading-relaxed">Transparência com checking fotográfico e relatórios detalhados de exibição.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ========================================================= */}
-                    {/* DESTAQUES E PRÓXIMOS (VERSÃO DESKTOP)                     */}
-                    {/* ========================================================= */}
-                    <div className="max-w-7xl mx-auto px-6 w-full flex flex-col gap-16 mt-8 relative z-20">
-
-                        {/* Destaques (Accordion Gallery) */}
-                        <div>
-                            <div className="flex justify-between items-end mb-6">
-                                <div>
-                                    <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                                        <Flame className="w-6 h-6 text-[#FF5E00]" /> Destaques
-                                    </h3>
-                                    <p className="text-sm text-[#8F8F91] mt-1">
-                                        {hasEnoughFavorites ? 'Seus painéis favoritos' : 'Os pontos mais cobiçados do momento'}
-                                    </p>
-                                </div>
-                                <Link to="/mapa" className="text-sm font-bold text-[#FF5E00] uppercase tracking-wider hover:underline transition-all">Ver Mapa Completo</Link>
-                            </div>
-
-                            {displayFeaturedPanels.length > 0 ? (
-                                <AccordionGallery panels={displayFeaturedPanels} />
-                            ) : (
-                                <div className="grid grid-cols-3 gap-6">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="bg-[#111113] rounded-[24px] h-[360px] border border-white/10 animate-pulse flex flex-col">
-                                            <div className="h-[200px] bg-white/5 w-full rounded-t-[24px]" />
-                                            <div className="p-5 flex-1 flex flex-col gap-4">
-                                                <div className="h-5 bg-white/5 rounded w-3/4" />
-                                                <div className="h-4 bg-white/5 rounded w-1/2" />
-                                                <div className="mt-auto h-8 bg-white/5 rounded w-1/3" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Próximos de Você Desktop */}
-                        <div>
-                            <div className="flex justify-between items-end mb-6">
-                                <div>
-                                    <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                                        <MapPin className="w-6 h-6 text-[#FF5E00]" /> Próximos de você
-                                    </h3>
-                                    <p className="text-sm text-[#8F8F91] mt-1">{locationStatus}</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-6">
-                                {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => {
-                                    const basePrice = Number(panel.price) || 0;
-                                    const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
-
-                                    return (
-                                        <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="bg-[#111113] rounded-[5px] overflow-hidden border border-white/10 shadow-lg block hover:-translate-y-2 hover:border-[#FF5E00]/40 hover:shadow-[0_15px_40px_rgba(255,94,0,0.15)] transition-all duration-300 group">
-                                            <div className="h-[200px] relative bg-black">
-                                                <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
-                                                <button aria-label="Favoritar"
-                                                    onClick={(e) => toggleFavorite(e, panel.id)}
-                                                    className="absolute top-4 right-4 bg-[#0A0A0B]/60 backdrop-blur-md p-2 rounded-full border border-white/10 z-10 hover:scale-110 transition-transform duration-300"
-                                                >
-                                                    <Heart className={`w-5 h-5 transition-colors duration-300 ${favorites.has(panel.id) ? 'fill-[#FF5E00] text-[#FF5E00]' : 'text-white'}`} />
-                                                </button>
-                                                <div className="absolute bottom-3 left-3 bg-[#0A0A0B]/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-                                                    <Activity className="w-4 h-4 text-[#FF5E00]" />
-                                                    <span className="text-xs font-black text-white tracking-wider">{panel.distance !== Infinity ? `${panel.distance.toFixed(1)} km` : 'Local'}</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="p-5 flex flex-col justify-between">
-                                                <div>
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-lg text-white line-clamp-1 pr-2 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Circuito Urbano'}</h4>
-                                                    </div>
-                                                    <p className="text-sm text-[#8F8F91] flex items-center gap-1.5 mb-5">
-                                                        <MapPin className="w-4 h-4 text-[#FF5E00]" /> {[panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar'}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div className="flex justify-between items-end border-t border-white/5 pt-4 mt-auto">
-                                                    <div className="flex flex-col">
-                                                        {basePrice > 0 ? (
-                                                            <>
-                                                                <span className="text-xs text-[#8F8F91] uppercase tracking-wider font-bold mb-1 flex items-center">
-                                                                    Mensal no plano anual
-                                                                    <span className="line-through opacity-50 ml-1.5 font-normal text-[10px]">{formatCurrency(basePrice)}</span>
-                                                                </span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xl font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
-                                                                    <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[9px] font-black px-1.5 py-0.5 rounded border border-[#FF5E00]/30">-30%</span>
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-sm font-bold text-white">Valor sob consulta</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="p-2.5 bg-[#FF5E00]/10 rounded-xl text-[#FF5E00] group-hover:bg-[#FF5E00] group-hover:text-[#0A0A0B] transition-colors duration-300">
-                                                        <ArrowRight className="w-5 h-5" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    )
-                                }) : (
-                                    <div className="col-span-3 py-10 border border-white/5 bg-[#111113] rounded-[24px] text-center">
-                                        <p className="text-[#8F8F91] text-sm">{userLocation ? 'Nenhum painel encontrado em um raio de 50km.' : 'Permita o acesso à localização para ver telões próximos.'}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
                 </div>
+            </section>
 
-
-                {/* ========================================================= */}
-                {/* MOBILE LAYOUT                                             */}
-                {/* ========================================================= */}
-                <div className="flex lg:hidden flex-col relative z-20 pb-36 pt-4 w-full">
-
-                    {/* BARRA DE PESQUISA INTELIGENTE (MOBILE) */}
-                    <div className="px-4 sticky top-0 z-50 pt-2 pb-4 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/5">
-                        {renderSearchBar(mobileDropdownRef, true)}
-                    </div>
-
-                    <div className="px-4 mt-6 mb-6">
-                        <div className="bg-gradient-to-br from-[#111113] to-[#FF5E00]/10 border border-[#FF5E00]/20 rounded-[24px] p-5 relative overflow-hidden flex flex-col shadow-xl">
-                            <div className="absolute -right-10 -top-10 w-48 h-48 bg-[#FF5E00]/20 blur-[50px] rounded-full"></div>
-                            <div className="flex justify-between items-center relative z-10 mb-2">
-                                <div className="w-[60%]">
-                                    <h2 className="text-xl font-black text-white leading-tight mb-2">T3 LED Mídia</h2>
-                                    <p className="text-[11px] text-[#8F8F91] leading-relaxed font-medium">
-                                        Sua marca no topo. Inteligência em mídia digital outdoor no Centro-Oeste.
-                                    </p>
-                                </div>
-                                <div className="w-[40%] flex justify-end">
-                                    <img src="/t3-logo.webp" alt="T3 3D" className="w-28 h-28 object-contain drop-shadow-[0_0_20px_rgba(255,94,0,0.5)]" />
-                                </div>
-                            </div>
+            {/* ============================ NÚMEROS ============================ */}
+            <section aria-label="A rede T3 em números" className="border-y border-white/[0.08] bg-ink-950">
+                <dl className="mx-auto grid max-w-[1400px] grid-cols-2 px-4 md:grid-cols-4 md:px-8">
+                    {[
+                        { label: 'painéis disponíveis', value: ready ? String(stats.count) : '—' },
+                        { label: stats.cities === 1 ? 'cidade atendida' : 'cidades atendidas', value: ready ? String(stats.cities) : '—' },
+                        { label: 'impactos estimados por dia', value: ready && stats.impacts ? formatImpacts(stats.impacts) : '—' },
+                        { label: 'a partir de, por mês no plano anual', value: ready && stats.fromPrice ? formatCurrency(stats.fromPrice) : '—' },
+                    ].map((item, i) => (
+                        <div key={item.label} className={`flex flex-col-reverse border-white/[0.08] py-8 md:px-8 ${i > 0 ? 'md:border-l' : 'md:pl-0'} ${i % 2 === 1 ? 'border-l pl-4 md:pl-8' : ''}`}>
+                            <dt className="mt-2 text-xs uppercase tracking-[0.14em] text-ink-400">{item.label}</dt>
+                            <dd className="font-mono text-3xl font-light text-ink-100 md:text-4xl">{item.value}</dd>
                         </div>
-                    </div>
+                    ))}
+                </dl>
+            </section>
 
-                    <div className="px-4 mb-8">
-                        <div className="flex gap-3 overflow-x-auto snap-x custom-scrollbar pb-2 -mx-4 px-4">
-                            <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-[#FF5E00]/30 transition-colors duration-300">
-                                <MonitorPlay className="w-6 h-6 text-[#FF5E00]" />
-                                <span className="text-sm font-black text-white">{activePanelsCount > 0 ? activePanelsCount : '—'}</span>
-                                <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-wider text-center">Ativos</span>
-                            </div>
-                            <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg relative overflow-hidden hover:border-[#FF5E00]/30 transition-colors duration-300">
-                                <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse"></div>
-                                <BarChart3 className="w-6 h-6 text-[#FF5E00]" />
-                                <span className="text-sm font-black text-white">{formattedImpacts !== '0' ? formattedImpacts : '—'}</span>
-                                <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-wider text-center">Impactos</span>
-                            </div>
-                            <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-[#FF5E00]/30 transition-colors duration-300">
-                                <Shield className="w-6 h-6 text-[#FF5E00]" />
-                                <span className="text-[10px] font-black text-white text-center leading-tight">Auditoria</span>
-                                <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-wider text-center">Checking</span>
-                            </div>
+            {/* ============================ PONTOS EM DESTAQUE ============================ */}
+            <section className="bg-ink-950">
+                <div className="mx-auto max-w-[1400px] px-4 py-20 md:px-8 md:py-28">
+                    <div className="mb-12 grid grid-cols-1 items-end gap-6 md:grid-cols-[1fr_auto]">
+                        <div>
+                            <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-400">Inventário</p>
+                            <h2 className="text-4xl font-light uppercase leading-none tracking-tight text-ink-100 md:text-6xl">Pontos em destaque</h2>
                         </div>
-                    </div>
-
-                    {/* DESTAQUES MOBILE (Mantem layout em card para celular) */}
-                    <div className="px-4 mb-8">
-                        <div className="flex justify-between items-end mb-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                                    <Flame className="w-5 h-5 text-[#FF5E00]" /> Destaques
-                                </h3>
-                                <p className="text-[11px] text-[#8F8F91]">{hasEnoughFavorites ? 'Seus favoritos' : 'Os pontos mais cobiçados'}</p>
-                            </div>
-                            <Link to="/mapa" className="text-[11px] font-bold text-[#FF5E00] uppercase tracking-wider">Ver Mapa</Link>
-                        </div>
-
-                        <div className="flex gap-4 overflow-x-auto snap-x custom-scrollbar pb-4 -mx-4 px-4">
-                            {displayFeaturedPanels.length > 0 ? displayFeaturedPanels.map((panel, idx) => {
-                                const isFavorite = favorites.has(panel.id);
-                                const basePrice = Number(panel.price) || 0;
-                                const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
-
-                                return (
-                                    <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="snap-start flex-shrink-0 w-[260px] bg-[#111113] rounded-[24px] overflow-hidden border border-white/10 shadow-lg block hover:border-[#FF5E00]/40 transition-colors duration-300 group">
-                                        <div className="h-[160px] relative bg-black">
-                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
-
-                                            <button aria-label="Favoritar"
-                                                onClick={(e) => toggleFavorite(e, panel.id)}
-                                                className="absolute top-3 right-3 bg-[#0A0A0B]/60 backdrop-blur-md p-1.5 rounded-full border border-white/10 z-10 active:scale-110 transition-transform duration-300"
-                                            >
-                                                <Heart className={`w-4 h-4 transition-colors duration-300 ${isFavorite ? 'fill-[#FF5E00] text-[#FF5E00]' : 'text-white'}`} />
-                                            </button>
-
-                                            <div className="absolute bottom-3 left-3 bg-[#0A0A0B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1.5">
-                                                <Activity className="w-3 h-3 text-[#FF5E00]" />
-                                                <span className="text-[10px] font-black text-white tracking-wider">{panel.impacts || '—'}</span>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 flex flex-col justify-between">
-                                            <div>
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h4 className="font-bold text-sm text-white line-clamp-1 pr-2 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Painel Digital Premium'}</h4>
-                                                </div>
-                                                <p className="text-[11px] text-[#8F8F91] flex items-center gap-1.5 mb-4">
-                                                    <MapPin className="w-3 h-3 text-[#FF5E00]" /> {[panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar'}
-                                                </p>
-                                            </div>
-                                            <div className="flex justify-between items-end border-t border-white/5 pt-3 mt-auto">
-                                                <div className="flex flex-col">
-                                                    {basePrice > 0 ? (
-                                                        <>
-                                                            <div className="flex items-center gap-1.5 mb-0.5">
-                                                                <span className="text-[9px] text-[#8F8F91] uppercase tracking-wider font-bold">Mensal no plano anual</span>
-                                                                <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30%</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-base font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
-                                                                <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-xs font-bold text-white">Valor sob consulta</span>
-                                                    )}
-                                                </div>
-                                                <div className="p-2 bg-[#FF5E00]/10 rounded-lg text-[#FF5E00]">
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                )
-                            }) : (
-                                [1, 2].map(i => (
-                                    <div key={i} className="snap-start flex-shrink-0 w-[260px] bg-[#111113] rounded-[24px] h-[300px] border border-white/5 animate-pulse flex flex-col">
-                                        <div className="h-[160px] bg-white/5 w-full" />
-                                        <div className="p-4 flex-1 flex flex-col gap-3">
-                                            <div className="h-4 bg-white/5 rounded w-3/4" />
-                                            <div className="h-3 bg-white/5 rounded w-1/2" />
-                                            <div className="mt-auto h-6 bg-white/5 rounded w-1/3" />
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
-                    {/* PRÓXIMOS DE VOCÊ MOBILE */}
-                    <div className="px-4 mb-4">
-                        <div className="flex justify-between items-end mb-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                                    <MapPin className="w-5 h-5 text-[#FF5E00]" /> Próximos de você
-                                </h3>
-                                <p className="text-[11px] text-[#8F8F91]">{locationStatus}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                            {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => {
-                                const basePrice = Number(panel.price) || 0;
-                                const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
-
-                                return (
-                                    <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-3 rounded-[20px] border border-white/10 shadow-md items-center relative overflow-hidden hover:border-[#FF5E00]/40 transition-colors duration-300 group">
-                                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
-                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
-                                        </div>
-                                        <div className="flex-1 min-w-0 py-1">
-                                            <h4 className="font-bold text-sm text-white line-clamp-1 mb-1 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Circuito Urbano Principal'}</h4>
-                                            <p className="text-[11px] text-[#8F8F91] flex items-center gap-1.5 mb-1.5">
-                                                <MapPin className="w-3 h-3 text-[#FF5E00]" />
-                                                {panel.distance !== Infinity ? `${panel.distance.toFixed(1)} km de distância` : ([panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar')}
-                                            </p>
-                                            {basePrice > 0 ? (
-                                                <>
-                                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                                        <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
-                                                        <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30% no plano anual</span>
-                                                    </div>
-                                                    <span className="text-sm font-black text-[#FF5E00] block">{formatCurrency(discountedPrice)}/mês</span>
-                                                </>
-                                            ) : (
-                                                <span className="text-xs font-bold text-white block">Valor sob consulta</span>
-                                            )}
-                                        </div>
-                                    </Link>
-                                )
-                            }) : (
-                                <div className="py-8 border border-white/5 bg-[#111113] rounded-[20px] text-center">
-                                    <p className="text-[#8F8F91] text-xs px-4">{userLocation ? 'Nenhum painel próximo.' : 'Ative a localização para ver telões próximos.'}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="fixed bottom-[76px] left-4 right-4 z-[90]">
-                        <Link to="/servicos">
-                            <Button as="span" className="w-full flex items-center justify-center gap-2 bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] text-sm transition-all duration-300 active:scale-[0.98]">
-                                Solicitar Orçamento
-                                <ArrowRight className="w-4 h-4" />
-                            </Button>
+                        <Link to="/servicos" className="group inline-flex items-center gap-2 text-sm font-medium text-ink-100 hover:text-brand-neon">
+                            Ver catálogo completo
+                            <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" strokeWidth={1.75} aria-hidden="true" />
                         </Link>
                     </div>
 
-                    <div className="fixed bottom-0 left-0 right-0 bg-[#0A0A0B]/95 backdrop-blur-2xl border-t border-white/10 z-[100] px-6 py-3 flex justify-between items-center pb-safe">
-                        <Link to="/" className="flex flex-col items-center gap-1 text-[#FF5E00]"><Compass className="w-5 h-5" /><span className="text-[9px] font-bold">Explorar</span></Link>
-                        <Link to="/mapa" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors"><MapPin className="w-5 h-5" /><span className="text-[9px] font-medium">Mapa</span></Link>
-                        <Link to="/servicos" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors"><MonitorPlay className="w-5 h-5" /><span className="text-[9px] font-medium">Painéis</span></Link>
-                        <Link to="/contato" className="flex flex-col items-center gap-1 text-[#8F8F91] hover:text-white transition-colors"><Shield className="w-5 h-5" /><span className="text-[9px] font-medium">Contato</span></Link>
+                    {status === 'loading' && (
+                        <div className="grid grid-cols-1 gap-px bg-white/[0.06] md:grid-cols-[1.35fr_1fr_1fr] md:grid-rows-2" aria-busy="true" aria-label="Carregando painéis">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <div key={i} className={`animate-pulse bg-ink-900 ${i === 0 ? 'aspect-[4/3] md:row-span-2 md:aspect-auto' : 'aspect-[4/3]'}`} />
+                            ))}
+                        </div>
+                    )}
+
+                    {status === 'error' && (
+                        <p className="border border-white/10 p-10 text-ink-300">
+                            Não foi possível carregar os painéis agora. <Link to="/mapa" className="text-ink-100 underline underline-offset-4">Abra o mapa</Link> ou tente novamente em instantes.
+                        </p>
+                    )}
+
+                    {ready && featured.length === 0 && (
+                        <p className="border border-dashed border-white/15 p-10 text-ink-300">
+                            Nenhum painel disponível no momento. <Link to="/contato" className="text-ink-100 underline underline-offset-4">Fale com o comercial</Link> para saber das próximas liberações.
+                        </p>
+                    )}
+
+                    {ready && featured.length > 0 && (
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.35fr_1fr_1fr] md:grid-rows-2">
+                            {featured.map((panel, i) => {
+                                const price = Number(panel.price) || 0;
+                                return (
+                                    <motion.div
+                                        key={panel.id}
+                                        initial={{ opacity: 0, y: 24 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true, margin: '-60px' }}
+                                        transition={{ ...spring, delay: i * 0.06 }}
+                                        className={i === 0 ? 'md:row-span-2' : ''}
+                                    >
+                                        <Link to={`/servicos?panelId=${panel.id}`} className="group relative block h-full min-h-[280px] overflow-hidden bg-ink-900">
+                                            <img
+                                                src={panel.images?.[0] || '/placeholder.svg'}
+                                                alt={`Painel ${panel.name}`}
+                                                loading="lazy"
+                                                className="absolute inset-0 h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+                                            <span className="absolute left-0 top-0 bg-ink-950 px-3 py-1.5 font-mono text-[11px] text-ink-300">0{i + 1}</span>
+                                            <div className="absolute inset-x-0 bottom-0 p-5 md:p-6">
+                                                <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-ink-300">
+                                                    <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                                                    {[panel.city, panel.state].filter(Boolean).join(' · ') || 'Localização a confirmar'}
+                                                </p>
+                                                <h3 className={`mt-2 font-medium tracking-tight text-ink-100 ${i === 0 ? 'text-2xl md:text-3xl' : 'text-lg'} line-clamp-2`}>
+                                                    {panel.name}
+                                                </h3>
+                                                <p className="mt-3 font-mono text-sm text-ink-300">
+                                                    {price > 0
+                                                        ? <><span className="text-brand-neon">{formatCurrency(price * (1 - ANNUAL_DISCOUNT))}</span>/mês no plano anual</>
+                                                        : 'Valor sob consulta'}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* ============================ FRASE SOBRE A CIDADE ============================ */}
+            <section ref={statementRef} aria-label="Manifesto" className="relative isolate overflow-hidden py-28 md:py-44">
+                {/* Skyline real de Goiânia com a logo T3, aproximando conforme a rolagem */}
+                <motion.img
+                    src="/cidade-t3.webp"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    style={{ scale: skylineScale }}
+                    className="absolute inset-0 -z-10 h-full w-full object-cover object-[50%_40%]"
+                />
+                <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-b from-ink-950 via-ink-950/45 to-ink-950" />
+                <motion.p style={{ x: lineA }} className="whitespace-nowrap text-[13vw] font-light uppercase leading-[0.9] tracking-tighter text-ink-100 md:text-[9vw]">
+                    Cada avenida
+                </motion.p>
+                <motion.p style={{ x: lineB }} className="whitespace-nowrap text-right text-[13vw] font-light uppercase leading-[0.9] tracking-tighter md:text-[9vw]">
+                    <span className="text-brand-neon">é uma vitrine.</span>
+                </motion.p>
+            </section>
+
+            {/* ============================ COMO FUNCIONA (seção clara) ============================ */}
+            <section className="bg-[#F4F1EC] text-ink-950">
+                <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-14 px-4 py-20 md:px-8 md:py-28 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                    <div className="lg:sticky lg:top-28 lg:self-start">
+                        <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.25em] text-ink-500">Como funciona</p>
+                        <h2 className="text-4xl font-light uppercase leading-[0.95] tracking-tight md:text-6xl">Do mapa<br />ao telão</h2>
+                        <p className="mt-6 max-w-[42ch] leading-relaxed text-ink-700">
+                            O orçamento é calculado pela plataforma com os preços oficiais de cada ponto. Sem planilha, sem idas e vindas por e-mail.
+                        </p>
+                        <Link to="/mapa" className="mt-8 inline-flex items-center gap-2 bg-ink-950 px-6 py-3.5 text-sm font-semibold text-ink-100 transition-colors hover:bg-ink-800 active:translate-y-px">
+                            Começar pelo mapa <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                        </Link>
+                    </div>
+                    <ol className="border-t border-ink-950/15">
+                        {STEPS.map((step, i) => (
+                            <motion.li
+                                key={step.title}
+                                initial={{ opacity: 0, x: 20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true, margin: '-80px' }}
+                                transition={{ ...spring, delay: i * 0.08 }}
+                                className="grid grid-cols-[4rem_1fr] gap-4 border-b border-ink-950/15 py-10 md:grid-cols-[7rem_1fr] md:py-12"
+                            >
+                                <span className="font-mono text-3xl font-light text-brand-neon md:text-5xl">0{i + 1}</span>
+                                <div>
+                                    <h3 className="text-2xl font-medium uppercase tracking-tight md:text-3xl">{step.title}</h3>
+                                    <p className="mt-3 max-w-[54ch] leading-relaxed text-ink-700">{step.text}</p>
+                                </div>
+                            </motion.li>
+                        ))}
+                    </ol>
+                </div>
+            </section>
+
+            {/* ============================ CHAMADA FINAL (seção laranja) ============================ */}
+            <section className="bg-brand-neon text-ink-950">
+                <div className="bg-ink-950 p-2">
+                    <LedScreen scenes={CTA_SCENES} cols={240} rows={18} label="Letreiro de LED" className="block h-14 w-full md:h-20" />
+                </div>
+                <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-end gap-10 px-4 py-20 md:px-8 md:py-28 lg:grid-cols-[1fr_auto]">
+                    <h2 className="text-5xl font-semibold uppercase leading-[0.9] tracking-tighter md:text-8xl">
+                        Pronto para<br />aparecer?
+                    </h2>
+                    <div className="flex flex-wrap gap-3">
+                        <Link to="/mapa" className="inline-flex items-center gap-2 bg-ink-950 px-6 py-4 text-sm font-semibold text-ink-100 transition-colors hover:bg-ink-800 active:translate-y-px">
+                            Montar meu pacote <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                        </Link>
+                        <Link to="/contato" className="inline-flex items-center border border-ink-950/40 px-6 py-4 text-sm font-semibold text-ink-950 transition-colors hover:border-ink-950 active:translate-y-px">
+                            Falar com o comercial
+                        </Link>
                     </div>
                 </div>
-            </div>
+            </section>
         </>
     );
 }
+

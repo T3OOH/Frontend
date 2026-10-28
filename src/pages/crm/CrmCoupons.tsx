@@ -102,7 +102,7 @@ export function CrmCoupons() {
     const getStatus = (coupon: Coupon) => {
         if (coupon.isUsed) return <span className="text-[10px] font-bold uppercase tracking-widest bg-red-500/10 text-red-500 px-2.5 py-1 rounded-md border border-red-500/20">Usado</span>;
         if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) return <span className="text-[10px] font-bold uppercase tracking-widest bg-brand-background text-brand-muted px-2.5 py-1 rounded-md border border-brand-border">Expirado</span>;
-        return <span className="text-[10px] font-bold uppercase tracking-widest bg-[#25D366]/10 text-[#25D366] px-2.5 py-1 rounded-md border border-[#25D366]/20">Ativo</span>;
+        return <span className="text-[10px] font-bold uppercase tracking-widest bg-[#FF5E00]/10 text-[#FF5E00] px-2.5 py-1 rounded-md border border-[#FF5E00]/20">Ativo</span>;
     };
 
     return (
@@ -114,7 +114,7 @@ export function CrmCoupons() {
             <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full animate-fade-in gap-6">
                 
                 {/* CABEÇALHO */}
-                <div className="flex-shrink-0 flex justify-between items-center bg-brand-surface p-6 rounded-[24px] border border-brand-border shadow-sm">
+                <div className="flex-shrink-0 flex justify-between items-center bg-brand-surface p-6 rounded-none border border-brand-border shadow-sm">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-brand-neon/10 flex items-center justify-center border border-brand-neon/20">
                             <Ticket className="w-6 h-6 text-brand-neon" />
@@ -144,14 +144,14 @@ export function CrmCoupons() {
                                     <span className="text-sm font-bold tracking-widest uppercase text-brand-muted">Carregando cupons...</span>
                                 </div>
                             ) : coupons.length === 0 ? (
-                                <div className="col-span-full text-center py-20 border-2 border-dashed border-brand-border rounded-[24px] bg-brand-background/50">
+                                <div className="col-span-full text-center py-20 border-2 border-dashed border-brand-border rounded-none bg-brand-background/50">
                                     <Ticket className="w-10 h-10 text-brand-muted mx-auto mb-3 opacity-50" />
                                     <h3 className="text-brand-text font-bold text-lg mb-1">Nenhum cupom gerado</h3>
                                     <p className="text-sm text-brand-muted font-medium">Crie seu primeiro código de desconto no painel.</p>
                                 </div>
                             ) : (
                                 coupons.map(coupon => (
-                                    <div key={coupon.id} className="bg-brand-surface border border-brand-border rounded-[24px] p-6 relative overflow-hidden group hover:border-brand-neon/40 transition-all shadow-sm">
+                                    <div key={coupon.id} className="bg-brand-surface border border-brand-border rounded-none p-6 relative overflow-hidden group hover:border-brand-neon/40 transition-all shadow-sm">
                                         
                                         {/* Entalhes Laterais (Ticket Effect) */}
                                         <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-brand-background rounded-full border-r border-brand-border"></div>
@@ -170,9 +170,9 @@ export function CrmCoupons() {
 
                                         <div className="text-center mb-6 relative z-10">
                                             <div className="flex items-center justify-center gap-2 mb-1">
-                                                <h3 className="text-[24px] font-black text-brand-neon tracking-widest">{coupon.code}</h3>
+                                                <h3 className="text-[24px] font-semibold text-brand-neon tracking-widest">{coupon.code}</h3>
                                                 <button onClick={() => copyToClipboard(coupon.id, coupon.code)} className="text-brand-muted hover:text-brand-text transition-colors p-2 bg-brand-background rounded-lg border border-brand-border">
-                                                    {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#25D366]" /> : <Copy className="w-4 h-4" />}
+                                                    {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#FF5E00]" /> : <Copy className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                             <p className="text-3xl font-bold text-brand-text mt-2 tracking-tight">
@@ -211,7 +211,7 @@ export function CrmCoupons() {
 
                     {/* PAINEL LATERAL DE CRIAÇÃO */}
                     {isCreating && (
-                        <div className="w-[380px] flex-shrink-0 bg-brand-surface p-8 rounded-[24px] border border-brand-border shadow-sm animate-slide-in-right h-fit sticky top-0 transition-colors">
+                        <div className="w-[380px] flex-shrink-0 bg-brand-surface p-8 rounded-none border border-brand-border shadow-sm animate-slide-in-right h-fit sticky top-0 transition-colors">
                             <h2 className="text-lg font-bold text-brand-text mb-6 flex items-center gap-2 border-b border-brand-border pb-4">
                                 <Plus className="w-5 h-5 text-brand-neon" /> Novo Cupom
                             </h2>
@@ -344,14 +344,14 @@ export function CrmCoupons() {
                             <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
                         </div>
                     ) : coupons.length === 0 ? (
-                        <div className="bg-brand-surface border border-brand-border rounded-[24px] p-8 flex flex-col items-center text-center shadow-sm">
+                        <div className="bg-brand-surface border border-brand-border rounded-none p-8 flex flex-col items-center text-center shadow-sm">
                             <Ticket className="w-10 h-10 text-brand-muted mb-3 opacity-50" />
                             <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum cupom</h3>
                             <p className="text-[11px] text-brand-muted font-medium">Crie seu primeiro código clicando no botão (+).</p>
                         </div>
                     ) : (
                         coupons.map(coupon => (
-                            <div key={coupon.id} className="bg-brand-surface border border-brand-border rounded-[24px] p-6 flex flex-col shadow-sm relative overflow-hidden transition-colors">
+                            <div key={coupon.id} className="bg-brand-surface border border-brand-border rounded-none p-6 flex flex-col shadow-sm relative overflow-hidden transition-colors">
                                 
                                 {/* Entalhe de Ticket (Design) */}
                                 <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-brand-background rounded-full border-r border-brand-border"></div>
@@ -369,9 +369,9 @@ export function CrmCoupons() {
 
                                 <div className="text-center mb-6">
                                     <div className="flex items-center justify-center gap-2 mb-1">
-                                        <h3 className="text-[22px] font-black text-brand-neon tracking-widest leading-none">{coupon.code}</h3>
+                                        <h3 className="text-[22px] font-semibold text-brand-neon tracking-widest leading-none">{coupon.code}</h3>
                                         <button onClick={() => copyToClipboard(coupon.id, coupon.code)} className="text-brand-muted hover:text-brand-text bg-brand-background border border-brand-border p-2 rounded-lg active:scale-95 shadow-sm transition-colors">
-                                            {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#25D366]" /> : <Copy className="w-4 h-4" />}
+                                            {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#FF5E00]" /> : <Copy className="w-4 h-4" />}
                                         </button>
                                     </div>
                                     <p className="text-[28px] font-bold text-brand-text mt-2 leading-none tracking-tight">

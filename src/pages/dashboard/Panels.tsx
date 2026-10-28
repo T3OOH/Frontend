@@ -59,11 +59,11 @@ export function Panels() {
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'AVAILABLE':
-                return { bg: 'bg-[#25D366]/10', border: 'border-[#25D366]/20', text: 'text-[#25D366]', dot: 'bg-[#25D366]', label: 'Disponível' };
+                return { bg: 'bg-[#FF5E00]/10', border: 'border-[#FF5E00]/20', text: 'text-[#FF5E00]', dot: 'bg-[#FF5E00]', label: 'Disponível' };
             case 'OCCUPIED':
                 return { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500', dot: 'bg-red-500', label: 'Ocupado' };
             case 'MAINTENANCE':
-                return { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-500', dot: 'bg-yellow-500', label: 'Manutenção' };
+                return { bg: 'bg-brand-text/5', border: 'border-brand-border', text: 'text-brand-text', dot: 'bg-brand-text/5', label: 'Manutenção' };
             default:
                 return { bg: 'bg-brand-muted/10', border: 'border-brand-muted/20', text: 'text-brand-muted', dot: 'bg-brand-muted', label: 'Desconhecido' };
         }
@@ -92,7 +92,7 @@ export function Panels() {
                 </div>
 
                 {/* FILTROS E BUSCA */}
-                <div className="bg-brand-surface p-4 rounded-[24px] flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20">
+                <div className="bg-brand-surface p-4 rounded-none flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20">
                     <div className="w-full sm:w-[450px] relative">
                         <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
                         <input
@@ -113,7 +113,7 @@ export function Panels() {
                 </div>
 
                 {/* TABELA DE PAINÉIS */}
-                <div className="flex-1 min-h-0 bg-brand-surface rounded-[24px] overflow-hidden flex flex-col relative border border-brand-border shadow-sm z-10">
+                <div className="flex-1 min-h-0 bg-brand-surface rounded-none overflow-hidden flex flex-col relative border border-brand-border shadow-sm z-10">
                     {isLoading && (
                         <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/50 backdrop-blur-sm">
                             <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
@@ -211,12 +211,12 @@ export function Panels() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
                         <input
                             placeholder="Buscar painel..."
-                            className="w-full bg-brand-surface border border-brand-border rounded-[16px] pl-11 pr-4 py-3.5 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
+                            className="w-full bg-brand-surface border border-brand-border rounded-none pl-11 pr-4 py-3.5 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="w-full bg-brand-surface rounded-[16px] shadow-sm border border-brand-border">
+                    <div className="w-full bg-brand-surface rounded-none shadow-sm border border-brand-border">
                         <CustomSelect
                             options={statusOptions}
                             value={statusFilter}
@@ -233,7 +233,7 @@ export function Panels() {
                             <span className="text-xs text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
                         </div>
                     ) : filteredPanels.length === 0 ? (
-                        <div className="bg-brand-surface border border-brand-border rounded-[24px] p-8 flex flex-col items-center text-center shadow-sm">
+                        <div className="bg-brand-surface border border-brand-border rounded-none p-8 flex flex-col items-center text-center shadow-sm">
                             <LayoutGrid className="w-10 h-10 text-brand-muted mb-3 opacity-50" />
                             <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum painel</h3>
                             <p className="text-xs text-brand-muted">Não encontramos painéis para esta busca.</p>
@@ -242,7 +242,7 @@ export function Panels() {
                         filteredPanels.map((panel) => {
                             const status = getStatusStyle(panel.status);
                             return (
-                                <div key={panel.id} className="bg-brand-surface border border-brand-border rounded-[24px] overflow-hidden flex flex-col shadow-sm">
+                                <div key={panel.id} className="bg-brand-surface border border-brand-border rounded-none overflow-hidden flex flex-col shadow-sm">
 
                                     {/* Área da Imagem */}
                                     <div className="w-full h-36 bg-brand-background relative shrink-0">

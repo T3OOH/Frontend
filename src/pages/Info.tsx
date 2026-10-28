@@ -111,7 +111,7 @@ export function Info() {
 
                     <motion.h1 
                         initial="hidden" animate="visible" variants={fadeUp} 
-                        className="text-5xl md:text-6xl lg:text-8xl font-black text-white tracking-tighter leading-[1.05] mb-6 max-w-4xl"
+                        className="text-5xl md:text-6xl lg:text-7xl font-light uppercase text-white tracking-tight leading-[0.95] mb-6 max-w-4xl"
                     >
                         Muito mais que painéis.<br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF5E00] to-[#ff8c42]">
@@ -136,8 +136,8 @@ export function Info() {
                     
                     {/* Text Column */}
                     <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={fadeUp} className="w-full lg:w-1/2 flex flex-col">
-                        <h2 className="text-[11px] font-black uppercase tracking-widest text-[#FF5E00] mb-4">A Nossa Essência</h2>
-                        <h3 className="text-3xl md:text-5xl font-black text-white mb-8 leading-tight tracking-tight">Inteligência de dados aplicada à rua.</h3>
+                        <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#FF5E00] mb-4">A Nossa Essência</h2>
+                        <h3 className="text-3xl md:text-5xl font-light uppercase text-white mb-8 leading-tight tracking-tight">Inteligência de dados aplicada à rua.</h3>
                         <div className="space-y-6 text-[#8F8F91] text-sm md:text-base leading-relaxed">
                             <p>
                                 Nascemos com um propósito claro: revolucionar a mídia Digital Out Of Home (DOOH) no Centro-Oeste. Não vendemos apenas espaço em telas de LED; nós entregamos <strong className="text-white font-bold">inteligência de audiência</strong>.
@@ -180,8 +180,8 @@ export function Info() {
                     <div className="max-w-7xl mx-auto px-6">
                         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
                             <div>
-                                <h2 className="text-[11px] font-black uppercase tracking-widest text-[#FF5E00] mb-4">Liderança Executiva</h2>
-                                <h3 className="text-3xl md:text-5xl font-black text-white tracking-tight">Quem faz acontecer</h3>
+                                <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#FF5E00] mb-4">Liderança Executiva</h2>
+                                <h3 className="text-3xl md:text-5xl font-light uppercase text-white tracking-tight">Quem faz acontecer</h3>
                             </div>
                             <p className="text-sm text-[#8F8F91] max-w-sm md:text-right">
                                 Profissionais dedicados a transformar a publicidade exterior em resultados reais.
@@ -235,10 +235,10 @@ export function Info() {
             {brands.length > 0 && (
                 <section className="relative z-20 w-full max-w-7xl mx-auto px-6 py-24 md:py-32">
                     <div className="text-center mb-16">
-                        <h2 className="text-[11px] font-black uppercase tracking-widest text-[#FF5E00] mb-4 flex items-center justify-center gap-2">
+                        <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#FF5E00] mb-4 flex items-center justify-center gap-2">
                             <Handshake className="w-4 h-4" /> Ecossistema
                         </h2>
-                        <h3 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">Parceiros Estratégicos</h3>
+                        <h3 className="text-3xl md:text-4xl font-light uppercase text-white tracking-tight mb-4">Parceiros Estratégicos</h3>
                         <p className="text-[#8F8F91] text-sm max-w-2xl mx-auto font-medium">
                             Marcas que confiam em nossa infraestrutura tecnológica para escalar seus negócios.
                         </p>
@@ -287,7 +287,7 @@ export function Info() {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF5E00] to-transparent opacity-50" />
                     
                     <Target className="w-12 h-12 text-[#FF5E00] mx-auto mb-6" />
-                    <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">Pronto para dominar as ruas?</h2>
+                    <h2 className="text-3xl md:text-5xl font-light uppercase text-white mb-6 tracking-tight">Pronto para dominar as ruas?</h2>
                     
                     <p className="text-[#8F8F91] text-sm md:text-base max-w-2xl mx-auto mb-10 font-medium">
                         Explore nosso inventário interativo ou fale diretamente com nossa equipe comercial para estruturar a campanha ideal para o seu negócio.

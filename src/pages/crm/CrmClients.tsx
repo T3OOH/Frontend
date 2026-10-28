@@ -310,7 +310,7 @@ export function CrmClients() {
     };
 
     const getStatusInfo = (status: string) => {
-        if (status === 'WON') return { icon: <CheckCircle2 className="w-3.5 h-3.5" />, text: 'Ganho', color: 'text-[#25D366]', bg: 'bg-[#25D366]/10 border-[#25D366]/20' };
+        if (status === 'WON') return { icon: <CheckCircle2 className="w-3.5 h-3.5" />, text: 'Ganho', color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10 border-[#FF5E00]/20' };
         if (status === 'LOST') return { icon: <XCircle className="w-3.5 h-3.5" />, text: 'Perdido', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' };
         return { icon: <Clock className="w-3.5 h-3.5" />, text: 'Em Andamento', color: 'text-brand-neon', bg: 'bg-brand-neon/10 border-brand-neon/20' };
     };
@@ -346,7 +346,7 @@ export function CrmClients() {
                     </button>
                 </div>
 
-                <div className="bg-brand-surface p-4 rounded-[24px] flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20 transition-colors">
+                <div className="bg-brand-surface p-4 rounded-none flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20 transition-colors">
                     <div className="w-full sm:w-[450px] relative">
                         <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
                         <input
@@ -361,7 +361,7 @@ export function CrmClients() {
                     </div>
                 </div>
 
-                <div className="flex-1 min-h-0 bg-brand-surface rounded-[24px] overflow-hidden flex flex-col relative border border-brand-border shadow-sm transition-colors">
+                <div className="flex-1 min-h-0 bg-brand-surface rounded-none overflow-hidden flex flex-col relative border border-brand-border shadow-sm transition-colors">
                     {isLoading && (
                         <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/50 backdrop-blur-sm">
                             <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
@@ -402,7 +402,7 @@ export function CrmClients() {
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-xs font-black text-brand-text shadow-sm shrink-0">
+                                                    <div className="w-10 h-10 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-xs font-semibold text-brand-text shadow-sm shrink-0">
                                                         {getInitials(client.name)}
                                                     </div>
                                                     <div className="flex flex-col">
@@ -439,7 +439,7 @@ export function CrmClients() {
                                             </td>
 
                                             <td className="px-6 py-4 text-center">
-                                                <span className="bg-brand-background border border-brand-border text-brand-text text-xs font-black px-3 py-1.5 rounded-full inline-block min-w-[32px] shadow-sm">
+                                                <span className="bg-brand-background border border-brand-border text-brand-text text-xs font-semibold px-3 py-1.5 rounded-full inline-block min-w-[32px] shadow-sm">
                                                     {client._count?.deals || 0}
                                                 </span>
                                             </td>
@@ -531,7 +531,7 @@ export function CrmClients() {
                     <Search className="absolute left-8 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
                     <input
                         placeholder="Buscar por nome ou email..."
-                        className="w-full bg-brand-surface border border-brand-border rounded-[16px] pl-11 pr-4 py-3.5 text-[13px] text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
+                        className="w-full bg-brand-surface border border-brand-border rounded-none pl-11 pr-4 py-3.5 text-[13px] text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -544,18 +544,18 @@ export function CrmClients() {
                             <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest">Buscando Clientes...</span>
                         </div>
                     ) : filteredClients.length === 0 ? (
-                        <div className="bg-brand-surface border border-brand-border rounded-[24px] p-8 flex flex-col items-center text-center mt-2 shadow-sm">
+                        <div className="bg-brand-surface border border-brand-border rounded-none p-8 flex flex-col items-center text-center mt-2 shadow-sm">
                             <Search className="w-10 h-10 text-brand-muted opacity-50 mb-3" />
                             <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum cliente</h3>
                             <p className="text-[11px] text-brand-muted font-medium">Ajuste os filtros ou crie um novo cadastro.</p>
                         </div>
                     ) : (
                         filteredClients.map((client) => (
-                            <div key={client.id} className="bg-brand-surface border border-brand-border rounded-[24px] p-5 flex flex-col shadow-sm relative transition-colors">
+                            <div key={client.id} className="bg-brand-surface border border-brand-border rounded-none p-5 flex flex-col shadow-sm relative transition-colors">
 
                                 <div className="flex items-center justify-between border-b border-brand-border pb-4 mb-4">
                                     <div className="flex items-center gap-3 min-w-0" onClick={() => handleOpenProfile(client)}>
-                                        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-brand-text font-black text-[15px] shadow-sm">
+                                        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-brand-text font-semibold text-[15px] shadow-sm">
                                             {getInitials(client.name)}
                                         </div>
                                         <div className="flex flex-col min-w-0">
@@ -613,12 +613,12 @@ export function CrmClients() {
             {/* ========================================================= */}
             {isProfileOpen && selectedClient && (
                 <div className="fixed inset-0 z-[99999] flex items-end lg:items-center justify-center bg-brand-background/80 backdrop-blur-md p-0 lg:p-4">
-                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl animate-slide-up lg:animate-scale-up relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
+                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-none w-full max-w-2xl overflow-hidden shadow-2xl animate-slide-up lg:animate-scale-up relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
 
                         {/* Header Ficha */}
                         <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface shrink-0 sticky top-0 z-20">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-sm font-black text-brand-text shadow-sm">
+                                <div className="w-12 h-12 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-sm font-semibold text-brand-text shadow-sm">
                                     {getInitials(selectedClient.name)}
                                 </div>
                                 <div className="flex flex-col">
@@ -637,8 +637,8 @@ export function CrmClients() {
                         {/* Body Ficha */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
 
-                            <h3 className="text-xs font-black uppercase tracking-widest text-brand-muted mb-3">Informações de Contato</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-brand-background p-6 rounded-[24px] border border-brand-border mb-8 shadow-sm">
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-muted mb-3">Informações de Contato</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-brand-background p-6 rounded-none border border-brand-border mb-8 shadow-sm">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] text-brand-muted font-bold uppercase tracking-wider">Email</span>
                                     <span className="text-[13px] text-brand-text font-bold">{selectedClient.email || 'Não informado'}</span>
@@ -657,17 +657,17 @@ export function CrmClients() {
                                 </div>
                             </div>
 
-                            <h3 className="text-xs font-black uppercase tracking-widest text-brand-muted mb-3">Histórico de Contratos / Negócios</h3>
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-muted mb-3">Histórico de Contratos / Negócios</h3>
                             <div className="flex flex-col gap-4">
                                 {clientDeals.length === 0 ? (
-                                    <div className="text-center p-8 bg-brand-background border-2 border-dashed border-brand-border rounded-[24px] text-brand-muted text-sm font-medium">
+                                    <div className="text-center p-8 bg-brand-background border-2 border-dashed border-brand-border rounded-none text-brand-muted text-sm font-medium">
                                         Nenhuma negociação atrelada a este cliente.
                                     </div>
                                 ) : (
                                     clientDeals.map(deal => {
                                         const statusInfo = getStatusInfo(deal.status);
                                         return (
-                                            <div key={deal.id} className="bg-brand-background border border-brand-border rounded-[24px] p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm transition-colors hover:border-brand-neon/50">
+                                            <div key={deal.id} className="bg-brand-background border border-brand-border rounded-none p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm transition-colors hover:border-brand-neon/50">
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-brand-text truncate max-w-[300px] mb-2">{deal.title || 'Contrato Padrão'}</span>
                                                     <div className="flex items-center gap-2 text-[12px] text-brand-muted font-bold mb-3">
@@ -675,7 +675,7 @@ export function CrmClients() {
                                                         <span className="w-1 h-1 rounded-full bg-brand-border"></span>
                                                         <span className="text-brand-text">{formatCurrency(deal.expectedValue)}</span>
                                                     </div>
-                                                    <div className={`w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-widest shadow-sm ${statusInfo.bg} ${statusInfo.color}`}>
+                                                    <div className={`w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-semibold uppercase tracking-widest shadow-sm ${statusInfo.bg} ${statusInfo.color}`}>
                                                         {statusInfo.icon} {statusInfo.text}
                                                     </div>
                                                 </div>
@@ -705,7 +705,7 @@ export function CrmClients() {
             {/* ========================================================= */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[99999] flex items-end lg:items-center justify-center bg-brand-background/80 backdrop-blur-sm p-0 lg:p-4">
-                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
+                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-none w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
 
                         <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface shrink-0 relative z-10">
                             <h2 className="text-xl font-bold text-brand-text flex items-center gap-2 tracking-tight">
@@ -803,7 +803,7 @@ export function CrmClients() {
             {/* ========================================================= */}
             {clientToDelete && (
                 <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-brand-background/80 backdrop-blur-sm p-4">
-                    <div className="bg-brand-surface border border-brand-border rounded-[24px] w-full max-w-sm p-6 md:p-8 shadow-2xl animate-scale-up relative flex flex-col items-center text-center">
+                    <div className="bg-brand-surface border border-brand-border rounded-none w-full max-w-sm p-6 md:p-8 shadow-2xl animate-scale-up relative flex flex-col items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-5">
                             <Trash2 className="w-8 h-8 text-red-500" />
                         </div>

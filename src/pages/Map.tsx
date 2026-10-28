@@ -512,7 +512,7 @@ export function Map() {
                         <AnimatePresence>
                             {cart.length > 0 && (
                                 <motion.div className="p-5 border-t border-white/5 bg-[#111113] shrink-0">
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-[11px] uppercase tracking-widest font-black bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] rounded-sm border-none">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full py-4 text-[11px] uppercase tracking-widest font-black bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] rounded-sm border-none">
                                         <ShoppingCart className="w-4 h-4 mr-2" /> Avançar ({cart.length})
                                     </Button>
                                 </motion.div>
@@ -565,7 +565,7 @@ export function Map() {
                                     exit={{ y: 20, opacity: 0 }}
                                     className="pointer-events-auto mb-4 px-4 w-full"
                                 >
-                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full rounded-sm bg-[#25D366] text-[#0A0A0B] font-black py-3.5 shadow-lg text-[11px] uppercase tracking-widest flex justify-center items-center gap-2 border-none">
+                                    <Button type="button" onClick={() => setIsCheckoutOpen(true)} className="w-full rounded-sm bg-[#FF5E00] text-[#0A0A0B] font-black py-3.5 shadow-lg text-[11px] uppercase tracking-widest flex justify-center items-center gap-2 border-none">
                                         <ShoppingCart className="w-4 h-4" />
                                         Processar Orçamento ({cart.length})
                                     </Button>
@@ -664,7 +664,7 @@ export function Map() {
                                 {checkoutStep === 'cart' ? (
                                     <><ShoppingCart className="w-4 h-4 text-[#FF5E00]" /> Resumo do Pedido</>
                                 ) : (
-                                    <><Send className="w-4 h-4 text-[#25D366]" /> Enviar Orçamento</>
+                                    <><Send className="w-4 h-4 text-[#FF5E00]" /> Enviar Orçamento</>
                                 )}
                             </h2>
                             <button aria-label="Fechar" type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white bg-[#0A0A0B] p-2 rounded-sm border border-white/5 transition-colors">
@@ -715,7 +715,7 @@ export function Map() {
                                                 {totalEconomy > 0 && <span className="text-[10px] text-[#8F8F91] line-through mb-0.5">{formatCurrency(totalWithoutAnyDiscount)}</span>}
                                                 <span className="text-[9px] text-[#8F8F91] font-bold uppercase tracking-widest mb-1">Valor Liquido</span>
                                                 <span className="text-lg font-black text-white leading-none mb-1.5">{formatCurrency(finalTotalValue)}</span>
-                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded-sm border border-[#25D366]/20 uppercase tracking-widest">Economia: {formatCurrency(totalEconomy)}</span>}
+                                                {totalEconomy > 0 && <span className="text-[9px] font-black text-[#FF5E00] bg-[#FF5E00]/10 px-2 py-0.5 rounded-sm border border-[#FF5E00]/20 uppercase tracking-widest">Economia: {formatCurrency(totalEconomy)}</span>}
                                             </div>
                                         </div>
                                     </div>
@@ -787,8 +787,8 @@ export function Map() {
                                                 </div>
                                             </div>
                                         </div>
-                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Bonificação de {termDiscountPercent * 100}% aplicada</p>}
-                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Cupom {appliedCoupon.code} ativo ({appliedCoupon.label})</p>}
+                                        {termDiscountPercent > 0 && <p className="text-[10px] text-[#FF5E00] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Bonificação de {termDiscountPercent * 100}% aplicada</p>}
+                                        {appliedCoupon && <p className="text-[10px] text-[#FF5E00] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Cupom {appliedCoupon.code} ativo ({appliedCoupon.label})</p>}
                                     </div>
 
                                     <div className="flex items-center justify-between">
@@ -805,7 +805,7 @@ export function Map() {
                                     type="button"
                                     disabled={cart.length === 0 || isSubmitting}
                                     onClick={() => setCheckoutStep('crm')}
-                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] transition-colors"
+                                    className="w-full bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] transition-colors"
                                 >
                                     Avançar Etapa
                                 </Button>
@@ -817,7 +817,7 @@ export function Map() {
                                     type="submit"
                                     form="crm-checkout-form"
                                     disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone}
-                                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                                    className="w-full bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] font-black py-4 rounded-sm border-none uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                     Finalizar e Enviar

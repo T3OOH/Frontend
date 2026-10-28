@@ -1,381 +1,245 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-    Menu, X, ArrowRight, LogIn, LayoutDashboard, LogOut, 
-    Briefcase, User as UserIcon, ChevronRight 
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/Button';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Briefcase, LayoutDashboard, LogOut, Menu, User as UserIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { panelsService } from '@/services/panels.service';
 
-// ==========================================
-// NAVIGATION CONFIGURATION
-// ==========================================
-interface NavLink {
-    name: string;
-    path: string;
-}
-
-const navLinks: NavLink[] = [
-    { name: 'Início', path: '/' },
-    { name: 'Mapa de Painéis', path: '/mapa' },
-    { name: 'Serviços', path: '/servicos' },
-    { name: 'Contato', path: '/contato' },
-    { name: 'Sobre Nós', path: '/sobre' },
+const NAV_LINKS = [
+    { name: 'Mapa de painéis', path: '/mapa' },
+    { name: 'Catálogo', path: '/servicos' },
     { name: 'T3 Solution', path: '/solution' },
+    { name: 'Sobre', path: '/sobre' },
+    { name: 'Contato', path: '/contato' },
 ];
 
+const ROLE_LABEL: Record<string, string> = {
+    ADMIN: 'Gestor',
+    MANAGER: 'Gestor',
+    COMERCIAL: 'Comercial',
+    USER: 'Cliente',
+    COMPANY: 'Cliente',
+};
+
+const spring = { type: 'spring', stiffness: 260, damping: 28 } as const;
+
 export function Header() {
-    // State Management
     const [isOpen, setIsOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    
-    // Hooks & References
     const location = useLocation();
     const navigate = useNavigate();
     const userMenuRef = useRef<HTMLDivElement>(null);
-    const { isAuthenticated, user, signOut } = useAuth(); 
+    const { isAuthenticated, user, signOut } = useAuth();
+    const role = user?.role as string | undefined;
 
-    // Scroll Observer for Dynamic Header Background
+    // Fundo sólido só depois de rolar: no topo o header deixa o hero respirar
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        const onScroll = () => setScrolled(window.scrollY > 12);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    // Route Change Observer: Resets overlay menus state
     useEffect(() => {
         setIsOpen(false);
         setIsUserMenuOpen(false);
     }, [location.pathname]);
 
-    // Body Scroll Lock for Mobile Menu Overlay
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        if (!isOpen) return;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+        document.addEventListener('keydown', onKey);
         return () => {
-            document.body.style.overflow = '';
+            document.body.style.overflow = previous;
+            document.removeEventListener('keydown', onKey);
         };
     }, [isOpen]);
 
-    // Click Outside Listener for User Dropdown
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-                setIsUserMenuOpen(false);
-            }
+        const onClick = (e: MouseEvent) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setIsUserMenuOpen(false);
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', onClick);
+        return () => document.removeEventListener('mousedown', onClick);
     }, []);
 
-    // Role display normalization
-    const getRoleDisplayName = (role?: string) => {
-        switch (role) {
-            case 'ADMIN':
-            case 'MANAGER': return 'Gestor';
-            case 'COMERCIAL': return 'Comercial';
-            case 'USER':
-            case 'COMPANY': return 'Cliente';
-            default: return '';
-        }
-    };
-
-    // Current Route contextualization
-    const getRouteName = (path: string) => {
-        if (path === '/') return 'Início';
-        if (path.startsWith('/mapa')) return 'Mapa Interativo';
-        if (path.startsWith('/servicos')) return 'Painéis OOH';
-        if (path.startsWith('/contato')) return 'Contato';
-        if (path.startsWith('/sobre')) return 'Sobre Nós';
-        if (path.startsWith('/solution')) return 'T3 Solution';
-        if (path.startsWith('/login')) return 'Acesso';
-        if (path.startsWith('/cadastro')) return 'Cadastro';
-        if (path.startsWith('/perfil')) return 'Meu Perfil';
-        if (path.startsWith('/dashboard')) return 'Gestão T3';
-        if (path.startsWith('/crm')) return 'CRM Comercial';
-        return 'T3 Network';
-    };
-
-    const userRole = user?.role as string | undefined;
+    const accountLinks = [
+        ...(role === 'ADMIN' || role === 'MANAGER' ? [{ label: 'Gestão T3', path: '/dashboard', icon: LayoutDashboard }] : []),
+        ...(role === 'ADMIN' || role === 'MANAGER' || role === 'COMERCIAL' ? [{ label: 'CRM comercial', path: '/crm', icon: Briefcase }] : []),
+        ...(role === 'USER' || role === 'COMPANY' ? [{ label: 'Meu perfil', path: '/perfil', icon: UserIcon }] : []),
+    ];
+    const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '';
+    const prefetchMap = (path: string) => { if (path === '/mapa') panelsService.getMapMarkers().catch(() => {}); };
 
     return (
-        <>
-            <header className="fixed top-0 inset-x-0 z-[500]">
-                
-                {/* Dynamic Gradient Overlay */}
-                <div 
-                    className={cn(
-                        "absolute inset-x-0 top-0 h-[140px] md:h-[160px] pointer-events-none transition-opacity duration-500",
-                        "bg-gradient-to-b from-[#0A0A0B] via-[#0A0A0B]/80 to-transparent",
-                        scrolled ? "opacity-100" : "opacity-60"
-                    )}
-                />
+        <header
+            className={cn(
+                'fixed inset-x-0 top-0 z-[500] h-20 transition-colors duration-300',
+                scrolled || isOpen ? 'border-b border-white/[0.06] bg-ink-950' : 'border-b border-transparent bg-transparent'
+            )}
+        >
+            <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-6 px-4 md:px-8">
+                <Link to="/" className="relative z-10 shrink-0" aria-label="T3 OOH, página inicial">
+                    <img src="/t3-logo.webp" alt="" className="h-9 w-auto" />
+                </Link>
 
-                <div className="relative max-w-7xl mx-auto px-4 md:px-6 h-[72px] md:h-[90px] flex items-center justify-between gap-4">
-
-                    {/* Left Section: Brand Logo */}
-                    <div className="flex-1 flex justify-start items-center">
-                        <Link to="/" className="group flex items-center relative z-50">
-                            <motion.img 
-                                initial={{ opacity: 0, scale: 0.8, x: -20 }}
-                                animate={{ opacity: 1, scale: 1, x: 0 }}
-                                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                                src="/t3-logo.webp" 
-                                alt="Logo T3" 
-                                className="h-8 md:h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,94,0,0.15)] group-hover:drop-shadow-[0_0_20px_rgba(255,94,0,0.5)] transition-all duration-300"
-                            />
-                        </Link>
-                    </div>
-
-                    {/* Mobile Center Section: Contextual Route Badge */}
-                    <div className="md:hidden flex flex-[2] justify-center items-center pointer-events-none">
-                        <AnimatePresence mode="wait">
-                            <motion.div 
-                                key={location.pathname}
-                                initial={{ opacity: 0, scale: 0.9, y: -5 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex items-center gap-1.5 bg-[#111113]/80 border border-white/5 px-3 py-1.5 rounded-full shadow-inner backdrop-blur-md"
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5E00] animate-pulse shadow-[0_0_8px_rgba(255,94,0,0.8)]" />
-                                <span className="text-[10px] font-black text-white tracking-widest uppercase mt-[1px]">
-                                    {getRouteName(location.pathname)}
-                                </span>
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Desktop Center Section: Primary Navigation */}
-                    <nav className="hidden md:flex flex-none items-center justify-center gap-8">
-                        {navLinks.map((link) => {
-                            const isActive = location.pathname === link.path;
-
-                            return (
-                                <Link
-                                    key={link.path}
-                                    to={link.path}
-                                    onMouseEnter={() => {
-                                        if (link.path === '/mapa') panelsService.getMapMarkers().catch(() => {});
-                                    }}
-                                    className={cn(
-                                        "text-[13px] font-bold transition-all duration-300 relative py-2",
-                                        isActive ? "text-[#FF5E00]" : "text-[#8F8F91] hover:text-white"
-                                    )}
-                                >
+                <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
+                    {NAV_LINKS.map((link) => (
+                        <NavLink
+                            key={link.path}
+                            to={link.path}
+                            onMouseEnter={() => prefetchMap(link.path)}
+                            className={({ isActive }) => cn(
+                                'relative rounded-lg px-3 py-2 text-sm transition-colors',
+                                isActive ? 'text-ink-100' : 'text-ink-400 hover:text-ink-100'
+                            )}
+                        >
+                            {({ isActive }) => (
+                                <>
                                     {link.name}
                                     {isActive && (
-                                        <motion.div 
-                                            layoutId="activeNav" 
-                                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#FF5E00] rounded-full shadow-[0_0_8px_rgba(255,94,0,0.8)]" 
-                                        />
+                                        <motion.span layoutId="nav-active" transition={spring} className="absolute inset-x-3 -bottom-px h-px bg-brand-neon" />
                                     )}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-
-                    {/* Right Section: Actions & User Avatar */}
-                    <div className="hidden md:flex flex-1 items-center justify-end gap-3 relative z-50">
-                        
-                        {!isAuthenticated ? (
-                            <Link to="/login">
-                                <Button as="span" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="border border-white/10 bg-[#111113] hover:border-[#FF5E00]/50 hover:bg-[#FF5E00]/10 text-white transition-all rounded-xl shadow-sm h-10 px-5 text-xs" 
-                                    rightIcon={<LogIn className="w-4 h-4 text-[#FF5E00]" />}
-                                >
-                                    Login
-                                </Button>
-                            </Link>
-                        ) : (
-                            <div className="relative" ref={userMenuRef}>
-                                {/* Standardized Avatar Button */}
-                                <button
-                                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                    className={cn(
-                                        "w-10 h-10 rounded-full bg-[#111113]/80 border flex items-center justify-center shadow-sm backdrop-blur-md transition-all active:scale-95 group",
-                                        isUserMenuOpen ? "border-[#FF5E00] shadow-[0_0_15px_rgba(255,94,0,0.2)]" : "border-white/10 hover:border-[#FF5E00]/50"
-                                    )}
-                                    aria-label="Menu da conta"
-                                >
-                                    <span className="text-[#FF5E00] font-black text-sm group-hover:scale-110 transition-transform">
-                                        {user?.name?.charAt(0).toUpperCase()}
-                                    </span>
-                                </button>
-
-                                {/* User Dropdown Overlay */}
-                                <AnimatePresence>
-                                    {isUserMenuOpen && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            transition={{ duration: 0.2, ease: "easeOut" }}
-                                            className="absolute right-0 top-[calc(100%+12px)] w-64 bg-[#111113]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col"
-                                        >
-                                            <div className="p-6 border-b border-white/5 bg-gradient-to-b from-[#FF5E00]/5 to-transparent flex flex-col items-center text-center">
-                                                <div className="w-14 h-14 rounded-full bg-[#0A0A0B] border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xl mb-3 shadow-[0_0_15px_rgba(255,94,0,0.15)]">
-                                                    {user?.name?.charAt(0).toUpperCase()}
-                                                </div>
-                                                <p className="text-sm font-bold text-white truncate w-full">{user?.name}</p>
-                                                <p className="text-[10px] text-[#8F8F91] font-black uppercase tracking-widest mt-1">
-                                                    {getRoleDisplayName(userRole)}
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="p-2 flex flex-col gap-1">
-                                                {(userRole === 'ADMIN' || userRole === 'MANAGER') && (
-                                                    <button onClick={() => { setIsUserMenuOpen(false); navigate('/dashboard'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-[#8F8F91] hover:text-[#FF5E00] hover:bg-[#FF5E00]/10 transition-all text-left">
-                                                        <LayoutDashboard className="w-[18px] h-[18px]" /> Gestão T3
-                                                    </button>
-                                                )}
-                                                {userRole === 'COMERCIAL' && (
-                                                    <button onClick={() => { setIsUserMenuOpen(false); navigate('/crm'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-[#8F8F91] hover:text-[#FF5E00] hover:bg-[#FF5E00]/10 transition-all text-left">
-                                                        <Briefcase className="w-[18px] h-[18px]" /> CRM Comercial
-                                                    </button>
-                                                )}
-                                                {(userRole === 'USER' || userRole === 'COMPANY') && (
-                                                    <button onClick={() => { setIsUserMenuOpen(false); navigate('/perfil'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-[#8F8F91] hover:text-[#FF5E00] hover:bg-[#FF5E00]/10 transition-all text-left">
-                                                        <UserIcon className="w-[18px] h-[18px]" /> Meu Perfil
-                                                    </button>
-                                                )}
-                                                
-                                                <div className="h-px bg-white/5 my-1 mx-2" />
-                                                
-                                                <button onClick={() => { setIsUserMenuOpen(false); signOut(); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-500/10 transition-all text-left">
-                                                    <LogOut className="w-[18px] h-[18px]" /> Sair da Conta
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        )}
-
-                        {/* CTA Budget Requirement */}
-                        {(!isAuthenticated || userRole === 'USER' || userRole === 'COMPANY') && (
-                            <Button 
-                                size="sm" 
-                                className="bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_4px_15px_rgba(255,94,0,0.2)] hover:shadow-[0_6px_20px_rgba(255,94,0,0.3)] transition-all border-none h-10 px-5 ml-1" 
-                                rightIcon={<ArrowRight className="w-4 h-4" />} 
-                                onClick={() => navigate('/mapa')} 
-                                onMouseEnter={() => panelsService.getMapMarkers().catch(() => {})}
-                            >
-                                Orçamento
-                            </Button>
-                        )}
-                    </div>
-
-                    {/* Mobile Section: Menu Trigger */}
-                    <div className="md:hidden flex flex-1 justify-end relative z-[60]">
-                        <button
-                            type="button"
-                            className="p-2 -mr-2 text-white hover:text-[#FF5E00] transition-colors relative"
-                            onClick={() => setIsOpen(!isOpen)}
-                            aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
-                            aria-expanded={isOpen}
-                        >
-                            {!isOpen && isAuthenticated ? (
-                                <div className="w-8 h-8 rounded-full bg-[#FF5E00]/10 border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xs shadow-md">
-                                    {user?.name?.charAt(0).toUpperCase()}
-                                </div>
-                            ) : isOpen ? (
-                                <X className="w-6 h-6 text-white" />
-                            ) : (
-                                <Menu className="w-6 h-6" />
+                                </>
                             )}
-                        </button>
-                    </div>
-                </div>
-            </header>
+                        </NavLink>
+                    ))}
+                </nav>
 
-            {/* MOBILE NAVIGATION OVERLAY */}
+                <div className="hidden items-center gap-2 lg:flex">
+                    {!isAuthenticated ? (
+                        <Link to="/login" className="rounded-lg px-3 py-2 text-sm text-ink-300 transition-colors hover:text-ink-100">
+                            Entrar
+                        </Link>
+                    ) : (
+                        <div className="relative" ref={userMenuRef}>
+                            <button
+                                onClick={() => setIsUserMenuOpen((v) => !v)}
+                                aria-label="Menu da conta"
+                                aria-expanded={isUserMenuOpen}
+                                className="flex items-center gap-2.5 rounded-full border border-white/10 py-1 pl-1 pr-3 text-sm text-ink-300 transition-colors hover:border-white/20 hover:text-ink-100"
+                            >
+                                <span className="grid h-7 w-7 place-items-center rounded-full bg-ink-800 font-mono text-xs text-brand-neon">{initial}</span>
+                                <span className="max-w-[9rem] truncate">{user?.name?.split(' ')[0]}</span>
+                            </button>
+                            <AnimatePresence>
+                                {isUserMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 4 }}
+                                        transition={spring}
+                                        className="absolute right-0 top-[calc(100%+10px)] w-60 overflow-hidden rounded-xl border border-white/10 bg-ink-900 shadow-panel"
+                                    >
+                                        <div className="border-b border-white/[0.06] px-4 py-3">
+                                            <p className="truncate text-sm font-medium text-ink-100">{user?.name}</p>
+                                            <p className="text-xs text-ink-400">{ROLE_LABEL[role ?? ''] ?? ''}</p>
+                                        </div>
+                                        <div className="p-1.5">
+                                            {accountLinks.map(({ label, path, icon: Icon }) => (
+                                                <button
+                                                    key={path}
+                                                    onClick={() => navigate(path)}
+                                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-ink-300 hover:bg-white/[0.04] hover:text-ink-100"
+                                                >
+                                                    <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {label}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => signOut()}
+                                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-ink-400 hover:bg-white/[0.04] hover:text-ink-100"
+                                            >
+                                                <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Sair
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+                    <Link
+                        to="/mapa"
+                        onMouseEnter={() => prefetchMap('/mapa')}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-ink-950 transition-transform hover:bg-brand-neonHover active:scale-[0.98]"
+                    >
+                        Solicitar orçamento
+                    </Link>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setIsOpen((v) => !v)}
+                    aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+                    aria-expanded={isOpen}
+                    aria-controls="menu-mobile"
+                    className="relative z-10 -mr-2 grid h-10 w-10 place-items-center rounded-lg text-ink-100 lg:hidden"
+                >
+                    {isOpen ? <X className="h-5 w-5" strokeWidth={1.75} /> : <Menu className="h-5 w-5" strokeWidth={1.75} />}
+                </button>
+            </div>
+
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
+                        id="menu-mobile"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 pt-[72px] bg-[#0A0A0B]/98 backdrop-blur-3xl z-[490] md:hidden border-t border-white/5 flex flex-col"
+                        className="fixed inset-x-0 bottom-0 top-20 overflow-y-auto bg-ink-950 lg:hidden"
                     >
-                        <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar">
-                            
-                            {/* User Authentication Card or Login CTA */}
-                            {isAuthenticated ? (
-                                <div 
-                                    className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex items-center gap-4 shadow-xl mb-8 active:scale-95 transition-transform" 
-                                    onClick={() => { setIsOpen(false); navigate(userRole === 'USER' || userRole === 'COMPANY' ? '/perfil' : userRole === 'COMERCIAL' ? '/crm' : '/dashboard'); }}
+                        <nav aria-label="Principal" className="flex flex-col px-4 pt-4">
+                            {[{ name: 'Início', path: '/' }, ...NAV_LINKS].map((link, i) => (
+                                <motion.div
+                                    key={link.path}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ ...spring, delay: i * 0.035 }}
                                 >
-                                    <div className="w-12 h-12 rounded-full bg-[#FF5E00]/10 border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xl shadow-[0_0_15px_rgba(255,94,0,0.1)]">
-                                        {user?.name?.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="flex flex-col flex-1">
-                                        <span className="text-base font-bold text-white line-clamp-1">{user?.name}</span>
-                                        <span className="text-xs text-[#FF5E00] uppercase font-black tracking-wider">{getRoleDisplayName(userRole)}</span>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-brand-muted" />
-                                </div>
+                                    <NavLink
+                                        to={link.path}
+                                        end={link.path === '/'}
+                                        className={({ isActive }) => cn(
+                                            'flex items-center justify-between border-b border-white/[0.06] py-4 text-2xl tracking-tight',
+                                            isActive ? 'text-ink-100' : 'text-ink-400'
+                                        )}
+                                    >
+                                        {link.name}
+                                        <ArrowRight className="h-5 w-5 text-ink-500" strokeWidth={1.5} aria-hidden="true" />
+                                    </NavLink>
+                                </motion.div>
+                            ))}
+                        </nav>
+
+                        <div className="flex flex-col gap-3 px-4 py-8">
+                            <Link to="/mapa" className="rounded-xl bg-brand-neon px-5 py-3.5 text-center text-sm font-semibold text-ink-950 active:scale-[0.98]">
+                                Solicitar orçamento
+                            </Link>
+                            {!isAuthenticated ? (
+                                <Link to="/login" className="rounded-xl border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
+                                    Entrar na minha conta
+                                </Link>
                             ) : (
-                                <div className="bg-[#111113] border border-[#FF5E00]/20 rounded-[24px] p-6 flex flex-col gap-4 shadow-xl mb-8 relative overflow-hidden">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#FF5E00]/10 rounded-full blur-2xl pointer-events-none" />
-                                    <h3 className="text-sm font-bold text-white relative z-10">Já é cliente T3?</h3>
-                                    <Button 
-                                        className="w-full text-[13px] font-black text-[#0A0A0B] bg-[#FF5E00] uppercase tracking-widest rounded-xl relative z-10 border-none h-12" 
-                                        onClick={() => { setIsOpen(false); navigate('/login'); }}
-                                    >
-                                        Fazer Login
-                                    </Button>
-                                </div>
-                            )}
-
-                            {/* Block Navigation Menu */}
-                            <div className="flex flex-col gap-2 mb-8">
-                                <h4 className="text-[10px] font-black uppercase text-brand-muted tracking-widest pl-2 mb-2">Explorar</h4>
-                                {navLinks.map((link) => {
-                                    const isActive = location.pathname === link.path;
-
-                                    return (
-                                        <Link
-                                            key={link.path}
-                                            to={link.path}
-                                            onClick={() => setIsOpen(false)}
-                                            className={cn(
-                                                "flex items-center justify-between p-4 rounded-[16px] border transition-all",
-                                                isActive ? "bg-[#FF5E00]/10 border-[#FF5E00]/50 shadow-inner" : "bg-[#111113] border-white/5 active:bg-white/5"
-                                            )}
-                                        >
-                                            <span className={cn("text-sm font-bold", isActive ? "text-[#FF5E00]" : "text-white")}>{link.name}</span>
-                                            <ChevronRight className={cn("w-4 h-4", isActive ? "text-[#FF5E00]" : "text-brand-muted")} />
+                                <>
+                                    <p className="mt-2 text-sm text-ink-400">
+                                        Conectado como <span className="text-ink-100">{user?.name}</span>
+                                    </p>
+                                    {accountLinks.map(({ label, path }) => (
+                                        <Link key={path} to={path} className="rounded-xl border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
+                                            {label}
                                         </Link>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Authentication Exit Handler */}
-                            {isAuthenticated && (
-                                <div className="mt-auto pb-safe">
-                                    <button 
-                                        onClick={() => { setIsOpen(false); signOut(); }}
-                                        className="w-full flex items-center justify-center gap-2 h-14 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 font-bold text-[13px] hover:bg-red-500/10 active:bg-red-500/20 transition-all uppercase tracking-widest"
-                                    >
-                                        <LogOut className="w-4 h-4" /> Sair da Conta
-                                    </button>
-                                </div>
+                                    ))}
+                                    <button onClick={() => signOut()} className="py-2 text-sm text-ink-400">Sair</button>
+                                </>
                             )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </>
+        </header>
     );
 }

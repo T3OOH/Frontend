@@ -160,7 +160,7 @@ export function DashboardInfo() {
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-black text-white tracking-tight uppercase flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-white tracking-tight uppercase flex items-center gap-2">
                         <Building2 className="w-6 h-6 text-[#FF5E00]" />
                         Gestão Institucional
                     </h1>
@@ -170,7 +170,7 @@ export function DashboardInfo() {
                 <Button 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-[#25D366] text-[#0A0A0B] hover:bg-[#1eb858] border-none font-black uppercase tracking-widest text-xs px-8 py-3.5 rounded-sm flex items-center gap-2 transition-colors"
+                    className="bg-[#FF5E00] text-[#0A0A0B] hover:bg-[#FF7A29] border-none font-semibold uppercase tracking-widest text-xs px-8 py-3.5 rounded-sm flex items-center gap-2 transition-colors"
                 >
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     {isSaving ? 'Salvando...' : 'Salvar Alterações'}

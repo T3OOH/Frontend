@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, CheckCircle2, Phone, Building, FileText, ArrowLeft, Send, Loader2 } from 'lucide-react';
+import { ArrowRight, Building, CheckCircle2, Loader2, User } from 'lucide-react';
 import { Input } from '@/components/Input';
 import { authService } from '@/services/auth.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,8 @@ import ReCAPTCHA from 'react-google-recaptcha';
 import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { z } from 'zod';
 import { Seo } from '@/components/Seo';
+import { AuthShell, authInput } from '@/components/AuthShell';
+import { btnPrimary } from '@/lib/ui';
 
 // ==========================================
 // SCHEMA DE VALIDAÇÃO (Com regras de segurança)
@@ -138,7 +140,7 @@ export function Register() {
             await authService.register(payload as any);
             
             setIsSuccess(true);
-            toast.success("Cadastro realizado com sucesso! Aguarde a liberação.");
+            toast.success("Conta criada! Você já pode entrar.");
             setTimeout(() => { navigate('/login'); }, 3000);
         } catch (error: any) {
             // O token do reCAPTCHA é de uso único: exige nova verificação
@@ -153,200 +155,133 @@ export function Register() {
 
     return (
         <>
-        <Seo title="Criar conta" description="Crie sua conta na plataforma T3 OOH para solicitar orçamentos e acompanhar pedidos." path="/cadastro" noIndex />
-        <div className="relative min-h-[100dvh] w-full flex items-center bg-[#0A0A0B] overflow-x-hidden">
-            
-            {/* BACKGROUND IMERSIVO */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <img 
-                    src="/cidade-t3-noite.webp" 
-                    alt="Background Cidade" 
-                    className="w-full h-full object-cover opacity-30 mix-blend-luminosity" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0B] via-[#0A0A0B]/90 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/40 to-transparent" />
-            </div>
-
-            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-24 lg:py-0 flex flex-col lg:flex-row lg:items-center justify-between gap-16 lg:gap-20 h-full min-h-screen">
-                
-                {/* COLUNA ESQUERDA: LOGO GIGANTE E TÍTULO */}
-                <div className="w-full lg:w-[40%] flex flex-col justify-center">
-                    <motion.img 
-                        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, ease: "easeOut" }}
-                        src="/t3-logo.webp" 
-                        alt="T3 OOH Logo Gigante" 
-                        className="w-[60%] md:w-[70%] max-w-[400px] h-auto object-contain drop-shadow-[0_0_40px_rgba(255,94,0,0.3)] origin-left mb-8"
-                    />
-                    
-                    <motion.h1 
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-                        className="text-5xl lg:text-7xl font-black text-white tracking-tight leading-[1] mb-10"
+            <Seo title="Criar conta" description="Crie sua conta na plataforma T3 OOH para solicitar orçamentos e acompanhar pedidos." path="/cadastro" noIndex />
+            <AuthShell
+                wide
+                eyebrow="Cadastro"
+                title={<>Criar sua<br />conta</>}
+                subtitle="Com a conta você salva orçamentos, acompanha pedidos e fala direto com o comercial."
+                footer={<>Já tem conta? <Link to="/login" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Entrar</Link></>}
+            >
+                {isSuccess ? (
+                    <motion.div
+                        role="status"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="border-l-2 border-brand-neon bg-ink-900 p-6"
                     >
-                        Criar Conta
-                    </motion.h1>
-
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-                        <Link to="/login" className="inline-flex items-center justify-center px-8 py-5 border border-white/20 text-white hover:bg-white/5 hover:border-white/40 uppercase tracking-widest text-xs font-bold transition-all">
-                            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar para o Login
-                        </Link>
+                        <p className="flex items-center gap-2 font-medium text-ink-100">
+                            <CheckCircle2 className="h-5 w-5 text-brand-neon" strokeWidth={1.75} aria-hidden="true" /> Conta criada
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-ink-400">Você já pode entrar com seu e-mail e senha. Redirecionando para o login…</p>
                     </motion.div>
-                </div>
-
-                {/* COLUNA DIREITA: FORMULÁRIO "NAKED" */}
-                <div className="w-full lg:w-[55%] flex flex-col justify-center pb-10 lg:pb-0">
-                    
-                    {isSuccess ? (
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} 
-                            className="p-10 bg-[#25D366]/5 border border-[#25D366]/20 text-center space-y-4 shadow-[0_0_50px_rgba(37,211,102,0.1)] backdrop-blur-xl"
-                        >
-                            <div className="w-20 h-20 bg-[#25D366]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#25D366]/30">
-                                <CheckCircle2 className="w-10 h-10 text-[#25D366] drop-shadow-[0_0_15px_rgba(37,211,102,0.5)]" />
-                            </div>
-                            <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Cadastro Concluído!</h3>
-                            <p className="text-sm text-white/70 leading-relaxed">
-                                Seus dados foram salvos com segurança. Assim que um administrador aprovar, você terá acesso total à plataforma.<br/><br/>
-                                Redirecionando para a tela de login...
-                            </p>
-                        </motion.div>
-                    ) : (
-                        <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-6" autoComplete="off">
-                            
-                            {/* TOGGLE PF / PJ */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Tipo de Conta *</label>
-                                <div className="grid grid-cols-2 gap-4">
+                ) : (
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+                        <fieldset>
+                            <legend className="mb-2 text-sm font-medium text-ink-300">Tipo de conta</legend>
+                            <div className="grid grid-cols-2 border border-white/10" role="radiogroup">
+                                {(['PF', 'PJ'] as const).map((type) => (
                                     <button
+                                        key={type}
                                         type="button"
-                                        onClick={() => handleToggleType('PF')}
-                                        className={`py-4 px-4 border flex items-center justify-center font-bold text-[11px] uppercase tracking-widest transition-all ${
-                                            documentType === 'PF' 
-                                            ? 'bg-[#FF5E00]/10 border-[#FF5E00]/50 text-[#FF5E00]' 
-                                            : 'bg-[#111113]/40 border-white/10 text-[#8F8F91] hover:border-white/30 hover:text-white'
+                                        role="radio"
+                                        aria-checked={documentType === type}
+                                        onClick={() => handleToggleType(type)}
+                                        className={`flex h-12 items-center justify-center gap-2 text-sm transition-colors ${
+                                            documentType === type ? 'bg-ink-100 font-medium text-ink-950' : 'text-ink-400 hover:text-ink-100'
                                         }`}
                                     >
-                                        <User className="w-4 h-4 mr-2" /> Pessoa Física
+                                        {type === 'PF'
+                                            ? <><User className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Pessoa física</>
+                                            : <><Building className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Empresa</>}
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleToggleType('PJ')}
-                                        className={`py-4 px-4 border flex items-center justify-center font-bold text-[11px] uppercase tracking-widest transition-all ${
-                                            documentType === 'PJ' 
-                                            ? 'bg-[#FF5E00]/10 border-[#FF5E00]/50 text-[#FF5E00]' 
-                                            : 'bg-[#111113]/40 border-white/10 text-[#8F8F91] hover:border-white/30 hover:text-white'
-                                        }`}
-                                    >
-                                        <Building className="w-4 h-4 mr-2" /> Empresa (CNPJ)
-                                    </button>
-                                </div>
+                                ))}
                             </div>
+                        </fieldset>
 
-                            {/* GRID DE INPUTS */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">
-                                        {documentType === 'PF' ? 'Nome Completo *' : 'Nome do Responsável *'}
-                                    </label>
-                                    <Input
-                                        placeholder="Ex: João Silva"
-                                        leftIcon={<User className="w-4 h-4 text-white/40" />}
-                                        error={errors.name?.message}
-                                        {...register('name')}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">
-                                        {documentType === 'PF' ? 'CPF *' : 'CNPJ *'}
-                                    </label>
-                                    <Input
-                                        placeholder={documentType === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
-                                        leftIcon={<FileText className="w-4 h-4 text-white/40" />}
-                                        error={errors.document?.message}
-                                        {...documentRegister}
-                                        onChange={(e) => {
-                                            e.target.value = documentType === 'PF' ? maskCPF(e.target.value) : maskCNPJ(e.target.value);
-                                            documentRegister.onChange(e); 
-                                        }}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">E-mail Corporativo *</label>
-                                    <Input
-                                        type="email"
-                                        placeholder="seu@empresa.com"
-                                        leftIcon={<Mail className="w-4 h-4 text-white/40" />}
-                                        error={errors.email?.message}
-                                        {...register('email')}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">WhatsApp *</label>
-                                    <Input
-                                        placeholder="(00) 00000-0000"
-                                        leftIcon={<Phone className="w-4 h-4 text-white/40" />}
-                                        error={errors.phone?.message}
-                                        {...phoneRegister}
-                                        onChange={(e) => {
-                                            e.target.value = maskPhone(e.target.value);
-                                            phoneRegister.onChange(e); 
-                                        }}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">
-                                        {documentType === 'PJ' ? 'Razão Social / Nome Fantasia *' : 'Empresa (Opcional)'}
-                                    </label>
-                                    <Input
-                                        placeholder="Nome da sua marca"
-                                        leftIcon={<Building className="w-4 h-4 text-white/40" />}
-                                        error={errors.companyName?.message}
-                                        {...register('companyName')}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/70 ml-1">Senha Segura *</label>
-                                    <Input
-                                        type="password"
-                                        placeholder="••••••••"
-                                        leftIcon={<Lock className="w-4 h-4 text-white/40" />}
-                                        error={errors.password?.message}
-                                        {...register('password')}
-                                        className="bg-[#111113]/50 backdrop-blur-md border-white/10 text-white placeholder:text-white/30 h-14 rounded-xl focus:border-[#FF5E00] shadow-inner"
-                                        autoComplete="new-password"
-                                    />
-                                </div>
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <Input
+                                id="cad-nome"
+                                label={documentType === 'PF' ? 'Nome completo' : 'Nome do responsável'}
+                                autoComplete="name"
+                                error={errors.name?.message}
+                                className={authInput}
+                                {...register('name')}
+                            />
+                            <Input
+                                id="cad-documento"
+                                label={documentType === 'PF' ? 'CPF' : 'CNPJ'}
+                                inputMode="numeric"
+                                placeholder={documentType === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
+                                error={errors.document?.message}
+                                className={authInput}
+                                {...documentRegister}
+                                onChange={(e) => {
+                                    e.target.value = documentType === 'PF' ? maskCPF(e.target.value) : maskCNPJ(e.target.value);
+                                    documentRegister.onChange(e);
+                                }}
+                            />
+                            <Input
+                                id="cad-email"
+                                label="E-mail"
+                                type="email"
+                                placeholder="voce@empresa.com.br"
+                                autoComplete="email"
+                                error={errors.email?.message}
+                                className={authInput}
+                                {...register('email')}
+                            />
+                            <Input
+                                id="cad-whatsapp"
+                                label="WhatsApp"
+                                type="tel"
+                                inputMode="tel"
+                                placeholder="(62) 99999-0000"
+                                autoComplete="tel"
+                                error={errors.phone?.message}
+                                className={authInput}
+                                {...phoneRegister}
+                                onChange={(e) => {
+                                    e.target.value = maskPhone(e.target.value);
+                                    phoneRegister.onChange(e);
+                                }}
+                            />
+                            <Input
+                                id="cad-empresa"
+                                label={documentType === 'PJ' ? 'Razão social ou nome fantasia' : 'Empresa (opcional)'}
+                                autoComplete="organization"
+                                error={errors.companyName?.message}
+                                className={authInput}
+                                {...register('companyName')}
+                            />
+                            <div className="flex flex-col gap-1.5">
+                                <Input
+                                    id="cad-senha"
+                                    label="Senha"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    error={errors.password?.message}
+                                    className={authInput}
+                                    {...register('password')}
+                                />
+                                {!errors.password && <p className="text-xs text-ink-500">8 ou mais caracteres, com uma letra maiúscula e um número.</p>}
                             </div>
+                        </div>
 
-                            {/* RECAPTCHA E BOTÃO */}
-                            <div className="flex flex-col sm:flex-row items-center gap-5 pt-4 mt-2">
-                                <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0 bg-[#0A0A0B]">
-                                    <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || !RECAPTCHA_SITE_KEY}
-                                    className="w-full flex-1 bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-[78px] sm:h-16 rounded-none transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99] disabled:opacity-50"
-                                >
-                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Criar Conta <Send className="w-4 h-4" /></>}
-                                </button>
-                            </div>
+                        <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
 
-                        </form>
-                    )}
-                </div>
-
-            </div>
-        </div>
+                        <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} mt-2 h-12 w-full`}>
+                            {isSubmitting
+                                ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Criando conta…</>
+                                : <>Criar conta <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
+                        </button>
+                        <p className="text-xs leading-relaxed text-ink-500">
+                            Ao criar a conta, você concorda com os <Link to="/termos" className="underline underline-offset-2 hover:text-ink-100">Termos de Uso</Link> e
+                            a <Link to="/privacidade" className="underline underline-offset-2 hover:text-ink-100">Política de Privacidade</Link>.
+                        </p>
+                    </form>
+                )}
+            </AuthShell>
         </>
     );
 }
