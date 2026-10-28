@@ -79,7 +79,11 @@ export function Header() {
         <header
             className={cn(
                 'fixed inset-x-0 top-0 z-[500] h-20 transition-colors duration-300',
-                scrolled || isOpen ? 'border-b border-white/[0.06] bg-ink-950' : 'border-b border-transparent bg-transparent'
+                // No mapa (página sem rolagem) o header é sempre sólido; nas demais, no topo, um
+                // degradê preto mantém logo e links legíveis sobre o vídeo da cidade
+                scrolled || isOpen || location.pathname.startsWith('/mapa')
+                    ? 'border-b border-white/[0.08] bg-gradient-to-b from-ink-950 to-ink-900'
+                    : 'border-b border-transparent bg-gradient-to-b from-ink-950/95 via-ink-950/60 to-transparent'
             )}
         >
             <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-6 px-4 md:px-8">
