@@ -98,7 +98,7 @@ export function Header() {
                             to={link.path}
                             onMouseEnter={() => prefetchMap(link.path)}
                             className={({ isActive }) => cn(
-                                'relative rounded-lg px-3 py-2 text-sm transition-colors',
+                                'relative px-3 py-2 text-sm transition-colors',
                                 isActive ? 'text-ink-100' : 'text-ink-400 hover:text-ink-100'
                             )}
                         >
@@ -116,7 +116,7 @@ export function Header() {
 
                 <div className="hidden items-center gap-2 lg:flex">
                     {!isAuthenticated ? (
-                        <Link to="/login" className="rounded-lg px-3 py-2 text-sm text-ink-300 transition-colors hover:text-ink-100">
+                        <Link to="/login" className="px-3 py-2 text-sm text-ink-300 transition-colors hover:text-ink-100">
                             Entrar
                         </Link>
                     ) : (
@@ -125,9 +125,9 @@ export function Header() {
                                 onClick={() => setIsUserMenuOpen((v) => !v)}
                                 aria-label="Menu da conta"
                                 aria-expanded={isUserMenuOpen}
-                                className="flex items-center gap-2.5 rounded-full border border-white/10 py-1 pl-1 pr-3 text-sm text-ink-300 transition-colors hover:border-white/20 hover:text-ink-100"
+                                className="flex items-center gap-2.5 border border-white/10 py-1 pl-1 pr-3 text-sm text-ink-300 transition-colors hover:border-white/20 hover:text-ink-100"
                             >
-                                <span className="grid h-7 w-7 place-items-center rounded-full bg-ink-800 font-mono text-xs text-brand-neon">{initial}</span>
+                                <span className="grid h-7 w-7 place-items-center bg-brand-neon font-mono text-xs font-semibold text-ink-950">{initial}</span>
                                 <span className="max-w-[9rem] truncate">{user?.name?.split(' ')[0]}</span>
                             </button>
                             <AnimatePresence>
@@ -137,7 +137,7 @@ export function Header() {
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 4 }}
                                         transition={spring}
-                                        className="absolute right-0 top-[calc(100%+10px)] w-60 overflow-hidden rounded-xl border border-white/10 bg-ink-900 shadow-panel"
+                                        className="absolute right-0 top-[calc(100%+10px)] w-60 overflow-hidden border border-white/10 bg-ink-950 shadow-[0_16px_40px_rgba(0,0,0,0.5)]"
                                     >
                                         <div className="border-b border-white/[0.06] px-4 py-3">
                                             <p className="truncate text-sm font-medium text-ink-100">{user?.name}</p>
@@ -148,14 +148,14 @@ export function Header() {
                                                 <button
                                                     key={path}
                                                     onClick={() => navigate(path)}
-                                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-ink-300 hover:bg-white/[0.04] hover:text-ink-100"
+                                                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-ink-300 hover:bg-white/[0.04] hover:text-ink-100"
                                                 >
                                                     <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {label}
                                                 </button>
                                             ))}
                                             <button
                                                 onClick={() => signOut()}
-                                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-ink-400 hover:bg-white/[0.04] hover:text-ink-100"
+                                                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-ink-400 hover:bg-white/[0.04] hover:text-ink-100"
                                             >
                                                 <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Sair
                                             </button>
@@ -168,7 +168,7 @@ export function Header() {
                     <Link
                         to="/mapa"
                         onMouseEnter={() => prefetchMap('/mapa')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-neon px-4 py-2.5 text-sm font-semibold text-ink-950 transition-transform hover:bg-brand-neonHover active:scale-[0.98]"
+                        className="inline-flex items-center gap-1.5 bg-brand-neon px-4 py-2.5 text-sm font-semibold text-ink-950 transition-transform hover:bg-brand-neonHover active:scale-[0.98]"
                     >
                         Solicitar orçamento
                     </Link>
@@ -180,7 +180,7 @@ export function Header() {
                     aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
                     aria-expanded={isOpen}
                     aria-controls="menu-mobile"
-                    className="relative z-10 -mr-2 grid h-10 w-10 place-items-center rounded-lg text-ink-100 lg:hidden"
+                    className="relative z-10 -mr-2 grid h-11 w-11 place-items-center text-ink-100 lg:hidden"
                 >
                     {isOpen ? <X className="h-5 w-5" strokeWidth={1.75} /> : <Menu className="h-5 w-5" strokeWidth={1.75} />}
                 </button>
@@ -220,11 +220,11 @@ export function Header() {
                         </nav>
 
                         <div className="flex flex-col gap-3 px-4 py-8">
-                            <Link to="/mapa" className="rounded-xl bg-brand-neon px-5 py-3.5 text-center text-sm font-semibold text-ink-950 active:scale-[0.98]">
+                            <Link to="/mapa" className="bg-brand-neon px-5 py-3.5 text-center text-sm font-semibold text-ink-950 active:scale-[0.98]">
                                 Solicitar orçamento
                             </Link>
                             {!isAuthenticated ? (
-                                <Link to="/login" className="rounded-xl border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
+                                <Link to="/login" className="border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
                                     Entrar na minha conta
                                 </Link>
                             ) : (
@@ -233,7 +233,7 @@ export function Header() {
                                         Conectado como <span className="text-ink-100">{user?.name}</span>
                                     </p>
                                     {accountLinks.map(({ label, path }) => (
-                                        <Link key={path} to={path} className="rounded-xl border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
+                                        <Link key={path} to={path} className="border border-white/15 px-5 py-3.5 text-center text-sm font-medium text-ink-100">
                                             {label}
                                         </Link>
                                     ))}

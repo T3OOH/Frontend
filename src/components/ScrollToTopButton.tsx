@@ -67,9 +67,9 @@ export function ScrollToTopButton() {
                     transition={{ duration: 0.3, ease: "easeOut" }}
                     onClick={scrollToTop}
                     aria-label="Voltar ao topo"
-                    className="fixed bottom-28 right-5 lg:bottom-10 lg:right-10 z-[9999] p-3 rounded-full bg-[#111113]/80 backdrop-blur-md border border-brand-border/40 text-brand-muted shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:text-brand-neon hover:border-brand-neon/50 hover:bg-[#111113] active:scale-95 transition-colors group"
+                    className="group fixed bottom-28 right-4 z-[9999] flex h-11 w-11 items-center justify-center border border-white/15 bg-ink-950/95 text-ink-300 backdrop-blur transition-colors hover:border-white/40 hover:text-ink-100 lg:bottom-10 lg:right-10"
                 >
-                    <ChevronUp className="w-5 h-5 lg:w-6 lg:h-6 group-hover:-translate-y-1 transition-transform" />
+                    <ChevronUp className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" strokeWidth={1.75} />
                 </motion.button>
             )}
         </AnimatePresence>

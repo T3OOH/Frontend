@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Check, Filter, Loader2, MapPin, Maximize, Plus, Search, ShoppingCart, Tag, X } from 'lucide-react';
+import { ArrowRight, Check, Loader2, MapPin, Maximize, Plus, Search, ShoppingCart, Tag, X } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
-import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -297,8 +296,18 @@ export function Services() {
                     <input id="catalog-search" type="search" placeholder="Avenida, região ou nome do painel" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full border border-white/15 bg-ink-900 py-3 pl-11 pr-4 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none" autoComplete="off" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:w-[420px]">
-                    <div className="relative z-30"><CustomSelect options={stateOptions} value={selectedState} onChange={(val: string) => { setSelectedState(val); setSelectedCity(''); }} placeholder="Estado" icon={<Filter className="h-4 w-4" />} /></div>
-                    <div className="relative z-20"><CustomSelect options={cityOptions} value={selectedCity} onChange={(val: string) => setSelectedCity(val)} placeholder="Cidade" icon={<MapPin className="h-4 w-4" />} disabled={cityOptions.length <= 1} /></div>
+                    <div>
+                        <label htmlFor="catalog-state" className="sr-only">Estado</label>
+                        <select id="catalog-state" value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity(''); }} className={field}>
+                            {stateOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="catalog-city" className="sr-only">Cidade</label>
+                        <select id="catalog-city" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} disabled={cityOptions.length <= 1} className={`${field} disabled:opacity-50`}>
+                            {cityOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
                 </div>
                 {hasFilters && <button type="button" onClick={resetFilters} className="text-sm text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Limpar</button>}
                 {/* Atalho para o resumo, visível mesmo depois de rolar o cabeçalho */}
@@ -497,10 +506,10 @@ export function Services() {
                         {checkoutStep === 'cart' ? (
                             <div className="flex shrink-0 flex-col gap-5 border-t border-white/[0.08] p-6">
                                 <div>
-                                    <span className="mb-2 block text-sm text-ink-300">Duração da campanha</span>
-                                    <div className="relative z-50">
-                                        <CustomSelect options={monthOptions} value={cartMonths} onChange={(val: string) => setCartMonths(val)} placeholder="Duração do contrato" maxHeight="max-h-[132px]" />
-                                    </div>
+                                    <label htmlFor="catalog-months" className="mb-2 block text-sm text-ink-300">Duração da campanha</label>
+                                    <select id="catalog-months" value={cartMonths} onChange={(e) => setCartMonths(e.target.value)} className={field}>
+                                        {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
                                 </div>
 
                                 <div>

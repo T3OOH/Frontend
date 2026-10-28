@@ -112,7 +112,7 @@ export function UpdatePassword() {
                             type="submit"
                             size="lg"
                             disabled={isSubmitting}
-                            className="w-full bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] font-black uppercase tracking-widest h-12 border-none disabled:opacity-50"
+                            className="h-12 w-full"
                         >
                             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Enviar link'}
                         </Button>
@@ -162,9 +162,9 @@ export function UpdatePassword() {
                             type="submit"
                             size="lg"
                             disabled={isSubmitting || !token}
-                            className="w-full bg-brand-neon hover:bg-[#FF5E00]/90 text-[#0A0A0B] font-black uppercase tracking-widest h-12 shadow-[0_4px_20px_rgba(255,94,0,0.25)] border-none transition-all disabled:opacity-50 disabled:shadow-none"
+                            className="h-12 w-full"
                         >
-                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Redefinir Senha'}
+                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Redefinir senha'}
                         </Button>
                     </div>
                 </form>

@@ -19,7 +19,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 )}
                 <div className="relative flex items-center">
                     {leftIcon && (
-                        <div className="absolute left-4 text-brand-muted pointer-events-none">
+                        <div className="pointer-events-none absolute left-4 z-10 text-brand-muted">
                             {leftIcon}
                         </div>
                     )}
@@ -29,16 +29,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         aria-invalid={error ? true : undefined}
                         aria-describedby={error && id ? `${id}-erro` : undefined}
                         className={cn(
-                            "w-full bg-brand-surface border border-brand-border rounded-lg px-5 py-3.5 text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-1 focus:ring-brand-neon focus:border-brand-neon transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed",
+                            "w-full bg-brand-surface border border-brand-border px-4 py-3.5 text-brand-text placeholder:text-brand-muted focus:outline-none focus:border-brand-neon transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                             leftIcon && "pl-12",
                             rightIcon && "pr-12",
-                            error && "border-red-500/50 focus:ring-red-500/50",
+                            error && "border-red-500 focus:border-red-500",
                             className
                         )}
                         {...props}
                     />
                     {rightIcon && (
-                        <div className="absolute right-4 text-brand-muted pointer-events-none">
+                        <div className="pointer-events-none absolute right-4 z-10 text-brand-muted">
                             {rightIcon}
                         </div>
                     )}

@@ -45,30 +45,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             {children}
             
             {/* CONTAINER DAS NOTIFICAÇÕES */}
-            <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none">
+            <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[99999] flex flex-col gap-2 md:inset-x-auto md:bottom-6 md:right-6">
                 <AnimatePresence>
                     {toasts.map((toast) => (
                         <motion.div
                             key={toast.id}
-                            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl min-w-[300px] max-w-sm ${
-                                toast.type === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-500' :
-                                toast.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-500' :
-                                'bg-brand-neon/10 border-brand-neon/30 text-brand-neon'
+                            initial={{ opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 12, transition: { duration: 0.18 } }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+                            className={`pointer-events-auto flex items-center gap-3 border border-l-[3px] border-white/10 bg-ink-950 py-3 pl-4 pr-2 shadow-[0_12px_30px_rgba(0,0,0,0.45)] md:min-w-[320px] md:max-w-sm ${
+                                toast.type === 'success' ? 'border-l-emerald-500 text-emerald-400' :
+                                toast.type === 'error' ? 'border-l-red-500 text-red-400' :
+                                'border-l-brand-neon text-brand-neon'
                             }`}
                         >
                             {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0" />}
                             {toast.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0" />}
                             {toast.type === 'info' && <Info className="w-5 h-5 shrink-0" />}
                             
-                            <p className="text-sm font-medium flex-1 text-white">{toast.message}</p>
+                            <p className="flex-1 text-sm text-ink-100">{toast.message}</p>
                             
                             <button 
                                 onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
                                 aria-label="Fechar notificação"
-                                className="text-brand-muted hover:text-white transition-colors"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center text-ink-400 transition-colors hover:text-ink-100"
                             >
                                 <X className="w-4 h-4" />
                             </button>
