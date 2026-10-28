@@ -175,8 +175,8 @@ export function PanelForm() {
                                     <img src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} className="h-full w-full object-cover" />
                                     {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
                                     <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                                        {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-1.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
-                                        <button type="button" onClick={() => removePhoto(i)} className="p-1.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
+                                        {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
+                                        <button type="button" onClick={() => removePhoto(i)} className="p-2.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
                                     </div>
                                 </figure>
                             ))}

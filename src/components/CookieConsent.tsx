@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Shield, Cookie } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/Button';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const STORAGE_KEY = 't3-cookie-consent';
 
@@ -13,57 +11,45 @@ const saveConsent = (value: string) => {
     try { localStorage.setItem(STORAGE_KEY, value); } catch { /* storage indisponível */ }
 };
 
+/**
+ * Aviso de privacidade: faixa compacta no rodapé da tela.
+ * Antes era um cartão grande no topo que cobria o título das páginas no celular.
+ */
 export function CookieConsent() {
-    const [isVisible, setIsVisible] = useState(false);
+    const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        if (!readConsent()) {
-            setIsVisible(true);
-        }
+        // Espera a página aparecer antes de mostrar o aviso
+        const t = setTimeout(() => { if (!readConsent()) setVisible(true); }, 1200);
+        return () => clearTimeout(t);
     }, []);
 
     // Só há recursos essenciais: o aviso é informativo e registra apenas que foi lido
-    const handleAccept = () => {
+    const accept = () => {
         saveConsent('acknowledged');
-        setIsVisible(false);
+        setVisible(false);
     };
 
     return (
         <AnimatePresence>
-            {isVisible && (
+            {visible && (
                 <motion.div
-                    initial={{ y: 24, opacity: 0 }}
+                    initial={{ y: 40, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 24, opacity: 0 }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    role="dialog"
-                    aria-live="polite"
-                    aria-label="Aviso de privacidade e cookies"
-                    className="fixed top-24 lg:top-auto lg:bottom-6 left-0 right-0 mx-auto w-[90%] md:w-fit z-[9999] max-w-2xl glass-panel p-5 sm:p-6 rounded-2xl border border-brand-border/60 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row gap-5 items-center justify-between bg-[#0A0A0B]/90 backdrop-blur-xl"
+                    exit={{ y: 40, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+                    role="region"
+                    aria-label="Aviso de privacidade"
+                    className="fixed inset-x-0 bottom-0 z-[9999] border-t border-white/10 bg-ink-950/95 backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:max-w-md md:border"
                 >
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-brand-neon/10 rounded-xl border border-brand-neon/20 flex-shrink-0">
-                            <Cookie className="w-6 h-6 text-brand-neon" aria-hidden="true" />
-                        </div>
-                        <div className="text-left">
-                            <h3 className="text-sm font-bold text-brand-text mb-1">Privacidade e Cookies</h3>
-                            <p className="text-xs text-brand-muted leading-relaxed">
-                                Usamos apenas recursos essenciais para o site funcionar (login, carrinho e preferências) e a verificação
-                                anti-robô do Google reCAPTCHA. Não usamos cookies de publicidade.{' '}
-                                <Link to="/privacidade" className="text-white underline underline-offset-2 hover:text-brand-neon">Política de Privacidade</Link>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto flex-shrink-0">
-                        <Button
-                            size="sm" 
-                            className="w-full md:w-auto text-xs shadow-[0_0_15px_rgba(255,94,0,0.2)]"
-                            onClick={handleAccept}
-                            leftIcon={<Shield className="w-3 h-3" aria-hidden="true" />}
-                        >
+                    <div className="flex items-center gap-4 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:p-4">
+                        <p className="flex-1 text-xs leading-relaxed text-ink-300 md:text-sm">
+                            Usamos só o essencial (login, orçamento e reCAPTCHA). Sem cookies de publicidade.{' '}
+                            <Link to="/privacidade" className="text-ink-100 underline underline-offset-2 hover:text-brand-neon">Privacidade</Link>
+                        </p>
+                        <button type="button" onClick={accept} className="min-h-[44px] shrink-0 bg-brand-neon px-5 text-sm font-semibold text-ink-950 hover:bg-brand-neonHover">
                             Entendi
-                        </Button>
+                        </button>
                     </div>
                 </motion.div>
             )}

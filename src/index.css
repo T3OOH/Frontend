@@ -221,3 +221,27 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* =======================================================
+   Celular
+   ======================================================= */
+
+/* iOS dá zoom automático em campos com fonte < 16px e não volta sozinho */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Telas de toque: alvos de pelo menos 44px (recomendação de acessibilidade) */
+@media (max-width: 767px), (pointer: coarse) {
+  [role="tab"] { min-height: 44px; }
+  footer nav a,
+  footer li > a { display: inline-flex; align-items: center; min-height: 40px; }
+  .leaflet-container a.leaflet-popup-close-button { width: 40px; height: 40px; }
+}
+
+/* Evita o "flash" azul do toque no Android/iOS; o estado ativo já é visual */
+html { -webkit-tap-highlight-color: transparent; }

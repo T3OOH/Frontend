@@ -87,7 +87,7 @@ export function Login() {
                             className={authInput}
                             {...register('password')}
                         />
-                        <Link to="/recuperar-senha" className="self-end text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
+                        <Link to="/recuperar-senha" className="-my-2 self-end py-3 text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
                     </div>
 
                     <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />

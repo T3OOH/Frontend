@@ -74,7 +74,7 @@ export function DashboardMap() {
                         <div className="flex flex-wrap gap-2 border-b border-brand-border p-3">
                             {(Object.keys(LABEL) as PanelStatus[]).map((s) => (
                                 <button key={s} type="button" onClick={() => toggle(s)} aria-pressed={!hidden.has(s)}
-                                    className={`flex items-center gap-2 border px-2.5 py-1 text-xs ${hidden.has(s) ? 'border-brand-border text-brand-muted line-through' : 'border-brand-border text-brand-text'}`}>
+                                    className={`flex min-h-[40px] items-center gap-2 border px-2.5 py-1 text-xs md:min-h-0 ${hidden.has(s) ? 'border-brand-border text-brand-muted line-through' : 'border-brand-border text-brand-text'}`}>
                                     <span className="h-2.5 w-2.5" style={{ background: COLORS[s] }} aria-hidden="true" /> {LABEL[s]} <span className="font-mono text-brand-muted">{count(s)}</span>
                                 </button>
                             ))}

@@ -41,10 +41,10 @@ export function Footer() {
                         Painéis de LED e mídia exterior em Goiânia e no interior de Goiás. Escolha os pontos no mapa e receba o orçamento com os valores do plano.
                     </p>
                     <div className="mt-6 flex gap-4 text-sm">
-                        <a href="https://www.instagram.com/t3led/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink-300 hover:text-ink-100">
+                        <a href="https://www.instagram.com/t3led/" target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-1 text-ink-300 hover:text-ink-100 md:min-h-0">
                             Instagram <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
                         </a>
-                        <a href="https://www.linkedin.com/company/agencia-t3/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink-300 hover:text-ink-100">
+                        <a href="https://www.linkedin.com/company/agencia-t3/" target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center gap-1 text-ink-300 hover:text-ink-100 md:min-h-0">
                             LinkedIn <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
                         </a>
                     </div>

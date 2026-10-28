@@ -32,10 +32,10 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, wide }: 
                     className={`flex min-h-[100dvh] w-full flex-col bg-ink-950 px-6 py-8 sm:px-10 lg:border-r lg:border-white/[0.08] ${wide ? 'lg:w-[640px]' : 'lg:w-[520px]'}`}
                 >
                     <div className="flex items-center justify-between">
-                        <Link to="/" aria-label="T3 OOH, página inicial">
+                        <Link to="/" aria-label="T3 OOH, página inicial" className="-m-1.5 p-1.5">
                             <img src="/t3-logo.webp" alt="" className="h-9 w-auto" />
                         </Link>
-                        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-100">
+                        <Link to="/" className="inline-flex min-h-[44px] items-center gap-1.5 text-sm text-ink-400 hover:text-ink-100">
                             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Voltar ao site
                         </Link>
                     </div>
