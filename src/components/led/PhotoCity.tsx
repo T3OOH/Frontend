@@ -15,6 +15,20 @@ import { LedScreen, LedScene } from './LedScreen';
 
 const PHOTO = { src: '/cidade-t3-noite.webp', w: 1620, h: 971 };
 
+/**
+ * Vídeo de fundo: Goiânia em golden hour, com a logo da T3 nos telões (1280×720, 10 s,
+ * H.264 com índice no início). Até ele começar a tocar, e em "reduzir movimento" ou
+ * economia de dados, o fundo é a foto com telões e faróis animados em canvas.
+ */
+const BACKGROUND_VIDEO: { mp4: string; webm?: string; poster: string } | null = {
+    mp4: '/video/t3-cidade.mp4',
+    poster: '/video/t3-cidade-poster.webp',
+};
+
+const prefersStill = () =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+    Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+
 // Curvas da avenida na foto (pontos de controle de Bézier cúbica, em pixels da foto)
 type Curve = [number, number, number, number, number, number, number, number];
 const ROADS: { curve: Curve; color: string; trail: string; lanes: number; speed: number; until?: number }[] = [
@@ -62,6 +76,15 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     const boxRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [cover, setCover] = useState<Cover>({ scale: 1, x: 0, y: 0 });
+    const [useVideo] = useState(() => Boolean(BACKGROUND_VIDEO) && !prefersStill());
+    const [videoReady, setVideoReady] = useState(false);
+    // Depois do cross-fade, a foto e o canvas saem da árvore (e a animação para)
+    const [photoGone, setPhotoGone] = useState(false);
+    useEffect(() => {
+        if (!videoReady) return;
+        const t = window.setTimeout(() => setPhotoGone(true), 800);
+        return () => window.clearTimeout(t);
+    }, [videoReady]);
 
     // Rolagem: aproximação lenta da câmera (zoom) e leve subida
     const { scrollY } = useScroll();
@@ -165,7 +188,7 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
             ro.disconnect();
             document.removeEventListener('visibilitychange', onVisibility);
         };
-    }, [scrollY]);
+    }, [scrollY, photoGone]);
 
     // Converte um retângulo da foto para estilo absoluto na tela
     const place = (x: number, yy: number, w: number, h: number) => ({
@@ -181,7 +204,25 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
             aria-hidden="true"
             className={`pointer-events-none inset-0 -z-10 overflow-hidden bg-ink-950 ${position === 'fixed' ? 'fixed h-[100dvh]' : 'absolute'}`}
         >
-            <motion.div style={{ scale, y }} className="absolute inset-0 origin-[50%_62%]">
+            {/* Vídeo de fundo (quando configurado): substitui foto, telões e faróis desenhados */}
+            {useVideo && (
+                <motion.video
+                    style={{ scale, y }}
+                    className={`absolute inset-0 h-full w-full origin-[50%_62%] object-cover object-[80%_50%] transition-opacity md:object-center duration-700 ${videoReady ? 'opacity-100' : 'opacity-0'}`}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    poster={BACKGROUND_VIDEO!.poster}
+                    onPlaying={() => setVideoReady(true)}
+                >
+                    {BACKGROUND_VIDEO!.webm && <source src={BACKGROUND_VIDEO!.webm} type="video/webm" />}
+                    <source src={BACKGROUND_VIDEO!.mp4} type="video/mp4" />
+                </motion.video>
+            )}
+
+            {!photoGone && <motion.div style={{ scale, y }} className={`absolute inset-0 origin-[50%_62%] transition-opacity duration-700 ${videoReady ? 'opacity-0' : 'opacity-100'}`}>
                 <img
                     src={PHOTO.src}
                     alt=""
@@ -212,8 +253,12 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
                 </div>
 
                 <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-            </motion.div>
+            </motion.div>}
 
+            {/* Véu de leitura também sobre o vídeo */}
+            {videoReady && (
+                <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, rgba(11,11,12,${Math.min(1, veil + 0.3)}) 0%, rgba(11,11,12,${veil}) 45%, rgba(11,11,12,${veil * 0.35}) 100%)` }} />
+            )}
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink-950 to-transparent" />
         </div>
     );
