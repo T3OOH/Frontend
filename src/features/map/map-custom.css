@@ -97,3 +97,36 @@
 @media (max-width: 767px) {
     .leaflet-control-zoom { display: none; }
 }
+
+/* Pino da T3 (ver features/map/markers.ts) */
+.t3-marker:hover { transform: none; }
+.t3-pin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+    transition: transform 0.15s ease;
+    transform-origin: 50% 100%;
+}
+.t3-marker:hover .t3-pin { transform: translateY(-2px) scale(1.06); }
+.t3-pin__plate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    box-sizing: border-box;
+}
+.t3-pin__plate img {
+    width: 68%;
+    height: 68%;
+    object-fit: contain;
+    pointer-events: none;
+}
+.t3-pin__tip {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    margin-top: -1px;
+}

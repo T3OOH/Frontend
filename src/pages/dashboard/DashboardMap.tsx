@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { MapContainer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { BaseTiles } from '@/features/map/basemap';
-import { BRAZIL_BOUNDS, GOIANIA } from '@/features/map/markers';
+import { BRAZIL_BOUNDS, GOIANIA, MarkerTone, brandMarker } from '@/features/map/markers';
 import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
 import { useTheme } from '@/contexts/ThemeContext';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
@@ -13,12 +13,8 @@ import { crmBtn } from '@/components/app/tokens';
 const COLORS: Record<PanelStatus, string> = { AVAILABLE: '#FF5E00', OCCUPIED: '#ECECEE', RESERVED: '#B4B4B9', MAINTENANCE: '#6E6E73' };
 const LABEL: Record<PanelStatus, string> = { AVAILABLE: 'Disponível', OCCUPIED: 'Ocupado', RESERVED: 'Reservado', MAINTENANCE: 'Manutenção' };
 
-const icon = (status: PanelStatus, active: boolean) => L.divIcon({
-    className: '',
-    html: `<div style="width:${active ? 20 : 14}px;height:${active ? 20 : 14}px;background:${COLORS[status]};border:2px solid #0B0B0C;box-shadow:0 0 0 1px ${COLORS[status]}"></div>`,
-    iconSize: [active ? 20 : 14, active ? 20 : 14],
-    iconAnchor: [active ? 10 : 7, active ? 10 : 7],
-});
+const TONE: Record<PanelStatus, MarkerTone> = { AVAILABLE: 'brand', OCCUPIED: 'light', RESERVED: 'mid', MAINTENANCE: 'dim' };
+const icon = (status: PanelStatus, active: boolean) => brandMarker(TONE[status], active);
 
 /** Enquadra todos os pontos ao carregar e voa até o painel escolhido na lista. */
 function Camera({ panels, focus }: { panels: PanelData[]; focus: PanelData | null }) {
