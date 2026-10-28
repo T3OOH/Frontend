@@ -98,6 +98,76 @@
     .leaflet-control-zoom { display: none; }
 }
 
+/* Pino da T3 (ver features/map/markers.ts): o próprio logo, com um ponto no local exato */
+.t3-marker:hover { transform: none; }
+.t3-pin {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    transform-origin: 50% 100%;
+    transition: transform 0.15s ease;
+}
+.t3-marker:hover .t3-pin { transform: translateY(-3px) scale(1.08); }
+.t3-pin__logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    object-fit: contain;
+    pointer-events: none;
+    /* Contorno escuro + sombra: o logo se destaca sobre qualquer trecho do mapa */
+    filter: drop-shadow(0 0 1.5px rgba(11, 11, 12, 0.95)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+.t3-pin--muted .t3-pin__logo {
+    filter: grayscale(1) brightness(0.75) drop-shadow(0 0 1.5px rgba(11, 11, 12, 0.95)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+.t3-pin__dot {
+    position: relative;
+    display: block;
+    border: 2px solid #0B0B0C;
+    box-sizing: border-box;
+}
+.t3-pin--active .t3-pin__dot::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border: 2px solid #FF5E00;
+    animation: t3-pin-pulse 1.6s ease-out infinite;
+}
+@keyframes t3-pin-pulse {
+    from { transform: scale(0.6); opacity: 1; }
+    to { transform: scale(1.8); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .t3-pin--active .t3-pin__dot::after { animation: none; opacity: 0.8; }
+}
+.t3-pin__badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #ECECEE;
+    color: #0B0B0C;
+    font: 700 11px/1 system-ui, sans-serif;
+    border: 2px solid #0B0B0C;
+}
+
+/* Fallback sem chave de provedor: OpenStreetMap com filtro escuro ajustado.
+   hue-rotate devolve as cores certas depois do invert; saturação baixa tira o tom "neon";
+   o contraste menor evita o branco estourado das vias. */
+.t3-tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.35); }
+.t3-tiles-light { filter: saturate(0.55) contrast(0.95); }
+
+/* No celular o zoom é por pinça; os botões ficariam sobre a faixa de cards */
+@media (max-width: 767px) {
+    .leaflet-control-zoom { display: none; }
+}
+
 /* Pino da T3 (ver features/map/markers.ts) */
 .t3-marker:hover { transform: none; }
 .t3-pin {

@@ -10,26 +10,28 @@ export type MarkerTone = 'brand' | 'light' | 'mid' | 'dim';
 const TONES: Record<MarkerTone, string> = { brand: '#FF5E00', light: '#ECECEE', mid: '#B4B4B9', dim: '#6E6E73' };
 
 /**
- * Pino da T3: placa quadrada com a logo e uma ponta que marca o local exato.
- * `tone` colore a borda (situação do painel ou "no orçamento"); `active` aumenta o pino
- * e engrossa a borda laranja (a placa segue preta para a logo aparecer). Quadrado para seguir os cantos retos da interface.
+ * Pino da T3: o próprio logo "t3" em 3D, grande, com um ponto embaixo marcando o local exato.
+ * - `tone`: cor do ponto (situação do painel). Fora de "brand", o logo fica em cinza.
+ * - `active`: painel selecionado; logo maior e anel laranja pulsando no ponto.
+ * - `badge`: selo de "no orçamento".
  */
-export function brandMarker(tone: MarkerTone = 'brand', active = false) {
-    const box = active ? 44 : 34;
-    const tip = active ? 9 : 7;
+export function brandMarker(tone: MarkerTone = 'brand', active = false, badge = false) {
+    const logo = active ? 58 : 44;
+    const dot = active ? 12 : 10;
+    const height = logo + dot + 2;
     const color = TONES[tone];
+    const muted = tone === 'mid' || tone === 'dim';
     return L.divIcon({
         className: 't3-marker',
         html: `
-            <div class="t3-pin${active ? ' t3-pin--active' : ''}" style="width:${box}px">
-                <div class="t3-pin__plate" style="width:${box}px;height:${box}px;background:#0B0B0C;border-color:${active ? '#FF5E00' : color};border-width:${active ? 3 : 2}px">
-                    <img src="/t3-marker.webp" alt="" draggable="false" />
-                </div>
-                <span class="t3-pin__tip" style="border-width:${tip}px ${tip}px 0;border-top-color:${active ? '#FF5E00' : color}"></span>
+            <div class="t3-pin${active ? ' t3-pin--active' : ''}${muted ? ' t3-pin--muted' : ''}" style="width:${logo}px;height:${height}px">
+                <img class="t3-pin__logo" src="/t3-marker.webp" alt="" draggable="false" style="width:${logo}px;height:${logo}px" />
+                ${badge ? '<span class="t3-pin__badge" aria-hidden="true">✓</span>' : ''}
+                <span class="t3-pin__dot" style="width:${dot}px;height:${dot}px;background:${color}"></span>
             </div>`,
-        iconSize: [box, box + tip],
-        // A ponta encosta exatamente na coordenada
-        iconAnchor: [box / 2, box + tip],
-        popupAnchor: [0, -(box + tip) - 2],
+        iconSize: [logo, height],
+        // O centro do ponto encosta exatamente na coordenada
+        iconAnchor: [logo / 2, height - dot / 2],
+        popupAnchor: [0, -height + 4],
     });
 }
