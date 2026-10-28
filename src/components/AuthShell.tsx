@@ -2,14 +2,8 @@ import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
-import { CityScene } from '@/components/led/CityScene';
-import { LedScreen, LedScene } from '@/components/led/LedScreen';
+import { PhotoCity } from '@/components/led/PhotoCity';
 
-const AUTH_SCENES: LedScene[] = [
-    { type: 'logo', hold: 4600 },
-    { type: 'ad', lines: ['SUA MARCA', 'AQUI'], bg: '#FF5E00', fg: '#0B0B0C', hold: 3000 },
-    { type: 'ticker', text: 'PAINÉIS DE LED  •  GOIÂNIA E REGIÃO  •  T3 OOH', hold: 7000 },
-];
 
 interface AuthShellProps {
     eyebrow: string;
@@ -28,7 +22,7 @@ interface AuthShellProps {
 export function AuthShell({ eyebrow, title, subtitle, children, footer, wide }: AuthShellProps) {
     return (
         <div className="relative isolate min-h-[100dvh] text-ink-100">
-            <CityScene />
+            <PhotoCity />
 
             <div className="grid min-h-[100dvh] grid-cols-1 lg:grid-cols-[auto_1fr]">
                 <motion.section
@@ -56,22 +50,10 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, wide }: 
                     {footer && <div className="border-t border-white/[0.08] pt-6 text-sm text-ink-400">{footer}</div>}
                 </motion.section>
 
-                {/* Lado da cidade: telão em destaque com a logo */}
-                <div className="relative hidden items-center justify-center p-12 lg:flex">
-                    <motion.figure
-                        initial={{ opacity: 0, y: 24 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 100, damping: 20, delay: 0.2 }}
-                        className="w-full max-w-[640px]"
-                    >
-                        <div className="bg-[#1F1F22] p-2 ring-1 ring-white/[0.06] shadow-panel">
-                            <LedScreen scenes={AUTH_SCENES} cols={112} rows={63} label="Telão de LED com a logo da T3" className="block aspect-[16/9] w-full bg-[#121113]" />
-                        </div>
-                        <figcaption className="mt-4 flex justify-between font-mono text-[11px] uppercase tracking-[0.2em] text-ink-400">
-                            <span>Rede T3 de painéis</span>
-                            <span>Goiânia · GO</span>
-                        </figcaption>
-                    </motion.figure>
+                                {/* Lado da cidade: a própria foto, com telões e trânsito animados */}
+                <div className="relative hidden items-end justify-between p-10 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-300 lg:flex">
+                    <span>Rede T3 de painéis</span>
+                    <span>Goiânia · GO</span>
                 </div>
             </div>
         </div>

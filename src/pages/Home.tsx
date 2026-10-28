@@ -4,7 +4,6 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, MapPin, Search } from 'lucide-react';
 
 import { Seo } from '@/components/Seo';
-import { LedWall } from '@/components/led/LedWall';
 import { LedScreen, LedScene } from '@/components/led/LedScreen';
 import { panelsService, PanelData } from '@/services/panels.service';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
@@ -48,6 +47,7 @@ export function Home() {
     const { scrollYProgress } = useScroll({ target: statementRef, offset: ['start end', 'end start'] });
     const lineA = useTransform(scrollYProgress, [0, 1], ['8%', '-14%']);
     const lineB = useTransform(scrollYProgress, [0, 1], ['-12%', '6%']);
+    const skylineScale = useTransform(scrollYProgress, [0, 1], [1.18, 1]);
 
     useEffect(() => {
         let active = true;
@@ -124,7 +124,6 @@ export function Home() {
                         </div>
                     </motion.div>
 
-                    <LedWall />
                 </div>
             </section>
 
@@ -225,7 +224,17 @@ export function Home() {
             </section>
 
             {/* ============================ FRASE SOBRE A CIDADE ============================ */}
-            <section ref={statementRef} aria-label="Manifesto" className="relative overflow-hidden py-28 md:py-44">
+            <section ref={statementRef} aria-label="Manifesto" className="relative isolate overflow-hidden py-28 md:py-44">
+                {/* Skyline real de Goiânia com a logo T3, aproximando conforme a rolagem */}
+                <motion.img
+                    src="/cidade-t3.webp"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    style={{ scale: skylineScale }}
+                    className="absolute inset-0 -z-10 h-full w-full object-cover object-[50%_40%]"
+                />
+                <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-b from-ink-950 via-ink-950/45 to-ink-950" />
                 <motion.p style={{ x: lineA }} className="whitespace-nowrap text-[13vw] font-light uppercase leading-[0.9] tracking-tighter text-ink-100 md:text-[9vw]">
                     Cada avenida
                 </motion.p>
