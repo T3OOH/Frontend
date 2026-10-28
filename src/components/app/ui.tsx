@@ -5,7 +5,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { crmBtn, eyebrowCrm } from './tokens';
 
 /*
- * Peças visuais do CRM. Usam os tokens `brand-*`, que trocam entre claro e escuro
+ * Peças visuais das áreas internas (CRM e painel do gestor). Usam os tokens `brand-*`, que trocam entre claro e escuro
  * (classe `dashboard-light`), e seguem a linha do site: cantos retos, rótulos em
  * mono e o laranja só onde há ação ou destaque.
  */

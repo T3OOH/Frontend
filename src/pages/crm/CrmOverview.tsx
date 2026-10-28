@@ -7,8 +7,8 @@ import { api } from '@/lib/axios';
 import { toDateKey } from '@/lib/date';
 import { crmService, CrmDeal, CrmMetrics } from '@/services/crm.service';
 import { agendaService, Task } from '@/services/agenda.service';
-import { Badge, CrmPage, EmptyState, Panel, Skeleton, Stat } from '@/components/crm/ui';
-import { crmBtn, formatBRL, formatDate } from '@/components/crm/tokens';
+import { Badge, CrmPage, EmptyState, Panel, Skeleton, Stat } from '@/components/app/ui';
+import { crmBtn, formatBRL, formatDate } from '@/components/app/tokens';
 
 interface Order {
     id: string;

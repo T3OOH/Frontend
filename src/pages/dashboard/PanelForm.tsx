@@ -1,391 +1,257 @@
-import { useState, useEffect } from 'react';
-import { MapPin, Activity, Link as LinkIcon, Image as ImageIcon, Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
+import { ArrowLeft, ImagePlus, Star, Trash2 } from 'lucide-react';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
-import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/contexts/ThemeContext';
+import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
+import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput } from '@/components/app/tokens';
 
-const neonMarker = L.divIcon({
-    className: 'custom-marker',
-    html: `
-      <div style="background-color: #0f0f11; border: 2px solid #FF5E00; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 94, 0, 0.4); overflow: hidden;">
-          <img src="/t3-marker.webp" alt="" style="width: 22px; height: 22px; object-fit: contain;" />
-      </div>
-    `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+const marker = L.divIcon({
+    className: '',
+    html: '<div style="width:18px;height:18px;background:#FF5E00;border:3px solid #0B0B0C;box-shadow:0 0 0 1px #FF5E00"></div>',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
 });
 
-function MapClickHandler({ setPosition }: { setPosition: (pos: [number, number]) => void }) {
-    useMapEvents({ click(e) { setPosition([e.latlng.lat, e.latlng.lng]); } });
+const GOIANIA: [number, number] = [-16.6869, -49.2648];
+const MAX_IMAGES = 8;
+
+const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
+    { value: 'AVAILABLE', label: 'Disponível' },
+    { value: 'OCCUPIED', label: 'Ocupado' },
+    { value: 'RESERVED', label: 'Reservado' },
+    { value: 'MAINTENANCE', label: 'Manutenção' },
+];
+
+/** Foto já salva (url) ou escolhida agora (file + preview). */
+interface Photo { url?: string; file?: File; preview: string }
+
+const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', price: '', description: '' };
+
+function ClickToPlace({ onPick }: { onPick: (pos: [number, number]) => void }) {
+    useMapEvents({ click: (e) => onPick([e.latlng.lat, e.latlng.lng]) });
     return null;
 }
 
-function MapCenterUpdater({ lat, lng }: { lat: number; lng: number }) {
+function FollowPosition({ position }: { position: [number, number] }) {
     const map = useMap();
     useEffect(() => {
-        if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
-            try {
-                const size = map.getSize();
-                if (size.x > 0 && size.y > 0) map.setView([lat, lng], 15, { animate: true });
-            } catch (e) {
-                // Ignore silent leaflet errors on mount
-            }
-        }
-    }, [lat, lng, map]);
+        if (map.getSize().x > 0) map.setView(position, Math.max(map.getZoom(), 15), { animate: true });
+    }, [position, map]);
     return null;
+}
+
+/** Lê coordenadas de um link do Google Maps (@lat,lng ou ?q=lat,lng) ou de "lat, lng" colado. */
+function parseCoordinates(text: string): [number, number] | null {
+    const match = text.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
 }
 
 export function PanelForm() {
     const { panelId } = useParams();
-    const navigate = useNavigate();
     const isEditing = Boolean(panelId);
+    const navigate = useNavigate();
     const toast = useToast();
+    const { theme } = useTheme();
+    const fileInput = useRef<HTMLInputElement>(null);
 
-    const [currentStep, setCurrentStep] = useState<number>(1);
-    const [isLoading, setIsLoading] = useState(isEditing);
-    const [initialData, setInitialData] = useState<any>(null);
-    const [isSaving, setIsSaving] = useState(false);
-
-    // Estados do Formulário
-    const [position, setPosition] = useState<[number, number]>([-16.6869, -49.2648]);
-    const [latInput, setLatInput] = useState<string>('-16.6869');
-    const [lngInput, setLngInput] = useState<string>('-49.2648');
-    const [googleUrl, setGoogleUrl] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [status, setStatus] = useState<string>('AVAILABLE');
-    
-    // Demais dados (controlados por FormData nativo no onSubmit para otimização)
-    const [formValues, setFormValues] = useState({
-        name: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', price: ''
-    });
+    const [loading, setLoading] = useState(isEditing);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState(EMPTY);
+    const [position, setPosition] = useState<[number, number]>(GOIANIA);
+    const [coordsText, setCoordsText] = useState(`${GOIANIA[0]}, ${GOIANIA[1]}`);
+    const [photos, setPhotos] = useState<Photo[]>([]);
 
     useEffect(() => {
-        setLatInput(position[0].toString());
-        setLngInput(position[1].toString());
-    }, [position]);
-
-    const handleLatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLatInput(e.target.value);
-        const val = parseFloat(e.target.value);
-        if (!isNaN(val)) setPosition([val, position[1]]);
-    };
-
-    const handleLngChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLngInput(e.target.value);
-        const val = parseFloat(e.target.value);
-        if (!isNaN(val)) setPosition([position[0], val]);
-    };
-
-    useEffect(() => {
-        if (isEditing && panelId) {
-            const fetchPanel = async () => {
-                try {
-                    const data = await panelsService.getPanelById(panelId);
-                    setInitialData(data);
-                    if (data.status) setStatus(data.status);
-                    if (data.lat && data.lng) setPosition([data.lat, data.lng]);
-                    if (data.images && data.images[0]) setImagePreview(data.images[0]);
-                    
-                    setFormValues({
-                        name: data.name || '',
-                        city: data.city || 'Goiânia',
-                        state: data.state || 'GO',
-                        size: data.size || '',
-                        px: data.px || '',
-                        impacts: data.impacts || '',
-                        price: data.price ? String(data.price) : ''
-                    });
-                } catch (error) {
-                    toast.error("Painel não encontrado.");
-                    navigate('/dashboard/paineis');
-                } finally {
-                    setIsLoading(false);
+        if (!panelId) return;
+        panelsService.getPanelById(panelId)
+            .then((p) => {
+                setForm({
+                    name: p.name || '', status: p.status || 'AVAILABLE', address: p.address || '', city: p.city || '', state: p.state || '',
+                    size: p.size || '', px: p.px || '', impacts: p.impacts || '', price: p.price != null ? String(p.price) : '', description: p.description || '',
+                });
+                if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
+                    setPosition([p.lat, p.lng]);
+                    setCoordsText(`${p.lat}, ${p.lng}`);
                 }
-            };
-            fetchPanel();
-        }
-    }, [panelId, isEditing, navigate, toast]);
+                setPhotos((p.images || []).map((url) => ({ url, preview: url })));
+            })
+            .catch(() => { toast.error('Painel não encontrado.'); navigate('/dashboard/paineis'); })
+            .finally(() => setLoading(false));
+    }, [panelId, navigate, toast]);
 
-    const handleGoogleLinkPaste = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const url = e.target.value;
-        setGoogleUrl(url);
-        if (!url.trim()) return;
+    const set = (key: keyof typeof EMPTY) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+        setForm((f) => ({ ...f, [key]: e.target.value }));
 
-        if (url.includes('maps.app.goo.gl') || url.includes('g.page')) {
-            toast.error("Links encurtados não funcionam. Cole o link completo do navegador.");
-            return;
-        }
-
-        const match = url.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
-        if (match) {
-            setPosition([parseFloat(match[1]), parseFloat(match[2])]);
-            toast.success("Localização atualizada!");
-        }
+    const place = (pos: [number, number]) => {
+        const rounded: [number, number] = [Number(pos[0].toFixed(6)), Number(pos[1].toFixed(6))];
+        setPosition(rounded);
+        setCoordsText(`${rounded[0]}, ${rounded[1]}`);
     };
 
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
+    const onCoordsChange = (value: string) => {
+        setCoordsText(value);
+        const parsed = parseCoordinates(value);
+        if (parsed) setPosition(parsed);
     };
 
-    const handleSave = async () => {
-        setIsSaving(true);
+    const addPhotos = (e: ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        const room = MAX_IMAGES - photos.length;
+        const accepted: Photo[] = [];
+        for (const file of files) {
+            const error = validateImageFile(file);
+            if (error) { toast.error(error); continue; }
+            if (accepted.length >= room) { toast.error(`Cada painel aceita até ${MAX_IMAGES} fotos.`); break; }
+            accepted.push({ file, preview: URL.createObjectURL(file) });
+        }
+        setPhotos((prev) => [...prev, ...accepted]);
+    };
+
+    const makeCover = (i: number) => setPhotos((prev) => [prev[i], ...prev.filter((_, j) => j !== i)]);
+    const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, j) => j !== i));
+
+    const onSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (saving) return;
+        const price = form.price.trim() ? Number(form.price.replace(',', '.')) : null;
+        if (price !== null && (!Number.isFinite(price) || price < 0)) { toast.error('Preço inválido.'); return; }
+
+        setSaving(true);
         try {
-            let uploadedUrls: string[] = initialData?.images || [];
-
-            if (imageFile) {
-                // AQUI ESTÁ A CORREÇÃO: Garante que o folderId aponte para a pasta raiz "panels" 
-                // e crie uma subpasta com o ID do painel.
-                const folderId = `panels/${panelId || window.crypto.randomUUID()}`;
-                const imageUrl = await uploadImage(imageFile, folderId);
-                // A nova imagem vira a capa, preservando as fotos já cadastradas
-                uploadedUrls = [imageUrl, ...uploadedUrls.filter(url => url !== imageUrl)].slice(0, 8);
+            const folder = `panels/${panelId || window.crypto.randomUUID()}`;
+            const images: string[] = [];
+            for (const photo of photos) {
+                images.push(photo.url ?? await uploadImage(photo.file!, folder));
             }
-
-            const formattedPrice = formValues.price ? Number(formValues.price.replace(',', '.')) : null;
-
-            const panelPayload = {
-                name: formValues.name,
+            const payload = {
+                name: form.name.trim(),
+                status: form.status,
                 lat: position[0],
                 lng: position[1],
-                status: status as PanelStatus,
-                size: formValues.size,
-                px: formValues.px,
-                impacts: formValues.impacts,
-                price: formattedPrice,
-                city: formValues.city,
-                state: formValues.state.toUpperCase(),
-                images: uploadedUrls,
+                size: form.size.trim(),
+                px: form.px.trim(),
+                impacts: form.impacts.trim(),
+                price,
+                city: form.city.trim(),
+                state: form.state.trim().toUpperCase(),
+                ...(form.address.trim() && { address: form.address.trim() }),
+                ...(form.description.trim() && { description: form.description.trim() }),
+                images,
             };
-
-            if (isEditing && panelId) {
-                await panelsService.updatePanel(panelId, panelPayload);
-                toast.success("Painel atualizado com sucesso!");
-            } else {
-                await panelsService.createPanel(panelPayload);
-                toast.success("Painel criado com sucesso!");
-            }
-
+            if (isEditing && panelId) await panelsService.updatePanel(panelId, payload);
+            else await panelsService.createPanel(payload);
+            toast.success(isEditing ? 'Painel atualizado.' : 'Painel cadastrado.');
             navigate('/dashboard/paineis');
-        } catch (error: any) {
-            console.error("Erro ao salvar:", error);
-            toast.error("Falha ao salvar. Verifique os campos.");
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Não foi possível salvar o painel.'));
         } finally {
-            setIsSaving(false);
+            setSaving(false);
         }
     };
 
-    const statusOptions = [
-        { value: 'AVAILABLE', label: 'Disponível' },
-        { value: 'OCCUPIED', label: 'Ocupado' },
-        { value: 'MAINTENANCE', label: 'Manutenção' }
-    ];
-
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin" />
-            </div>
-        );
+    if (loading) {
+        return <CrmPage eyebrow="Inventário" title="Editar painel"><div className="grid gap-6 lg:grid-cols-2"><Skeleton className="h-[520px]" /><Skeleton className="h-[520px]" /></div></CrmPage>;
     }
 
-    const worldBounds: L.LatLngBoundsLiteral = [[-90, -180], [90, 180]];
-
     return (
-        <div className="w-full h-full flex flex-col relative max-w-7xl mx-auto pb-12">
-            
-            {/* HEADER */}
-            <div className="flex items-center gap-4 mb-6 shrink-0">
-                <Link aria-label="Voltar" to="/dashboard/paineis">
-                    <span className="p-2 border border-white/10 rounded-md bg-[#111113] hover:border-[#FF5E00] hover:text-[#FF5E00] transition-colors text-[#8F8F91]" aria-hidden="true">
-                        <ArrowLeft className="w-5 h-5" />
-                    </span>
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-semibold text-white tracking-tight uppercase">
-                        {isEditing ? 'Editar Ponto' : 'Cadastrar Ponto'}
-                    </h1>
-                    <p className="text-xs text-[#8F8F91] uppercase tracking-widest mt-0.5">Configure as informações do painel</p>
-                </div>
-            </div>
-
-            {/* MAIN LAYOUT SPLIT */}
-            <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-                
-                {/* WIZARD COLUMN */}
-                <div className="w-full lg:w-1/2 flex flex-col gap-6">
-                    
-                    {/* TABS DE NAVEGAÇÃO */}
-                    <div className="flex gap-2 p-1.5 bg-[#0A0A0B] border border-white/5 rounded-md shadow-inner overflow-x-auto custom-scrollbar">
-                        {[
-                            { step: 1, label: 'Básico' },
-                            { step: 2, label: 'Localização' },
-                            { step: 3, label: 'Técnico' }
-                        ].map((s) => (
-                            <button
-                                key={s.step}
-                                onClick={() => setCurrentStep(s.step)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-sm text-[10px] uppercase font-bold tracking-widest transition-colors shrink-0 ${
-                                    currentStep === s.step 
-                                        ? 'bg-[#FF5E00] text-[#0A0A0B]' 
-                                        : 'bg-transparent text-[#8F8F91] hover:bg-white/5 hover:text-white'
-                                }`}
-                            >
-                                <span>{s.step}.</span> {s.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* WIZARD CONTENT */}
-                    <div className="bg-[#111113] border border-white/5 rounded-md p-6 flex flex-col flex-1 shadow-xl">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentStep}
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex flex-col gap-5 flex-1"
-                            >
-                                {currentStep === 1 && (
-                                    <>
-                                        <div className="flex flex-col gap-1.5">
-                                            <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
-                                                <ImageIcon className="w-4 h-4 text-[#FF5E00]" /> Imagem Principal
-                                            </h2>
-                                            <label className="flex flex-col items-center justify-center w-full h-48 border border-white/10 border-dashed rounded-md cursor-pointer bg-[#0A0A0B] hover:border-[#FF5E00]/50 transition-colors relative overflow-hidden group">
-                                                {imagePreview ? (
-                                                    <>
-                                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-[#111113] border border-white/10 px-4 py-2 rounded-sm">Alterar Mídia</span>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="flex flex-col items-center justify-center px-4 text-center">
-                                                        <ImageIcon className="w-8 h-8 text-[#8F8F91] mb-2" />
-                                                        <p className="text-[11px] text-[#8F8F91] uppercase tracking-wider"><span className="text-[#FF5E00] font-bold">Clique</span> para selecionar</p>
-                                                    </div>
-                                                )}
-                                                <input type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
-                                            </label>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 mt-2">
-                                            <Input name="name" label="Identificação do Painel *" value={formValues.name} onChange={e => setFormValues({...formValues, name: e.target.value})} placeholder="Ex: Av. T-7 com T-3" required className="bg-[#0A0A0B]" />
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 mt-2 relative z-50">
-                                            <label className="text-[10px] text-[#8F8F91] uppercase tracking-widest font-bold ml-1">Status Operacional</label>
-                                            <CustomSelect options={statusOptions} value={status} onChange={setStatus} />
-                                        </div>
-                                    </>
-                                )}
-
-                                {currentStep === 2 && (
-                                    <>
-                                        <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
-                                            <MapPin className="w-4 h-4 text-[#FF5E00]" /> Endereçamento
-                                        </h2>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <Input name="city" label="Cidade *" value={formValues.city} onChange={e => setFormValues({...formValues, city: e.target.value})} required className="bg-[#0A0A0B]" />
-                                            <Input name="state" label="UF *" value={formValues.state} onChange={e => setFormValues({...formValues, state: e.target.value})} maxLength={2} required className="bg-[#0A0A0B] uppercase" />
-                                        </div>
-
-                                        <div className="relative mt-2">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <LinkIcon className="h-4 w-4 text-[#8F8F91]" />
-                                            </div>
-                                            <input type="text" placeholder="Cole o link do Google Maps para buscar as coordenadas..." value={googleUrl} onChange={handleGoogleLinkPaste} className="w-full bg-[#0A0A0B] border border-white/10 rounded-md pl-10 pr-4 py-3 text-[13px] text-white focus:border-[#FF5E00] focus:outline-none transition-colors shadow-inner" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 mt-2">
-                                            <Input name="lat" label="Latitude *" type="number" step="any" value={latInput} onChange={handleLatChange} required className="bg-[#0A0A0B]" />
-                                            <Input name="lng" label="Longitude *" type="number" step="any" value={lngInput} onChange={handleLngChange} required className="bg-[#0A0A0B]" />
-                                        </div>
-                                    </>
-                                )}
-
-                                {currentStep === 3 && (
-                                    <>
-                                        <h2 className="text-[13px] font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
-                                            <Activity className="w-4 h-4 text-[#FF5E00]" /> Ficha Técnica
-                                        </h2>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <Input name="size" label="Formato Físico *" value={formValues.size} onChange={e => setFormValues({...formValues, size: e.target.value})} placeholder="4x8m" required className="bg-[#0A0A0B]" />
-                                            <Input name="px" label="Resolução (Px) *" value={formValues.px} onChange={e => setFormValues({...formValues, px: e.target.value})} placeholder="960x1920" required className="bg-[#0A0A0B]" />
-                                            <Input name="impacts" label="Impactos Diários *" value={formValues.impacts} onChange={e => setFormValues({...formValues, impacts: e.target.value})} placeholder="400mil" required className="bg-[#0A0A0B]" />
-                                            <Input name="price" label="Valor Base Mensal (R$) *" type="number" step="0.01" value={formValues.price} onChange={e => setFormValues({...formValues, price: e.target.value})} placeholder="1500.00" required className="bg-[#0A0A0B]" />
-                                        </div>
-                                    </>
-                                )}
-                            </motion.div>
-                        </AnimatePresence>
-
-                        {/* CONTROLES DE NAVEGAÇÃO DO WIZARD */}
-                        <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between">
-                            <Button 
-                                type="button" variant="secondary" 
-                                disabled={currentStep === 1} 
-                                onClick={() => setCurrentStep(c => c - 1)}
-                                className="bg-[#0A0A0B] border-white/10 text-white rounded-sm text-[10px] uppercase font-bold tracking-widest px-6"
-                            >
-                                Voltar
-                            </Button>
-                            
-                            {currentStep < 3 ? (
-                                <Button 
-                                    type="button" 
-                                    onClick={() => setCurrentStep(c => c + 1)}
-                                    className="bg-[#111113] border-white/10 hover:border-[#FF5E00] text-white rounded-sm text-[10px] uppercase font-bold tracking-widest px-6 flex items-center gap-2"
-                                >
-                                    Avançar <ArrowRight className="w-4 h-4" />
-                                </Button>
-                            ) : (
-                                <Button 
-                                    type="button" 
-                                    onClick={handleSave}
-                                    disabled={isSaving || !formValues.name || !formValues.size || !formValues.price}
-                                    className="bg-[#FF5E00] border-none text-[#0A0A0B] rounded-sm text-[10px] uppercase font-semibold tracking-widest px-8 flex items-center gap-2 hover:bg-[#FF7A29] transition-colors"
-                                >
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                    {isSaving ? 'Salvando...' : 'Finalizar e Salvar'}
-                                </Button>
+        <CrmPage
+            eyebrow="Inventário"
+            title={isEditing ? `Editar ${form.name || 'painel'}` : 'Novo painel'}
+            description="Os dados aparecem no site, no mapa, no catálogo e nas propostas do comercial."
+            actions={<Link to="/dashboard/paineis" className={crmBtn.secondary}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Voltar</Link>}
+        >
+            <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="flex flex-col gap-6">
+                    {/* ============================ FOTOS ============================ */}
+                    <Panel title={`Fotos (${photos.length}/${MAX_IMAGES})`} bodyClassName="p-5">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {photos.map((photo, i) => (
+                                <figure key={photo.preview} className="group relative aspect-[4/3] overflow-hidden border border-brand-border bg-brand-background">
+                                    <img src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} className="h-full w-full object-cover" />
+                                    {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
+                                    <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                                        {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-1.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
+                                        <button type="button" onClick={() => removePhoto(i)} className="p-1.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
+                                    </div>
+                                </figure>
+                            ))}
+                            {photos.length < MAX_IMAGES && (
+                                <button type="button" onClick={() => fileInput.current?.click()} className="flex aspect-[4/3] flex-col items-center justify-center gap-2 border border-dashed border-brand-border text-sm text-brand-muted hover:border-brand-neon hover:text-brand-text">
+                                    <ImagePlus className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Adicionar
+                                </button>
                             )}
                         </div>
-                    </div>
+                        <input ref={fileInput} type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} aria-label="Escolher fotos" />
+                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site.</p>
+                    </Panel>
+
+                    {/* ============================ IDENTIFICAÇÃO ============================ */}
+                    <Panel title="Identificação" bodyClassName="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+                        <Field label="Nome do ponto" htmlFor="pn-name" className="sm:col-span-2">
+                            <input id="pn-name" required maxLength={160} value={form.name} onChange={set('name')} className={crmInput} placeholder="Ex.: Setor Bueno - Av. T-63" />
+                        </Field>
+                        <Field label="Situação" htmlFor="pn-status">
+                            <select id="pn-status" value={form.status} onChange={set('status')} className={crmInput}>
+                                {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </Field>
+                        <Field label="Preço base mensal (R$)" htmlFor="pn-price" hint="Sem desconto. O site aplica os descontos de prazo.">
+                            <input id="pn-price" inputMode="decimal" value={form.price} onChange={set('price')} className={`${crmInput} font-mono`} placeholder="2546,00" />
+                        </Field>
+                        <Field label="Descrição" htmlFor="pn-desc" className="sm:col-span-2" hint="Opcional. Ponto de referência, sentido do fluxo, horário de maior movimento.">
+                            <textarea id="pn-desc" rows={3} maxLength={3000} value={form.description} onChange={set('description')} className={`${crmInput} resize-y`} />
+                        </Field>
+                    </Panel>
+
+                    {/* ============================ FICHA TÉCNICA ============================ */}
+                    <Panel title="Ficha técnica" bodyClassName="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
+                        <Field label="Formato" htmlFor="pn-size"><input id="pn-size" required maxLength={80} value={form.size} onChange={set('size')} className={crmInput} placeholder="6x3 m" /></Field>
+                        <Field label="Resolução" htmlFor="pn-px"><input id="pn-px" required maxLength={80} value={form.px} onChange={set('px')} className={crmInput} placeholder="P10 · 960x480" /></Field>
+                        <Field label="Impactos por dia" htmlFor="pn-impacts"><input id="pn-impacts" required maxLength={80} value={form.impacts} onChange={set('impacts')} className={crmInput} placeholder="280 mil" /></Field>
+                    </Panel>
                 </div>
 
-                {/* MAP PREVIEW COLUMN (SEMPRE VISÍVEL) */}
-                <div className="w-full lg:w-1/2 flex flex-col h-[400px] lg:h-auto bg-[#111113] border border-white/5 rounded-md overflow-hidden shadow-xl">
-                    <div className="p-4 bg-[#0A0A0B] border-b border-white/5 shrink-0 flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#8F8F91]" />
-                        <span className="text-[10px] uppercase font-bold text-[#8F8F91] tracking-widest">Pré-visualização do Ponto</span>
-                    </div>
-                    <div className="flex-1 w-full bg-black relative z-0 [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
-                        <MapContainer center={position} zoom={15} minZoom={3} maxBounds={worldBounds} maxBoundsViscosity={1.0} className="w-full h-full outline-none absolute inset-0 z-0">
-                            <TileLayer
-                                noWrap={true}
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution='&copy; OpenStreetMap'
-                            />
-                            <Marker position={position} icon={neonMarker} />
-                            <MapClickHandler setPosition={setPosition} />
-                            <MapCenterUpdater lat={position[0]} lng={position[1]} />
-                        </MapContainer>
+                {/* ============================ LOCALIZAÇÃO ============================ */}
+                <div className="flex flex-col gap-6">
+                    <Panel title="Localização" bodyClassName="flex flex-col gap-4 p-5">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_96px]">
+                            <Field label="Cidade" htmlFor="pn-city"><input id="pn-city" required maxLength={100} value={form.city} onChange={set('city')} className={crmInput} /></Field>
+                            <Field label="UF" htmlFor="pn-state"><input id="pn-state" required maxLength={2} value={form.state} onChange={set('state')} className={`${crmInput} uppercase`} /></Field>
+                        </div>
+                        <Field label="Endereço" htmlFor="pn-address" hint="Opcional.">
+                            <input id="pn-address" maxLength={250} value={form.address} onChange={set('address')} className={crmInput} placeholder="Av. T-63 esq. com Av. T-4" />
+                        </Field>
+                        <Field label="Coordenadas" htmlFor="pn-coords" hint='Clique no mapa, ou cole "latitude, longitude" ou o link completo do Google Maps.'>
+                            <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} className={`${crmInput} font-mono ${parseCoordinates(coordsText) ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText)} />
+                        </Field>
+                        <div className={`relative h-[360px] border border-brand-border lg:h-[420px] ${theme === 'dark' ? '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.9)]' : ''}`}>
+                            <MapContainer center={position} zoom={15} minZoom={4} className="absolute inset-0 z-0">
+                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                                <Marker position={position} icon={marker} draggable eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); place([ll.lat, ll.lng]); } }} />
+                                <ClickToPlace onPick={place} />
+                                <FollowPosition position={position} />
+                            </MapContainer>
+                        </div>
+                    </Panel>
+
+                    <div className="z-10 flex flex-col-reverse gap-2 border border-brand-border bg-brand-surface p-3 sm:flex-row sm:justify-end lg:sticky lg:bottom-4">
+                        <Link to="/dashboard/paineis" className={crmBtn.secondary}>Cancelar</Link>
+                        <button type="submit" disabled={saving || !parseCoordinates(coordsText)} className={crmBtn.primary}>
+                            {saving ? (photos.some((p) => p.file) ? 'Enviando fotos…' : 'Salvando…') : isEditing ? 'Salvar alterações' : 'Cadastrar painel'}
+                        </button>
                     </div>
                 </div>
-
-            </div>
-        </div>
+            </form>
+        </CrmPage>
     );
 }

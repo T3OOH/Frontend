@@ -10,8 +10,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { CalculatedPanel, PanelWithPrice, ProposalClient, ProposalDocument } from '@/components/crm/ProposalDocument';
-import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/crm/ui';
-import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/crm/tokens';
+import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/app/tokens';
 
 interface LoadedOrder {
     id: string;

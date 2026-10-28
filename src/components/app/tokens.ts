@@ -1,4 +1,4 @@
-/* Classes e utilitários do CRM (separados dos componentes para o fast refresh). */
+/* Classes e utilitários das áreas internas (separados dos componentes para o fast refresh). */
 
 export const crmInput =
     'w-full border border-brand-border bg-brand-background px-3.5 py-2.5 text-sm text-brand-text placeholder:text-brand-muted/70 transition-colors focus:border-brand-neon focus:outline-none disabled:opacity-60';
