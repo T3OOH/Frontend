@@ -90,7 +90,7 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                     <Marker
                         key={panel.id}
                         position={[lat, lng]}
-                        icon={brandMarker(inCart ? 'light' : 'brand', active)}
+                        icon={brandMarker('brand', active, inCart)}
                         zIndexOffset={active ? 1000 : inCart ? 500 : 0}
                         eventHandlers={{ click: () => onSelect?.(panel.id) }}
                         ref={(r) => { markers.current[panel.id] = r; }}
