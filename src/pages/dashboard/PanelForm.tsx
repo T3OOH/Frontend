@@ -149,10 +149,11 @@ export function PanelForm() {
                 // e crie uma subpasta com o ID do painel.
                 const folderId = `panels/${panelId || window.crypto.randomUUID()}`;
                 const imageUrl = await uploadImage(imageFile, folderId);
-                uploadedUrls = [imageUrl];
+                // A nova imagem vira a capa, preservando as fotos já cadastradas
+                uploadedUrls = [imageUrl, ...uploadedUrls.filter(url => url !== imageUrl)].slice(0, 8);
             }
 
-            const formattedPrice = formValues.price ? Number(formValues.price.replace(',', '.')) : 0;
+            const formattedPrice = formValues.price ? Number(formValues.price.replace(',', '.')) : null;
 
             const panelPayload = {
                 name: formValues.name,

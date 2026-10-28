@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
@@ -32,16 +32,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         }, 4000);
     }, []);
 
-    const success = (msg: string) => addToast(msg, 'success');
-    const error = (msg: string) => addToast(msg, 'error');
-    const info = (msg: string) => addToast(msg, 'info');
+    // Valor estável: páginas usam o toast em dependências de efeitos sem disparar re-execuções
+    const value = useMemo<ToastContextData>(() => ({
+        addToast,
+        success: (msg: string) => addToast(msg, 'success'),
+        error: (msg: string) => addToast(msg, 'error'),
+        info: (msg: string) => addToast(msg, 'info'),
+    }), [addToast]);
 
     return (
-        <ToastContext.Provider value={{ addToast, success, error, info }}>
+        <ToastContext.Provider value={value}>
             {children}
             
             {/* CONTAINER DAS NOTIFICAÇÕES */}
-            <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none">
+            <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none">
                 <AnimatePresence>
                     {toasts.map((toast) => (
                         <motion.div
@@ -63,6 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             
                             <button 
                                 onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                                aria-label="Fechar notificação"
                                 className="text-brand-muted hover:text-white transition-colors"
                             >
                                 <X className="w-4 h-4" />

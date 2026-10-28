@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { api } from '@/lib/axios';
 import { 
@@ -21,7 +20,6 @@ interface Coupon {
 }
 
 export function CrmCoupons() {
-    const { user } = useAuth();
     const { addToast } = useToast();
     
     const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -61,8 +59,7 @@ export function CrmCoupons() {
         try {
             setIsSubmitting(true);
             await api.post('/coupons', {
-                ...formData,
-                creatorId: user?.id
+                ...formData
             });
             setIsCreating(false);
             setFormData({ code: '', discountType: 'PERCENTAGE', value: '', minValue: '', validUntil: '', singleUse: true });

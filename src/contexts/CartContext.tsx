@@ -35,8 +35,10 @@ const parseImpacts = (impactStr?: string | number): number => {
     if (!numMatch) return 0;
     
     let numStr = numMatch[0].replace(',', '.');
-    if (normalized.includes('mi') || normalized.includes('m') || normalized.includes('milh')) return parseFloat(numStr) * 1000000;
-    if (normalized.includes('k') || normalized.includes('mil')) return parseFloat(numStr) * 1000;
+    // Milhões: "1,2 milhão", "3 milhões", "2 mi", "4m". Milhares: "700 mil", "50k".
+    // (antes, qualquer "m" — inclusive de "mil" — era tratado como milhão)
+    if (/milh(ão|ao|ões|oes)|\bmi\b|\bmm\b|\d\s*m\b/.test(normalized)) return parseFloat(numStr) * 1000000;
+    if (/\bmil\b|\d\s*k\b/.test(normalized)) return parseFloat(numStr) * 1000;
     
     return parseInt(numStr.replace(/\./g, ''), 10);
 };

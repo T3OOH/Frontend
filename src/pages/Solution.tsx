@@ -9,6 +9,7 @@ import DepthCarousel from '../components/DepthCarousel';
 import { Button } from '@/components/Button';
 import { CustomSelect } from '@/components/CustomSelect';
 import { api } from '@/lib/axios';
+import { useToast } from '@/contexts/ToastContext';
 
 // ==========================================
 // MOCK DATA (Fallback caso o banco esteja vazio)
@@ -35,6 +36,7 @@ export function Solution() {
 
     // Estados do Formulário Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { addToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [formData, setFormData] = useState({
@@ -102,21 +104,24 @@ export function Solution() {
         setIsSubmitting(true);
 
         try {
-            // Chamada para a API (Substitua '/contact' pelo endpoint real se necessário)
-            await api.post('/contact', {
-                ...formData,
-                source: 'Solution_Page'
+            // A aplicação desejada segue no corpo da mensagem (o endpoint aceita apenas os campos do contato)
+            const message = [`[T3 Solution] Aplicação: ${formData.application}`, formData.message.trim()]
+                .filter(Boolean)
+                .join('\n\n');
+
+            await api.post('/contacts', {
+                name: formData.name,
+                phone: formData.phone,
+                email: formData.email,
+                company: formData.company || undefined,
+                message,
             });
             
             setIsSuccess(true);
             setFormData({ name: '', phone: '', email: '', company: '', application: '', message: '' });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao enviar contato:", error);
-            // Fallback visual caso a API não esteja pronta (simula sucesso)
-            setTimeout(() => {
-                setIsSuccess(true);
-                setFormData({ name: '', phone: '', email: '', company: '', application: '', message: '' });
-            }, 1000);
+            addToast(error.response?.data?.details?.[0]?.message || 'Não foi possível enviar sua mensagem. Tente novamente.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -379,7 +384,7 @@ export function Solution() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <form onSubmit={handleFormSubmit} className="flex flex-col gap-5">
+                                    <form id="solution-contact-form" onSubmit={handleFormSubmit} className="flex flex-col gap-5">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Nome Completo *</label>
@@ -426,7 +431,7 @@ export function Solution() {
                                 <div className="p-6 border-t border-white/5 bg-[#0A0A0B] shrink-0">
                                     <Button 
                                         type="submit" 
-                                        onClick={handleFormSubmit}
+                                        form="solution-contact-form"
                                         disabled={isSubmitting || !formData.name || !formData.phone || !formData.email || !formData.application} 
                                         className="w-full bg-[#FF5E00] py-4 rounded-sm font-black text-[#0A0A0B] hover:bg-[#e05300] text-xs uppercase tracking-widest border-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
