@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { BaseTiles } from './basemap';
 import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export interface MapPanel {
     id: string;
@@ -65,6 +66,7 @@ function Camera({ panels, selectedId }: { panels: MapPanel[]; selectedId?: strin
 
 export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, isInCart, priceLabel }: InteractiveMapProps) {
     const markers = useRef<Record<string, L.Marker | null>>({});
+    const { preferences } = useTheme();
 
     useEffect(() => {
         if (!selectedPanelId) return;
@@ -74,7 +76,8 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
 
     return (
         <MapContainer center={GOIANIA} zoom={13} minZoom={4} maxBounds={BRAZIL_BOUNDS} maxBoundsViscosity={0.8} zoomControl={false} className="h-full w-full outline-none">
-            <BaseTiles theme="dark" />
+            {/* Estilo escolhido em Perfil → Aparência (key recria a camada ao trocar) */}
+            <BaseTiles key={preferences.mapStyle} theme={preferences.mapStyle} />
             <ZoomControl position="bottomright" />
             <Camera panels={panels} selectedId={selectedPanelId} />
 
