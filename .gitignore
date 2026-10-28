@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+*.tsbuildinfo
+
+# Variáveis de ambiente (use o .env.example como modelo)
+.env
+.env.*
+!.env.example
