@@ -4,8 +4,8 @@ import { agendaService, Task } from '@/services/agenda.service';
 import { crmService } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
 import { toDateKey, dateKeyToISO } from '@/lib/date';
-import { ConfirmSheet, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/crm/ui';
-import { crmBtn, crmInput } from '@/components/crm/tokens';
+import { ConfirmSheet, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput } from '@/components/app/tokens';
 
 const WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TYPES = [

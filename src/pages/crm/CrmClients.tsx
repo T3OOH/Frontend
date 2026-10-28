@@ -4,8 +4,8 @@ import { Briefcase, FileDown, MessageCircle, Pencil, Plus, Search, Trash2 } from
 import { crmService, CrmClient, CrmDeal, CreateClientData } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
 import { downloadDealContract } from '@/lib/pdf/contract';
-import { Badge, ConfirmSheet, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/crm/ui';
-import { crmBtn, crmInput, formatBRL, formatDate, initials, whatsappUrl } from '@/components/crm/tokens';
+import { Badge, ConfirmSheet, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL, formatDate, initials, whatsappUrl } from '@/components/app/tokens';
 
 const EMPTY_FORM: CreateClientData = { name: '', company: '', email: '', phone: '', document: '', city: '' };
 

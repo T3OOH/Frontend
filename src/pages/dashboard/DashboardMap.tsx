@@ -1,203 +1,126 @@
-import { useState, useEffect } from 'react';
-import { InteractiveMap } from '@/features/map/InteractiveMap';
-import { MapPin, Loader2, Activity, BarChart2 } from 'lucide-react';
-import { panelsService } from '@/services/panels.service';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
+import { useTheme } from '@/contexts/ThemeContext';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { CrmPage, EmptyState, Skeleton, Stat } from '@/components/app/ui';
+import { crmBtn } from '@/components/app/tokens';
+
+const COLORS: Record<PanelStatus, string> = { AVAILABLE: '#FF5E00', OCCUPIED: '#ECECEE', RESERVED: '#B4B4B9', MAINTENANCE: '#6E6E73' };
+const LABEL: Record<PanelStatus, string> = { AVAILABLE: 'Disponível', OCCUPIED: 'Ocupado', RESERVED: 'Reservado', MAINTENANCE: 'Manutenção' };
+
+const icon = (status: PanelStatus, active: boolean) => L.divIcon({
+    className: '',
+    html: `<div style="width:${active ? 20 : 14}px;height:${active ? 20 : 14}px;background:${COLORS[status]};border:2px solid #0B0B0C;box-shadow:0 0 0 1px ${COLORS[status]}"></div>`,
+    iconSize: [active ? 20 : 14, active ? 20 : 14],
+    iconAnchor: [active ? 10 : 7, active ? 10 : 7],
+});
+
+/** Enquadra todos os pontos ao carregar e voa até o painel escolhido na lista. */
+function Camera({ panels, focus }: { panels: PanelData[]; focus: PanelData | null }) {
+    const map = useMap();
+    useEffect(() => {
+        if (!panels.length) return;
+        map.fitBounds(L.latLngBounds(panels.map((p) => [p.lat, p.lng] as [number, number])), { padding: [40, 40], maxZoom: 14 });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [panels.length]);
+    useEffect(() => { if (focus) map.flyTo([focus.lat, focus.lng], 16, { duration: 0.6 }); }, [focus, map]);
+    return null;
+}
 
 export function DashboardMap() {
-    const [panels, setPanels] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { theme } = useTheme();
+    const [panels, setPanels] = useState<PanelData[]>([]);
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [hidden, setHidden] = useState<Set<PanelStatus>>(new Set());
+    const [focusId, setFocusId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchPanels = async () => {
-            try {
-                setIsLoading(true);
-                const data = await panelsService.getMapMarkers();
-                setPanels(data);
-            } catch (error) {
-                console.error("Erro ao carregar os painéis:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchPanels();
-    }, []);
-
-    // 1. Contagens exatas direto dos dados (sem valores estáticos)
-    const availableCount = panels.filter((p: any) => p.status === 'AVAILABLE').length;
-    const occupiedCount = panels.filter((p: any) => p.status === 'OCCUPIED').length;
-    
-    // 2. Soma real da coluna 'impacts' do banco
-    const totalImpacts = panels.reduce((acc, p: any) => {
-        let val = p.impacts;
-        if (!val) return acc;
-        
-        // Se o banco retornar como string (ex: "700mil/dia" ou "700.000")
-        if (typeof val === 'string') {
-            // Extrai apenas os números e casas decimais
-            const numericPart = parseFloat(val.replace(/[^0-9,.]/g, '').replace(',', '.'));
-            if (isNaN(numericPart)) return acc;
-            
-            // Checa se a string contém 'mil' ou 'mi' para multiplicar pelo valor correto
-            if (val.toLowerCase().includes('mil')) {
-                return acc + (numericPart * 1000);
-            }
-            if (val.toLowerCase().includes('mi') && !val.toLowerCase().includes('mil')) {
-                return acc + (numericPart * 1000000);
-            }
-            
-            return acc + numericPart;
+    const load = async () => {
+        try {
+            setStatus('loading');
+            // Todos os painéis (o endpoint de marcadores do site só traz os disponíveis)
+            const all = await panelsService.getAllPanels();
+            setPanels(all.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)));
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
-        
-        // Se já for um número no banco
-        return acc + (Number(val) || 0);
-    }, 0);
-    
-    // 3. Formata o resultado final (ex: 1800000 -> "1,8 mi", 700000 -> "700 mil")
-    let formattedImpacts = totalImpacts.toString();
-    if (totalImpacts >= 1000000) {
-        formattedImpacts = `${(totalImpacts / 1000000).toFixed(totalImpacts % 1000000 === 0 ? 0 : 1).replace('.', ',')} mi`;
-    } else if (totalImpacts >= 1000) {
-        formattedImpacts = `${Math.floor(totalImpacts / 1000)} mil`;
-    }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const shown = useMemo(() => panels.filter((p) => !hidden.has(p.status)), [panels, hidden]);
+    const count = (s: PanelStatus) => panels.filter((p) => p.status === s).length;
+    const impacts = panels.filter((p) => p.status === 'AVAILABLE').reduce((sum, p) => sum + parseImpacts(p.impacts), 0);
+    const cities = new Set(panels.map((p) => p.city).filter(Boolean)).size;
+    const focus = panels.find((p) => p.id === focusId) ?? null;
+
+    const toggle = (s: PanelStatus) => setHidden((prev) => { const next = new Set(prev); if (next.has(s)) next.delete(s); else next.add(s); return next; });
 
     return (
-        <div className="w-full h-full flex flex-col relative gap-6">
-            
-            {/* ========================================================= */}
-            {/* DESKTOP LAYOUT (ESTILO XENITH UI)                           */}
-            {/* ========================================================= */}
-            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full gap-6">
-                
-                {/* Header Fixo */}
-                <div className="flex-shrink-0">
-                    <h1 className="text-2xl md:text-3xl font-bold text-brand-text tracking-tight mb-1 flex items-center gap-2">
-                        Mapa de Cobertura
-                    </h1>
-                    <p className="text-sm text-brand-muted font-medium">Visualize a distribuição geográfica dos seus painéis e o status operacional em tempo real.</p>
-                </div>
-
-                {/* Container do Mapa */}
-                <div className="flex-1 min-h-0 relative rounded-none overflow-hidden border border-brand-border shadow-sm bg-brand-background z-10">
-                    
-                    {isLoading ? (
-                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-background/80 backdrop-blur-sm">
-                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
-                            <p className="text-xs text-brand-muted font-bold uppercase tracking-widest">Sincronizando circuito...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <InteractiveMap panels={panels} />
-
-                            {/* Cartão de Resumo Flutuante */}
-                            <div className="absolute top-6 left-6 z-[1000] bg-brand-surface/95 backdrop-blur-md border border-brand-border p-6 rounded-none flex flex-col gap-4 min-w-[280px] shadow-lg pointer-events-auto transition-colors">
-                                <h3 className="font-bold text-brand-text text-sm flex items-center gap-2 border-b border-brand-border pb-3">
-                                    <MapPin className="w-4 h-4 text-brand-neon" />
-                                    Visão Geral do Circuito
-                                </h3>
-
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Total de Painéis</span>
-                                        <span className="font-semibold text-brand-text text-lg leading-none">{panels.length}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Disponíveis</span>
-                                        <span className="font-semibold text-brand-text text-lg leading-none">{availableCount}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider">Ocupados</span>
-                                        <span className="font-semibold text-brand-text text-lg leading-none">{occupiedCount}</span>
-                                    </div>
-                                    
-                                    <div className="h-px w-full bg-brand-border my-1" />
-                                    
-                                    {/* Impactos Diários reais vindos do Banco */}
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex justify-between items-center text-sm group">
-                                            <span className="text-brand-muted font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                                                <Activity className="w-3.5 h-3.5 text-brand-neon" />
-                                                Impactos Diários
-                                            </span>
-                                            <span className="font-semibold text-brand-text text-xl leading-none">{formattedImpacts}</span>
-                                        </div>
-                                        {totalImpacts > 0 && (
-                                            <span className="text-[#10b981] font-medium text-[11px] text-right">
-                                                +8% de alcance estimado
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
+        <CrmPage wide eyebrow="Inventário" title="Mapa da rede" description="Todos os pontos, de qualquer situação. Clique na lista para ir até o painel.">
+            <div className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border lg:grid-cols-4 [&>*]:border-0">
+                <Stat label="Painéis" value={panels.length} hint={`${cities} ${cities === 1 ? 'cidade' : 'cidades'}`} />
+                <Stat label="Disponíveis" value={count('AVAILABLE')} accent />
+                <Stat label="Ocupados ou reservados" value={count('OCCUPIED') + count('RESERVED')} />
+                <Stat label="Impactos/dia disponíveis" value={impacts ? formatImpacts(impacts) : '—'} />
             </div>
 
-            {/* ========================================================= */}
-            {/* MOBILE LAYOUT (NATIVO E FLUIDO)                             */}
-            {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col flex-1 w-full min-h-[500px]">
-                
-                {/* Header Compacto Mobile */}
-                <div className="px-4 py-3 shrink-0 bg-brand-surface border-b border-brand-border shadow-sm z-10 flex items-center justify-between transition-colors">
-                    <div>
-                        <h1 className="text-lg font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-brand-neon" /> Mapa de Cobertura
-                        </h1>
-                        <p className="text-[11px] text-brand-muted font-medium mt-0.5">Distribuição geográfica em tempo real</p>
+            {status === 'error' && <EmptyState title="Não foi possível carregar o mapa" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />}
+
+            {status !== 'error' && (
+                <div className="grid grid-cols-1 gap-px border border-brand-border bg-brand-border lg:grid-cols-[320px_minmax(0,1fr)]">
+                    <aside className="flex max-h-[640px] flex-col bg-brand-surface">
+                        <div className="flex flex-wrap gap-2 border-b border-brand-border p-3">
+                            {(Object.keys(LABEL) as PanelStatus[]).map((s) => (
+                                <button key={s} type="button" onClick={() => toggle(s)} aria-pressed={!hidden.has(s)}
+                                    className={`flex items-center gap-2 border px-2.5 py-1 text-xs ${hidden.has(s) ? 'border-brand-border text-brand-muted line-through' : 'border-brand-border text-brand-text'}`}>
+                                    <span className="h-2.5 w-2.5" style={{ background: COLORS[s] }} aria-hidden="true" /> {LABEL[s]} <span className="font-mono text-brand-muted">{count(s)}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {status === 'loading' ? (
+                            <div className="flex flex-col gap-2 p-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}</div>
+                        ) : (
+                            <ul className="custom-scrollbar flex-1 divide-y divide-brand-border overflow-y-auto">
+                                {shown.map((p) => (
+                                    <li key={p.id}>
+                                        <button type="button" onClick={() => setFocusId(p.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-brand-background ${focusId === p.id ? 'bg-brand-background' : ''}`}>
+                                            <span className="h-2.5 w-2.5 shrink-0" style={{ background: COLORS[p.status] }} aria-hidden="true" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm text-brand-text">{p.name}</span>
+                                                <span className="block truncate text-xs text-brand-muted">{LABEL[p.status]} · {[p.city, p.state].filter(Boolean).join(' - ')}</span>
+                                            </span>
+                                        </button>
+                                    </li>
+                                ))}
+                                {shown.length === 0 && <li className="p-4 text-sm text-brand-muted">Nenhum painel com esses filtros.</li>}
+                            </ul>
+                        )}
+                    </aside>
+
+                    <div className={`relative h-[480px] bg-brand-background lg:h-[640px] ${theme === 'dark' ? '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.9)]' : ''}`}>
+                        {status === 'loading' ? <Skeleton className="absolute inset-0" /> : (
+                            <MapContainer center={[-16.6869, -49.2648]} zoom={12} minZoom={4} className="absolute inset-0 z-0">
+                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                                <Camera panels={panels} focus={focus} />
+                                {shown.map((p) => (
+                                    <Marker key={p.id} position={[p.lat, p.lng]} icon={icon(p.status, p.id === focusId)} eventHandlers={{ click: () => setFocusId(p.id) }}>
+                                        <Popup>
+                                            <strong>{p.name}</strong><br />
+                                            {LABEL[p.status]} · {p.impacts || 'sem impactos'}<br />
+                                            <Link to={`/dashboard/paineis/editar/${p.id}`}>Editar painel</Link>
+                                        </Popup>
+                                    </Marker>
+                                ))}
+                            </MapContainer>
+                        )}
                     </div>
                 </div>
-
-                {/* Container do Mapa Mobile */}
-                <div className="flex-1 relative bg-brand-background transition-colors">
-                    {isLoading ? (
-                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-background/80 backdrop-blur-sm">
-                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
-                            <p className="text-xs text-brand-muted font-bold uppercase tracking-widest">Sincronizando...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <InteractiveMap panels={panels} />
-
-                            {/* Cartão de Resumo Flutuante (Bottom Sheet Style) */}
-                            <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
-                                <div className="bg-brand-surface/95 backdrop-blur-xl border border-brand-border p-4 rounded-none shadow-lg pointer-events-auto transition-colors">
-                                    
-                                    <div className="flex items-center justify-between mb-3 border-b border-brand-border pb-3">
-                                        <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-1.5">
-                                            <BarChart2 className="w-3.5 h-3.5" /> Resumo
-                                        </span>
-                                        <div className="bg-[#FF5E00]/10 px-2 py-1 rounded-md text-[10px] font-bold text-[#FF5E00]">
-                                            {panels.length} Totais
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 mb-3">
-                                        <div className="bg-brand-background p-3 rounded-none border border-brand-border flex flex-col shadow-sm">
-                                            <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Disponíveis</span>
-                                            <span className="text-lg font-semibold text-brand-text leading-none">{availableCount}</span>
-                                        </div>
-                                        <div className="bg-brand-background p-3 rounded-none border border-brand-border flex flex-col shadow-sm">
-                                            <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Ocupados</span>
-                                            <span className="text-lg font-semibold text-brand-text leading-none">{occupiedCount}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-brand-neon/10 border border-brand-neon/20 p-3 rounded-none flex justify-between items-center shadow-sm">
-                                        <span className="text-[10px] text-brand-neon font-semibold uppercase tracking-widest flex items-center gap-1.5">
-                                            <Activity className="w-3.5 h-3.5" /> Impactos/Dia
-                                        </span>
-                                        <span className="text-xl font-semibold text-brand-neon leading-none">{formattedImpacts}</span>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-
-        </div>
+            )}
+        </CrmPage>
     );
 }

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { MessageCircle, Plus, Trophy, XCircle, RotateCcw } from 'lucide-react';
 import { crmService, CrmClient, CrmDeal, DealStage, DealStatus } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
-import { CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/crm/ui';
-import { crmBtn, crmInput, formatBRL, formatDate, whatsappUrl } from '@/components/crm/tokens';
+import { CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL, formatDate, whatsappUrl } from '@/components/app/tokens';
 
 const STAGES: { id: DealStage; title: string }[] = [
     { id: 'NEW_LEAD', title: 'Novos leads' },
