@@ -453,7 +453,7 @@ export function CrmProposals() {
                 <div className={`w-full lg:w-[420px] flex flex-col relative z-10 shrink-0 ${activeTab === 'preview' ? 'flex-none' : 'flex-1 min-h-0 lg:h-full'}`}>
                     
                     {/* Navegação de Abas */}
-                    <div className="flex bg-brand-surface p-1.5 rounded-[16px] border border-brand-border mb-4 shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 transition-colors">
+                    <div className="flex bg-brand-surface p-1.5 rounded-none border border-brand-border mb-4 shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 transition-colors">
                         <button 
                             onClick={() => setActiveTab('dados')}
                             className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'dados' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
@@ -492,7 +492,7 @@ export function CrmProposals() {
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
                                     className="flex flex-col gap-5 flex-1"
                                 >
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <UserIcon className="w-4 h-4 text-brand-neon" /> Cliente da Proposta
                                         </h2>
@@ -520,7 +520,7 @@ export function CrmProposals() {
                                         )}
                                     </div>
 
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-brand-neon" /> Prazo da Campanha
                                         </h2>
@@ -543,7 +543,7 @@ export function CrmProposals() {
                                 <motion.div 
                                     key="paineis"
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
-                                    className="bg-brand-surface border border-brand-border p-5 md:p-6 rounded-[24px] flex-1 flex flex-col min-h-0 shadow-sm transition-colors"
+                                    className="bg-brand-surface border border-brand-border p-5 md:p-6 rounded-none flex-1 flex flex-col min-h-0 shadow-sm transition-colors"
                                 >
                                     <div className="flex justify-between items-center mb-5 shrink-0 px-1 border-b border-brand-border pb-4">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
@@ -565,7 +565,7 @@ export function CrmProposals() {
                                                 <div 
                                                     key={panel.id}
                                                     onClick={() => handleTogglePanel(panel.id)}
-                                                    className={`flex flex-col p-4 rounded-[20px] cursor-pointer transition-all border shadow-sm ${
+                                                    className={`flex flex-col p-4 rounded-none cursor-pointer transition-all border shadow-sm ${
                                                         isSelected 
                                                         ? 'bg-brand-neon/5 border-brand-neon/40' 
                                                         : 'bg-brand-background border-brand-border hover:border-brand-neon/50'
@@ -634,7 +634,7 @@ export function CrmProposals() {
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
                                     className="flex flex-col gap-4 md:gap-6 flex-1 overflow-y-auto custom-scrollbar"
                                 >
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] relative overflow-hidden shrink-0 shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none relative overflow-hidden shrink-0 shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                                             <Percent className="w-4 h-4 text-brand-neon" /> Desconto Global Adicional (%)
                                         </h2>
@@ -652,7 +652,7 @@ export function CrmProposals() {
                                         {Number(globalDiscount) > 0 && <div className="absolute right-0 bottom-0 w-32 h-32 bg-brand-neon/10 rounded-full blur-3xl pointer-events-none" />}
                                     </div>
 
-                                    <div className="bg-brand-surface border border-brand-neon/30 p-6 rounded-[24px] shadow-[0_0_20px_rgba(255,94,0,0.05)] shrink-0 transition-colors">
+                                    <div className="bg-brand-surface border border-brand-neon/30 p-6 rounded-none shadow-[0_0_20px_rgba(255,94,0,0.05)] shrink-0 transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-brand-border pb-3">
                                             <CreditCard className="w-4 h-4 text-[#25D366]" /> Resumo Rápido Mensal
                                         </h2>
@@ -701,7 +701,7 @@ export function CrmProposals() {
                 </div>
 
                 {/* COLUNA DIREITA: PREVIEW DO PDF */}
-                <div className={`bg-brand-surface border border-brand-border rounded-[24px] flex-col overflow-hidden relative z-0 shadow-sm transition-colors ${activeTab === 'preview' ? 'flex flex-1 min-h-[400px]' : 'hidden lg:flex lg:flex-1 lg:min-h-[500px]'}`}>
+                <div className={`bg-brand-surface border border-brand-border rounded-none flex-col overflow-hidden relative z-0 shadow-sm transition-colors ${activeTab === 'preview' ? 'flex flex-1 min-h-[400px]' : 'hidden lg:flex lg:flex-1 lg:min-h-[500px]'}`}>
                     <div className="p-5 border-b border-brand-border flex justify-between items-center shrink-0 bg-brand-background/50">
                         <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
                             <Search className="w-4 h-4 text-brand-neon" /> Pré-visualização da Proposta

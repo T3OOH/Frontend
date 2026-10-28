@@ -234,7 +234,7 @@ export function CrmLayout() {
                         <div className="flex flex-col h-full px-5 py-6 overflow-y-auto custom-scrollbar">
                             
                             {/* Card Resumo do Usuário */}
-                            <div className="bg-brand-surface border border-brand-border rounded-[24px] p-4 flex items-center gap-4 shadow-sm mb-8">
+                            <div className="bg-brand-surface border border-brand-border rounded-none p-4 flex items-center gap-4 shadow-sm mb-8">
                                 <div className="w-12 h-12 rounded-full bg-brand-neon/10 border border-brand-neon flex items-center justify-center text-brand-neon font-black text-xl shadow-sm">
                                     {user?.name?.charAt(0).toUpperCase() || 'C'}
                                 </div>

@@ -387,7 +387,7 @@ export function Orders() {
             </div>
 
             {/* Lista de Pedidos (PACOTES) */}
-            <div className="flex-1 bg-brand-surface border border-brand-border rounded-[24px] overflow-hidden flex flex-col shadow-sm">
+            <div className="flex-1 bg-brand-surface border border-brand-border rounded-none overflow-hidden flex flex-col shadow-sm">
                 
                 {/* Tabela Header (Desktop) */}
                 <div className="hidden md:grid grid-cols-12 gap-4 p-5 border-b border-brand-border bg-brand-background/50 items-center">

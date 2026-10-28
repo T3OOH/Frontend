@@ -148,7 +148,7 @@ export function UserProfile() {
             <div className="max-w-5xl mx-auto w-full relative z-10">
                 
                 {/* Profile Header */}
-                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
+                <div className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative shadow-[0_20px_60px_rgba(0,0,0,0.5)] mb-8">
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#0A0A0B] border border-white/10 flex items-center justify-center text-4xl font-black text-[#FF5E00] shadow-[0_0_30px_rgba(255,94,0,0.15)] flex-shrink-0 z-10">
                         {formData.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
@@ -189,7 +189,7 @@ export function UserProfile() {
                             key="data"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 border-b border-white/5 pb-8">
                                 <div>
@@ -258,7 +258,7 @@ export function UserProfile() {
                             key="orders"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                             transition={{ duration: 0.3 }}
-                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                            className="bg-[#111113]/60 backdrop-blur-2xl border border-white/10 rounded-none overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                         >
                             {activeOrder ? (
                                 /* ORDER DETAILS VIEW */
@@ -361,7 +361,7 @@ export function UserProfile() {
                                             {myOrders.map(order => {
                                                 const statusBadge = translateStatus(order.status);
                                                 return (
-                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-[24px] p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
+                                                    <div key={order.id} className="bg-[#0A0A0B] border border-white/5 rounded-none p-5 sm:p-6 hover:border-[#FF5E00]/30 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm hover:shadow-lg cursor-pointer" onClick={() => setActiveOrder(order)}>
                                                         <div className="flex flex-col gap-1.5 min-w-0">
                                                             <div className="flex items-center gap-4 mb-1">
                                                                 <h4 className="font-black text-white text-base truncate">#{order.id.substring(0, 6).toUpperCase()}</h4>

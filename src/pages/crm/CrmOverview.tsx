@@ -135,7 +135,7 @@ export function CrmOverview() {
             {/* METRICS GRID */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 px-4 lg:px-0">
                 {statCards.map((stat, i) => (
-                    <div key={i} className="bg-brand-surface p-4 lg:p-6 rounded-[24px] border border-brand-border shadow-sm hover:shadow-md transition-all h-[140px] lg:h-auto flex flex-col justify-between">
+                    <div key={i} className="bg-brand-surface p-4 lg:p-6 rounded-none border border-brand-border shadow-sm hover:shadow-md transition-all h-[140px] lg:h-auto flex flex-col justify-between">
                         <div className="flex justify-between items-start mb-2 lg:mb-4">
                             <div className={`p-2.5 lg:p-3 rounded-xl ${stat.bg}`}>
                                 <stat.icon className={`w-4 h-4 lg:w-5 lg:h-5 ${stat.color}`} />
@@ -153,7 +153,7 @@ export function CrmOverview() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px] px-4 lg:px-0">
                 
                 {/* FILA DE PEDIDOS DO COMERCIAL */}
-                <div className="lg:col-span-2 bg-brand-surface rounded-[24px] border border-brand-border shadow-sm flex flex-col overflow-hidden transition-colors h-[500px]">
+                <div className="lg:col-span-2 bg-brand-surface rounded-none border border-brand-border shadow-sm flex flex-col overflow-hidden transition-colors h-[500px]">
                     <div className="p-5 lg:p-6 border-b border-brand-border flex justify-between items-center bg-brand-background/50 shrink-0">
                         <div>
                             <h2 className="text-[15px] lg:text-lg font-bold text-brand-text flex items-center gap-2">
@@ -213,7 +213,7 @@ export function CrmOverview() {
                 </div>
 
                 {/* PRÓXIMOS PASSOS */}
-                <div className="lg:col-span-1 bg-brand-surface rounded-[24px] border border-brand-border shadow-sm flex flex-col transition-colors h-[500px]">
+                <div className="lg:col-span-1 bg-brand-surface rounded-none border border-brand-border shadow-sm flex flex-col transition-colors h-[500px]">
                     <div className="p-5 lg:p-6 border-b border-brand-border flex justify-between items-center bg-brand-background/50 shrink-0">
                         <h2 className="text-[15px] lg:text-lg font-bold text-brand-text">Próximos Passos</h2>
                         <span className="bg-brand-neon/10 text-brand-neon text-[9px] lg:text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest border border-brand-neon/20">Hoje</span>

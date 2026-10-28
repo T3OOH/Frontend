@@ -108,7 +108,7 @@ export function Overview() {
 
             {/* METRICS GRID (PAINÉIS) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <div className="bg-brand-surface p-5 md:p-6 rounded-[24px] border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
+                <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Painéis</span>
                         <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
@@ -118,7 +118,7 @@ export function Overview() {
                     <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{totalPanels}</h3>
                 </div>
 
-                <div className="bg-brand-surface p-5 md:p-6 rounded-[24px] border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
+                <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Livres</span>
                         <div className="p-2 rounded-xl bg-[#25D366]/10 text-[#25D366]">
@@ -128,7 +128,7 @@ export function Overview() {
                     <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{availablePanels}</h3>
                 </div>
 
-                <div className="bg-brand-surface p-5 md:p-6 rounded-[24px] border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
+                <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Ocupados</span>
                         <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
@@ -138,7 +138,7 @@ export function Overview() {
                     <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{occupiedPanels}</h3>
                 </div>
 
-                <div className="bg-brand-surface p-5 md:p-6 rounded-[24px] border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
+                <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Impactos</span>
                         <div className="p-2 rounded-xl bg-brand-neon/10 text-brand-neon">
@@ -153,7 +153,7 @@ export function Overview() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Ranking Comercial (2 Colunas) */}
-                <div className="lg:col-span-2 bg-brand-surface p-6 md:p-8 rounded-[24px] border border-brand-border shadow-sm flex flex-col h-[400px]">
+                <div className="lg:col-span-2 bg-brand-surface p-6 md:p-8 rounded-none border border-brand-border shadow-sm flex flex-col h-[400px]">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
                         <h2 className="text-base font-bold text-brand-text flex items-center gap-2">
                             <BarChart2 className="w-5 h-5 text-brand-neon" />
@@ -166,7 +166,7 @@ export function Overview() {
                     
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                         {sellerStats.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-brand-border rounded-[16px] bg-brand-background/50">
+                            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-brand-border rounded-none bg-brand-background/50">
                                 <ReceiptText className="w-8 h-8 text-brand-muted/40 mb-2" />
                                 <p className="text-sm font-medium text-brand-muted">Nenhum pacote foi finalizado (Ganho) ainda.</p>
                             </div>
@@ -196,7 +196,7 @@ export function Overview() {
                 </div>
 
                 {/* Tickets de Pedidos Recentes (1 Coluna) */}
-                <div className="lg:col-span-1 bg-brand-surface p-6 md:p-8 rounded-[24px] border border-brand-border shadow-sm flex flex-col h-[400px]">
+                <div className="lg:col-span-1 bg-brand-surface p-6 md:p-8 rounded-none border border-brand-border shadow-sm flex flex-col h-[400px]">
                     <div className="flex justify-between items-center mb-6 shrink-0">
                         <h2 className="text-base font-bold text-brand-text flex items-center gap-2">
                             <ShoppingCart className="w-5 h-5 text-brand-neon" /> Novos Tickets
@@ -208,7 +208,7 @@ export function Overview() {
                     
                     <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 pr-2">
                         {recentTickets.length === 0 ? (
-                            <div className="h-full border-2 border-dashed border-brand-border rounded-[16px] flex flex-col items-center justify-center bg-brand-background/50 text-center px-4">
+                            <div className="h-full border-2 border-dashed border-brand-border rounded-none flex flex-col items-center justify-center bg-brand-background/50 text-center px-4">
                                 <ShoppingCart className="w-8 h-8 text-brand-muted/40 mb-2" />
                                 <p className="text-sm font-medium text-brand-muted">Nenhum pedido recebido.</p>
                             </div>

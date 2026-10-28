@@ -78,7 +78,7 @@ export function DashboardMap() {
                 </div>
 
                 {/* Container do Mapa */}
-                <div className="flex-1 min-h-0 relative rounded-[24px] overflow-hidden border border-brand-border shadow-sm bg-brand-background z-10">
+                <div className="flex-1 min-h-0 relative rounded-none overflow-hidden border border-brand-border shadow-sm bg-brand-background z-10">
                     
                     {isLoading ? (
                         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-background/80 backdrop-blur-sm">
@@ -90,7 +90,7 @@ export function DashboardMap() {
                             <InteractiveMap panels={panels} />
 
                             {/* Cartão de Resumo Flutuante */}
-                            <div className="absolute top-6 left-6 z-[1000] bg-brand-surface/95 backdrop-blur-md border border-brand-border p-6 rounded-[24px] flex flex-col gap-4 min-w-[280px] shadow-lg pointer-events-auto transition-colors">
+                            <div className="absolute top-6 left-6 z-[1000] bg-brand-surface/95 backdrop-blur-md border border-brand-border p-6 rounded-none flex flex-col gap-4 min-w-[280px] shadow-lg pointer-events-auto transition-colors">
                                 <h3 className="font-bold text-brand-text text-sm flex items-center gap-2 border-b border-brand-border pb-3">
                                     <MapPin className="w-4 h-4 text-brand-neon" />
                                     Visão Geral do Circuito
@@ -162,7 +162,7 @@ export function DashboardMap() {
 
                             {/* Cartão de Resumo Flutuante (Bottom Sheet Style) */}
                             <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
-                                <div className="bg-brand-surface/95 backdrop-blur-xl border border-brand-border p-4 rounded-[24px] shadow-lg pointer-events-auto transition-colors">
+                                <div className="bg-brand-surface/95 backdrop-blur-xl border border-brand-border p-4 rounded-none shadow-lg pointer-events-auto transition-colors">
                                     
                                     <div className="flex items-center justify-between mb-3 border-b border-brand-border pb-3">
                                         <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-1.5">
@@ -174,17 +174,17 @@ export function DashboardMap() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2 mb-3">
-                                        <div className="bg-brand-background p-3 rounded-[16px] border border-brand-border flex flex-col shadow-sm">
+                                        <div className="bg-brand-background p-3 rounded-none border border-brand-border flex flex-col shadow-sm">
                                             <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Disponíveis</span>
                                             <span className="text-lg font-black text-brand-text leading-none">{availableCount}</span>
                                         </div>
-                                        <div className="bg-brand-background p-3 rounded-[16px] border border-brand-border flex flex-col shadow-sm">
+                                        <div className="bg-brand-background p-3 rounded-none border border-brand-border flex flex-col shadow-sm">
                                             <span className="text-[9px] text-brand-muted uppercase font-bold tracking-wider mb-0.5">Ocupados</span>
                                             <span className="text-lg font-black text-brand-text leading-none">{occupiedCount}</span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-brand-neon/10 border border-brand-neon/20 p-3 rounded-[16px] flex justify-between items-center shadow-sm">
+                                    <div className="bg-brand-neon/10 border border-brand-neon/20 p-3 rounded-none flex justify-between items-center shadow-sm">
                                         <span className="text-[10px] text-brand-neon font-black uppercase tracking-widest flex items-center gap-1.5">
                                             <Activity className="w-3.5 h-3.5" /> Impactos/Dia
                                         </span>

@@ -13,7 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full flex flex-col gap-1.5 text-left">
                 {label && (
-                    <label htmlFor={id} className="text-sm font-medium text-brand-muted pl-1">
+                    <label htmlFor={id} className="text-sm font-medium text-ink-300">
                         {label}
                     </label>
                 )}
@@ -26,6 +26,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     <input
                         id={id}
                         ref={ref}
+                        aria-invalid={error ? true : undefined}
+                        aria-describedby={error && id ? `${id}-erro` : undefined}
                         className={cn(
                             "w-full bg-brand-surface border border-brand-border rounded-lg px-5 py-3.5 text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-1 focus:ring-brand-neon focus:border-brand-neon transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed",
                             leftIcon && "pl-12",
@@ -41,7 +43,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         </div>
                     )}
                 </div>
-                {error && <span className="text-sm text-red-500 mt-1 pl-1">{error}</span>}
+                {error && <span id={id ? `${id}-erro` : undefined} role="alert" className="mt-1 text-sm text-red-400">{error}</span>}
             </div>
         );
     }

@@ -222,7 +222,7 @@ export function CrmPipeline() {
                             return (
                                 <div 
                                     key={stage.id} 
-                                    className={`flex flex-col w-[320px] flex-shrink-0 bg-brand-background border border-brand-border rounded-[24px] overflow-hidden transition-colors shadow-sm ${
+                                    className={`flex flex-col w-[320px] flex-shrink-0 bg-brand-background border border-brand-border rounded-none overflow-hidden transition-colors shadow-sm ${
                                         draggedDealId ? 'hover:bg-brand-surface/50 hover:border-brand-neon/50' : ''
                                     }`}
                                     onDragOver={handleDragOver}
@@ -250,7 +250,7 @@ export function CrmPipeline() {
                                                     key={deal.id} 
                                                     draggable
                                                     onDragStart={(e) => handleDragStart(e, deal.id)}
-                                                    className={`bg-brand-surface border border-brand-border p-5 rounded-[20px] cursor-grab active:cursor-grabbing hover:border-brand-neon/50 transition-all group shadow-sm ${
+                                                    className={`bg-brand-surface border border-brand-border p-5 rounded-none cursor-grab active:cursor-grabbing hover:border-brand-neon/50 transition-all group shadow-sm ${
                                                         isDragging ? 'opacity-40 border-brand-neon border-dashed' : 'opacity-100'
                                                     }`}
                                                 >
@@ -301,7 +301,7 @@ export function CrmPipeline() {
 
                                         <button 
                                             onClick={() => setIsModalOpen(true)}
-                                            className="w-full py-4 rounded-[20px] border-2 border-dashed border-brand-border text-[11px] font-bold uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-neon/50 hover:bg-brand-surface transition-colors flex items-center justify-center gap-2 mt-2"
+                                            className="w-full py-4 rounded-none border-2 border-dashed border-brand-border text-[11px] font-bold uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-neon/50 hover:bg-brand-surface transition-colors flex items-center justify-center gap-2 mt-2"
                                         >
                                             <Plus className="w-4 h-4" /> Adicionar
                                         </button>
@@ -352,7 +352,7 @@ export function CrmPipeline() {
                                         const daysInStage = calculateDaysInStage(deal.updatedAt);
                                         
                                         return (
-                                            <div key={deal.id} className="bg-brand-surface border border-brand-border p-5 rounded-[24px] flex flex-col shadow-sm transition-colors">
+                                            <div key={deal.id} className="bg-brand-surface border border-brand-border p-5 rounded-none flex flex-col shadow-sm transition-colors">
                                                 <div className="flex items-start justify-between mb-2">
                                                     <h4 className="text-[15px] font-bold text-brand-text leading-tight line-clamp-2 pr-3">
                                                         {deal.title}
@@ -367,7 +367,7 @@ export function CrmPipeline() {
                                                 </div>
                                                 <p className="text-[12px] text-brand-muted font-medium mb-4 truncate">{deal.client?.name}</p>
                                                 
-                                                <div className="flex items-center justify-between mb-4 bg-brand-background p-3.5 rounded-[16px] border border-brand-border shadow-sm">
+                                                <div className="flex items-center justify-between mb-4 bg-brand-background p-3.5 rounded-none border border-brand-border shadow-sm">
                                                     <span className="flex items-center gap-1.5 text-brand-text font-bold text-[14px]">
                                                         <DollarSign className="w-4 h-4 text-brand-neon" />
                                                         {formatCurrency(Number(deal.expectedValue))}
@@ -385,14 +385,14 @@ export function CrmPipeline() {
                                                         <select 
                                                             value={deal.stage}
                                                             onChange={(e) => changeDealStage(deal.id, e.target.value as DealStage)}
-                                                            className="w-full bg-brand-background border border-brand-border rounded-[16px] px-4 py-3.5 text-[12px] font-bold text-brand-muted focus:outline-none focus:border-brand-neon appearance-none shadow-sm transition-colors"
+                                                            className="w-full bg-brand-background border border-brand-border rounded-none px-4 py-3.5 text-[12px] font-bold text-brand-muted focus:outline-none focus:border-brand-neon appearance-none shadow-sm transition-colors"
                                                         >
                                                             {stages.map(s => (
                                                                 <option key={s.id} value={s.id}>{s.title}</option>
                                                             ))}
                                                         </select>
                                                     </div>
-                                                    <div className="flex items-center justify-center shrink-0 px-4 border border-brand-border bg-brand-background rounded-[16px] h-[46px] text-[11px] text-brand-muted font-bold gap-2 shadow-sm">
+                                                    <div className="flex items-center justify-center shrink-0 px-4 border border-brand-border bg-brand-background rounded-none h-[46px] text-[11px] text-brand-muted font-bold gap-2 shadow-sm">
                                                         <Clock className="w-4 h-4 text-brand-neon" />
                                                         {daysInStage} {daysInStage === 1 ? 'dia' : 'dias'}
                                                     </div>
@@ -415,7 +415,7 @@ export function CrmPipeline() {
             {/* ========================================================= */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center bg-brand-background/80 backdrop-blur-md p-0 lg:p-4">
-                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
+                    <div className="bg-brand-surface border-t lg:border border-brand-border rounded-t-[32px] lg:rounded-none w-full max-w-md overflow-hidden shadow-2xl animate-slide-up lg:animate-fade-in relative flex flex-col max-h-[90vh] pb-safe lg:pb-0 transition-colors">
                         
                         <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface sticky top-0 z-20">
                             <h2 className="text-xl font-bold text-brand-text flex items-center gap-2 tracking-tight">

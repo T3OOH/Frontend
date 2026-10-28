@@ -1,11 +1,12 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { Lock, Loader2, ArrowLeft, Eye, EyeOff, ShieldCheck, Mail } from 'lucide-react';
+import { Lock, Loader2, ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Seo } from '@/components/Seo';
+import { AuthShell, authInput } from '@/components/AuthShell';
 
 /**
  * Tela de redefinição de senha.
@@ -81,39 +82,22 @@ export function UpdatePassword() {
     return (
         <>
         <Seo title="Recuperar senha" description="Recupere o acesso à sua conta T3 OOH." path="/recuperar-senha" noIndex />
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#0A0A0B] relative p-4 overflow-hidden">
-            
-            {/* Background elements para manter o padrão visual da T3 */}
-            <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
-                <div className="w-[600px] h-[600px] bg-brand-neon/5 rounded-full blur-[120px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-            </div>
-
-            <div className="w-full max-w-[420px] bg-[#111113]/80 backdrop-blur-2xl border border-white/5 rounded-[24px] p-8 shadow-2xl relative z-10">
-                
-                <div className="flex justify-center mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-brand-surface border border-white/5 flex items-center justify-center shadow-inner">
-                        <ShieldCheck className="w-7 h-7 text-brand-neon" />
-                    </div>
-                </div>
-
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-white tracking-tight mb-2">
-                        {token ? 'Criar Nova Senha' : 'Recuperar Senha'}
-                    </h1>
-                    <p className="text-sm text-brand-muted leading-relaxed">
-                        {token
-                            ? 'Digite sua nova senha abaixo para recuperar o acesso à plataforma T3 OOH.'
-                            : 'Informe o e-mail da sua conta. Enviaremos um link válido por 15 minutos.'}
-                    </p>
-                </div>
-
+        <AuthShell
+            eyebrow="Acesso"
+            title={token ? <>Criar nova<br />senha</> : <>Recuperar<br />senha</>}
+            subtitle={token
+                ? 'Digite a nova senha para voltar a acessar a plataforma.'
+                : 'Informe o e-mail da sua conta. Enviaremos um link válido por 15 minutos.'}
+            footer={<Link to="/login" className="inline-flex items-center gap-1.5 hover:text-ink-100"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Voltar para o login</Link>}
+        >
                 {!token && (emailSent ? (
-                    <p role="status" className="text-sm text-center text-white/80 leading-relaxed bg-white/5 border border-white/10 rounded-xl p-4">
+                    <p role="status" className="border-l-2 border-brand-neon bg-ink-900 p-5 text-sm leading-relaxed text-ink-300">
                         Se o e-mail estiver cadastrado, você receberá o link de recuperação em instantes. Verifique também a caixa de spam.
                     </p>
                 ) : (
                     <form onSubmit={handleRequestLink} className="space-y-4">
                         <Input
+                            className={authInput}
                             id="recover-email"
                             label="E-mail"
                             type="email"
@@ -139,6 +123,7 @@ export function UpdatePassword() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative">
                         <Input
+                            className={authInput}
                             label="Nova Senha"
                             type={showPassword ? 'text' : 'password'}
                             placeholder="8+ caracteres, 1 maiúscula e 1 número"
@@ -160,6 +145,7 @@ export function UpdatePassword() {
 
                     <div className="relative">
                         <Input
+                            className={authInput}
                             label="Confirmar Nova Senha"
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Repita a nova senha"
@@ -184,17 +170,7 @@ export function UpdatePassword() {
                 </form>
                 )}
 
-                <div className="mt-8 text-center border-t border-white/5 pt-6">
-                    <Link 
-                        to="/login" 
-                        className="inline-flex items-center gap-2 text-sm font-medium text-brand-muted hover:text-white transition-colors"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Voltar para o Login
-                    </Link>
-                </div>
-            </div>
-        </div>
+        </AuthShell>
         </>
     );
 }
