@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /crm
+Disallow: /perfil
 
 Sitemap: https://t3ooh.com/sitemap.xml

@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
+import { Seo } from '@/components/Seo';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { CartProvider } from '@/contexts/CartContext'; 
@@ -44,6 +46,10 @@ const CrmProposals = lazy(() => import('@/pages/crm/CrmProposals').then(m => ({ 
 const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ default: m.CrmAgenda })));
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
 
+// Legal Views
+const Privacy = lazy(() => import('@/pages/legal/Privacy').then(m => ({ default: m.Privacy })));
+const Terms = lazy(() => import('@/pages/legal/Terms').then(m => ({ default: m.Terms })));
+
 // Auth Views
 const UpdatePassword = lazy(() => import('@/pages/UpdatePassword').then(m => ({ default: m.UpdatePassword })));
 
@@ -86,17 +92,22 @@ function PrivateRoute({ allowedRoles }: { allowedRoles?: string[] }) {
 
 function NotFound() {
     return (
+        <>
+        <Seo title="Página não encontrada" description="O endereço acessado não existe." path="/404" noIndex />
         <div className="w-full min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
             <span className="text-6xl font-black text-[#FF5E00]">404</span>
             <h1 className="text-2xl font-bold text-white">Página não encontrada</h1>
             <p className="text-[#8F8F91] max-w-md">O endereço acessado não existe ou foi removido.</p>
             <Link to="/" className="mt-2 px-6 py-3 bg-white text-[#0A0A0B] font-black uppercase tracking-widest text-xs">Voltar ao início</Link>
         </div>
+        </>
     );
 }
 
 export function AppRoutes() {
     return (
+        // reducedMotion="user": animações do Framer Motion respeitam a preferência do sistema
+        <MotionConfig reducedMotion="user">
         <ThemeProvider>
             <ToastProvider>
                 <AuthProvider>
@@ -117,6 +128,8 @@ export function AppRoutes() {
                                     <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
                                     <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} />
                                     <Route path="solution" element={<Suspense fallback={<PageLoader />}><Solution /></Suspense>} />
+                                    <Route path="privacidade" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
+                                    <Route path="termos" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
                                     <Route path="*" element={<NotFound />} />
                                 </Route>
 
@@ -183,6 +196,7 @@ export function AppRoutes() {
                     </CartProvider>
                 </AuthProvider>
             </ToastProvider>
-        </ThemeProvider> 
+        </ThemeProvider>
+        </MotionConfig>
     );
 }

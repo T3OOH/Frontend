@@ -5,6 +5,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { Seo } from '@/components/Seo';
 
 /**
  * Tela de redefinição de senha.
@@ -78,6 +79,8 @@ export function UpdatePassword() {
     };
 
     return (
+        <>
+        <Seo title="Recuperar senha" description="Recupere o acesso à sua conta T3 OOH." path="/recuperar-senha" noIndex />
         <div className="min-h-screen w-full flex items-center justify-center bg-[#0A0A0B] relative p-4 overflow-hidden">
             
             {/* Background elements para manter o padrão visual da T3 */}
@@ -192,5 +195,6 @@ export function UpdatePassword() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

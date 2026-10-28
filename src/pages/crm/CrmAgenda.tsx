@@ -16,6 +16,7 @@ import {
     X,
     Loader2
 } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 export function CrmAgenda() {
     const { addToast } = useToast();
@@ -26,6 +27,7 @@ export function CrmAgenda() {
     const [loading, setLoading] = useState(true);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
+    useEscapeKey(isModalOpen, () => setIsModalOpen(false));
     const [newTask, setNewTask] = useState({
         title: '', client: '', time: '09:00', type: 'meeting'
     });
@@ -140,8 +142,8 @@ export function CrmAgenda() {
                             <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
                                 <h2 className="text-brand-text font-bold tracking-tight capitalize text-lg">{months[month]} {year}</h2>
                                 <div className="flex gap-2">
-                                    <button onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
-                                    <button onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronRight className="w-4 h-4" /></button>
+                                    <button aria-label="Voltar" onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
+                                    <button aria-label="Avançar" onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg hover:bg-brand-background border border-transparent hover:border-brand-border"><ChevronRight className="w-4 h-4" /></button>
                                 </div>
                             </div>
 
@@ -288,7 +290,7 @@ export function CrmAgenda() {
                         </h1>
                         <p className="text-[11px] font-medium text-brand-muted mt-0.5">Seus compromissos</p>
                     </div>
-                    <button 
+                    <button aria-label="Adicionar" 
                         onClick={() => setIsModalOpen(true)}
                         className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
                     >
@@ -301,8 +303,8 @@ export function CrmAgenda() {
                     <div className="flex items-center justify-between mb-5 border-b border-brand-border pb-3">
                         <h2 className="text-brand-text font-bold tracking-tight capitalize text-[15px]">{months[month]} {year}</h2>
                         <div className="flex gap-2">
-                            <button onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
-                            <button onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronRight className="w-4 h-4" /></button>
+                            <button aria-label="Voltar" onClick={handlePrevMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronLeft className="w-4 h-4" /></button>
+                            <button aria-label="Avançar" onClick={handleNextMonth} className="p-1.5 text-brand-muted hover:text-brand-text transition-colors rounded-lg bg-brand-background border border-brand-border"><ChevronRight className="w-4 h-4" /></button>
                         </div>
                     </div>
 
@@ -422,7 +424,7 @@ export function CrmAgenda() {
                             <h3 className="text-lg font-bold text-brand-text tracking-tight flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-brand-neon" /> Novo Compromisso
                             </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-neon/50 transition-colors shadow-sm">
+                            <button aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-neon/50 transition-colors shadow-sm">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>

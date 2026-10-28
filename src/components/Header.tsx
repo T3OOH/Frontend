@@ -81,7 +81,8 @@ export function Header() {
             case 'ADMIN':
             case 'MANAGER': return 'Gestor';
             case 'COMERCIAL': return 'Comercial';
-            case 'USER': return 'Cliente';
+            case 'USER':
+            case 'COMPANY': return 'Cliente';
             default: return '';
         }
     };
@@ -126,7 +127,7 @@ export function Header() {
                                 initial={{ opacity: 0, scale: 0.8, x: -20 }}
                                 animate={{ opacity: 1, scale: 1, x: 0 }}
                                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                                src="/t3d 2.png" 
+                                src="/t3-logo.webp" 
                                 alt="Logo T3" 
                                 className="h-8 md:h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,94,0,0.15)] group-hover:drop-shadow-[0_0_20px_rgba(255,94,0,0.5)] transition-all duration-300"
                             />
@@ -186,7 +187,7 @@ export function Header() {
                         
                         {!isAuthenticated ? (
                             <Link to="/login">
-                                <Button 
+                                <Button as="span" 
                                     variant="ghost" 
                                     size="sm" 
                                     className="border border-white/10 bg-[#111113] hover:border-[#FF5E00]/50 hover:bg-[#FF5E00]/10 text-white transition-all rounded-xl shadow-sm h-10 px-5 text-xs" 
@@ -204,7 +205,7 @@ export function Header() {
                                         "w-10 h-10 rounded-full bg-[#111113]/80 border flex items-center justify-center shadow-sm backdrop-blur-md transition-all active:scale-95 group",
                                         isUserMenuOpen ? "border-[#FF5E00] shadow-[0_0_15px_rgba(255,94,0,0.2)]" : "border-white/10 hover:border-[#FF5E00]/50"
                                     )}
-                                    aria-label="User Context Menu"
+                                    aria-label="Menu da conta"
                                 >
                                     <span className="text-[#FF5E00] font-black text-sm group-hover:scale-110 transition-transform">
                                         {user?.name?.charAt(0).toUpperCase()}
@@ -242,7 +243,7 @@ export function Header() {
                                                         <Briefcase className="w-[18px] h-[18px]" /> CRM Comercial
                                                     </button>
                                                 )}
-                                                {userRole === 'USER' && (
+                                                {(userRole === 'USER' || userRole === 'COMPANY') && (
                                                     <button onClick={() => { setIsUserMenuOpen(false); navigate('/perfil'); }} className="flex items-center gap-3 w-full p-3 rounded-xl text-[13px] font-bold text-[#8F8F91] hover:text-[#FF5E00] hover:bg-[#FF5E00]/10 transition-all text-left">
                                                         <UserIcon className="w-[18px] h-[18px]" /> Meu Perfil
                                                     </button>
@@ -261,7 +262,7 @@ export function Header() {
                         )}
 
                         {/* CTA Budget Requirement */}
-                        {(!isAuthenticated || userRole === 'USER') && (
+                        {(!isAuthenticated || userRole === 'USER' || userRole === 'COMPANY') && (
                             <Button 
                                 size="sm" 
                                 className="bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_4px_15px_rgba(255,94,0,0.2)] hover:shadow-[0_6px_20px_rgba(255,94,0,0.3)] transition-all border-none h-10 px-5 ml-1" 
@@ -280,7 +281,8 @@ export function Header() {
                             type="button"
                             className="p-2 -mr-2 text-white hover:text-[#FF5E00] transition-colors relative"
                             onClick={() => setIsOpen(!isOpen)}
-                            aria-label="Toggle Navigation"
+                            aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
+                            aria-expanded={isOpen}
                         >
                             {!isOpen && isAuthenticated ? (
                                 <div className="w-8 h-8 rounded-full bg-[#FF5E00]/10 border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xs shadow-md">
@@ -312,7 +314,7 @@ export function Header() {
                             {isAuthenticated ? (
                                 <div 
                                     className="bg-[#111113] border border-white/5 rounded-[20px] p-4 flex items-center gap-4 shadow-xl mb-8 active:scale-95 transition-transform" 
-                                    onClick={() => { setIsOpen(false); navigate(userRole === 'USER' ? '/perfil' : userRole === 'COMERCIAL' ? '/crm' : '/dashboard'); }}
+                                    onClick={() => { setIsOpen(false); navigate(userRole === 'USER' || userRole === 'COMPANY' ? '/perfil' : userRole === 'COMERCIAL' ? '/crm' : '/dashboard'); }}
                                 >
                                     <div className="w-12 h-12 rounded-full bg-[#FF5E00]/10 border border-[#FF5E00]/30 flex items-center justify-center text-[#FF5E00] font-black text-xl shadow-[0_0_15px_rgba(255,94,0,0.1)]">
                                         {user?.name?.charAt(0).toUpperCase()}

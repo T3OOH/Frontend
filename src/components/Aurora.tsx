@@ -94,24 +94,47 @@ export default function Aurora({
         resizeObserver.observe(container);
 
         // 6. Loop de Animação Otimizado
-        let animationId: number;
+        // Pausa quando fora da tela ou com a aba oculta; com "reduzir movimento" desenha um único quadro.
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let animationId = 0;
+        let isVisible = true;
         const update = (t: number) => {
-            animationId = requestAnimationFrame(update);
             program.uniforms.uTime.value = t * 0.001 * speed;
             renderer.render({ scene: mesh });
+            if (!prefersReducedMotion && isVisible && !document.hidden) {
+                animationId = requestAnimationFrame(update);
+            } else {
+                animationId = 0;
+            }
+        };
+        const resume = () => {
+            if (!animationId && !prefersReducedMotion && isVisible && !document.hidden) {
+                animationId = requestAnimationFrame(update);
+            }
         };
         animationId = requestAnimationFrame(update);
+
+        const intersectionObserver = new IntersectionObserver(([entry]) => {
+            isVisible = entry.isIntersecting;
+            resume();
+        });
+        intersectionObserver.observe(container);
+        document.addEventListener('visibilitychange', resume);
 
         // 7. Unmount Seguro (Evita vazamento de memória e duplicação)
         return () => {
             cancelAnimationFrame(animationId);
+            intersectionObserver.disconnect();
+            document.removeEventListener('visibilitychange', resume);
             resizeObserver.disconnect();
             if (container && gl.canvas.parentNode === container) {
                 container.removeChild(gl.canvas);
             }
             gl.getExtension('WEBGL_lose_context')?.loseContext();
         };
-    }, [colorStops, amplitude, blend, speed]);
+        // colorStops entra pela string: um array novo a cada render não recria o contexto WebGL
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [colorStops.join(','), amplitude, blend, speed]);
 
     return <div ref={containerRef} className="w-full h-full" />;
 }

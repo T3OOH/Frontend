@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -161,5 +160,64 @@
     .ag-panel__media {
       will-change: auto;
     }
+  }
+}
+/* ========================================================= */
+/* UTILITÁRIOS USADOS NO PROJETO (antes sem definição)        */
+/* ========================================================= */
+@layer utilities {
+  .glass-panel {
+    background-color: rgb(17 17 19 / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--brand-border)) transparent;
+  }
+
+  /* Respeita a área segura de iPhones (barra inferior) */
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .animate-fade-in {
+    animation: t3-fade-in 0.4s ease-out both;
+  }
+
+  @keyframes t3-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* Tipografia das páginas institucionais (privacidade, termos) */
+.legal-content h2 {
+  @apply text-lg font-bold text-white pt-4;
+}
+.legal-content ul {
+  @apply list-disc pl-6 space-y-2;
+}
+.legal-content a {
+  @apply text-[#FF5E00] underline underline-offset-2 hover:text-white;
+}
+.legal-content strong {
+  @apply text-white font-semibold;
+}
+
+/* Foco visível para navegação por teclado */
+:focus-visible {
+  outline: 2px solid #FF5E00;
+  outline-offset: 2px;
+}
+
+/* Quem pede menos movimento no sistema não recebe animações em loop */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

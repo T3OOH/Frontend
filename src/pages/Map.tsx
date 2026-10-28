@@ -17,6 +17,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { nextSellerPhone } from '@/lib/contacts';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
+import { Seo } from '@/components/Seo';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 /**
  * Interface Component: Map Integration & Interactive Catalog
@@ -39,6 +41,7 @@ export function Map() {
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(searchParams.get('checkout') === 'true');
+    useEscapeKey(isCheckoutOpen, () => setIsCheckoutOpen(false));
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -352,6 +355,8 @@ export function Map() {
     };
 
     return (
+        <>
+        <Seo title="Mapa de painéis" description="Veja no mapa os painéis de LED e pontos de mídia OOH disponíveis, filtre por cidade e monte seu orçamento." path="/mapa" />
         <div className={
             isFullscreen 
             ? "fixed inset-0 z-[9999] flex bg-[#0A0A0B] overflow-hidden" 
@@ -359,7 +364,7 @@ export function Map() {
         }>
             
             {/* Map Engine Container */}
-            <div className="absolute inset-0 z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:hue-rotate-180 [&_.leaflet-layer]:brightness-95 [&_.leaflet-layer]:contrast-90">
+            <div className="absolute inset-0 z-0 bg-[#0A0A0B]">
                 {isLoading ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[#0A0A0B]/90">
                         <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin mb-4" />
@@ -411,7 +416,7 @@ export function Map() {
                         <div className="p-6 border-b border-white/5 bg-[#111113] flex-shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-sm font-black text-white uppercase tracking-widest">Inventário de Mídia</h2>
-                                <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 hover:bg-white/5 border border-transparent hover:border-white/10 rounded-sm text-[#8F8F91] transition-colors">
+                                <button aria-label="Voltar" onClick={() => setIsSidebarOpen(false)} className="p-1.5 hover:bg-white/5 border border-transparent hover:border-white/10 rounded-sm text-[#8F8F91] transition-colors">
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
                             </div>
@@ -464,7 +469,7 @@ export function Map() {
                                     >
                                         <div className="flex gap-4 mb-4">
                                             <div className="w-20 h-20 rounded-sm overflow-hidden flex-shrink-0 bg-black">
-                                                <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-90" />
+                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-90" />
                                             </div>
                                             
                                             <div className="flex-1 flex flex-col justify-between overflow-hidden">
@@ -534,7 +539,7 @@ export function Map() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
-                                <button type="button" onClick={() => setSearchTerm('')} className="p-1 text-[#8F8F91] hover:text-white shrink-0">
+                                <button aria-label="Fechar" type="button" onClick={() => setSearchTerm('')} className="p-1 text-[#8F8F91] hover:text-white shrink-0">
                                     <X className="w-4 h-4" />
                                 </button>
                             )}
@@ -583,7 +588,7 @@ export function Map() {
                                             }`}
                                         >
                                             <div className="w-[90px] h-full bg-black relative shrink-0">
-                                                <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90" alt={panel.name} />
+                                                <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90" alt={panel.name} />
                                                 <div className="absolute top-1 left-1 bg-[#0A0A0B]/90 px-1.5 py-0.5 rounded-sm border border-white/5 flex items-center gap-1">
                                                     <Zap className="w-2.5 h-2.5 text-[#FF5E00]" />
                                                     <span className="text-[8px] font-black text-white">{formatImpacts(panel.impacts || 0)}</span>
@@ -662,7 +667,7 @@ export function Map() {
                                     <><Send className="w-4 h-4 text-[#25D366]" /> Enviar Orçamento</>
                                 )}
                             </h2>
-                            <button type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white bg-[#0A0A0B] p-2 rounded-sm border border-white/5 transition-colors">
+                            <button aria-label="Fechar" type="button" onClick={() => { setIsCheckoutOpen(false); setCheckoutStep('cart'); }} className="text-[#8F8F91] hover:text-white bg-[#0A0A0B] p-2 rounded-sm border border-white/5 transition-colors">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -680,7 +685,7 @@ export function Map() {
                                         {cart.map((p, i) => (
                                             <div key={p.id} className="flex gap-4 p-4 bg-[#111113] border border-white/5 rounded-sm relative">
                                                 <div className="w-5 h-5 absolute -top-2 -left-2 bg-[#FF5E00] text-black font-black text-[10px] rounded-sm flex items-center justify-center shadow-md z-10">{i + 1}</div>
-                                                <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="w-16 h-16 rounded-sm object-cover bg-black" />
+                                                <img src={p.images?.[0] || '/placeholder.svg'} alt={p.name} className="w-16 h-16 rounded-sm object-cover bg-black" />
                                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                     <h4 className="text-xs font-bold text-white leading-tight mb-1 truncate">{p.name}</h4>
                                                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#8F8F91] mb-3 flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.city}</p>
@@ -824,5 +829,6 @@ export function Map() {
             </AnimatePresence>
 
         </div>
+        </>
     );
 }

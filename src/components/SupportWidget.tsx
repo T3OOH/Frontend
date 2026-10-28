@@ -67,7 +67,7 @@ export function SupportWidget({ systemName = "T3 OOH", clientName = "Cliente" }:
                                     <p className="text-[10px] text-[#8F8F91] font-medium">Inovação e Tecnologia</p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="text-[#8F8F91] hover:text-white transition-colors relative z-10">
+                            <button aria-label="Fechar" onClick={() => setIsOpen(false)} className="text-[#8F8F91] hover:text-white transition-colors relative z-10">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

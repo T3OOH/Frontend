@@ -32,7 +32,7 @@ const customMarker = L.divIcon({
     className: 'custom-marker',
     html: `
       <div style="background-color: rgba(17, 17, 19, 0.9); backdrop-filter: blur(4px); border: 2px solid rgba(255, 94, 0, 0.4); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 94, 0, 0.2); overflow: hidden; transition: all 0.3s ease;">
-          <img src="/t3d 2.png" alt="T3" style="width: 20px; height: 20px; object-fit: contain; opacity: 0.9;" />
+          <img src="/t3-marker.webp" alt="" style="width: 20px; height: 20px; object-fit: contain; opacity: 0.9;" />
       </div>
     `,
     iconSize: [36, 36],
@@ -44,7 +44,7 @@ const selectedMarker = L.divIcon({
     className: 'custom-marker-selected',
     html: `
       <div style="background-color: #111113; border: 2px solid #FF5E00; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(255, 94, 0, 0.6), inset 0 0 10px rgba(255, 94, 0, 0.2); z-index: 1000;">
-          <img src="/t3d 2.png" alt="T3" style="width: 26px; height: 26px; object-fit: contain;" />
+          <img src="/t3-marker.webp" alt="" style="width: 26px; height: 26px; object-fit: contain;" />
       </div>
     `,
     iconSize: [48, 48],
@@ -130,7 +130,7 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
                 maxBounds={worldBounds}
                 maxBoundsViscosity={1.0}
                 // Filtro Balanceado: Inverte para escuro, tira a cor (grayscale), ajusta o brilho e dá um leve contraste
-                className="w-full h-full outline-none z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-10 [&_.leaflet-layer]:contrast-125"
+                className="w-full h-full outline-none z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-[0.85] [&_.leaflet-layer]:contrast-125"
                 zoomControl={false}
             >
                 {/* Mantendo o OpenStreetMap gratuito como solicitado */}
@@ -164,7 +164,7 @@ export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps)
 
                                     <div className="relative h-36 w-full shrink-0">
                                         <img
-                                            src={panel.images?.[0] || '/placeholder.jpg'}
+                                            src={panel.images?.[0] || '/placeholder.svg'}
                                             alt={panel.name}
                                             className="w-full h-full object-cover"
                                         />

@@ -25,7 +25,7 @@ export default function AccordionGallery({ panels }: { panels: any[] }) {
                     >
                         {/* Imagem de Fundo */}
                         <img 
-                            src={panel.images?.[0] || '/placeholder.jpg'} 
+                            src={panel.images?.[0] || '/placeholder.svg'} 
                             className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${isActive ? 'scale-105' : 'scale-100'}`} 
                             alt={panel.name} 
                         />
