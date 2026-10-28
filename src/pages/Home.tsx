@@ -4,17 +4,13 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, MapPin, Search } from 'lucide-react';
 
 import { Seo } from '@/components/Seo';
-import { LedScreen, LedScene } from '@/components/led/LedScreen';
+import { CtaBand, btnOnOrange } from '@/components/CtaBand';
+import { btnDark } from '@/lib/ui';
 import { panelsService, PanelData } from '@/services/panels.service';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 
 /** Desconto do plano de 12 meses (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
-
-const CTA_SCENES: LedScene[] = [
-    { type: 'ticker', text: 'SEU ANÚNCIO NOS TELÕES DA T3  •  PLANO ANUAL COM ATÉ 30% DE DESCONTO', hold: 12000 },
-    { type: 'logo', hold: 2600 },
-];
 
 const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
 
@@ -260,8 +256,8 @@ export function Home() {
                         {STEPS.map((step, i) => (
                             <motion.li
                                 key={step.title}
-                                initial={{ opacity: 0, x: 20 }}
-                                whileInView={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0, y: 16 }}
+                                whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: '-80px' }}
                                 transition={{ ...spring, delay: i * 0.08 }}
                                 className="grid grid-cols-[4rem_1fr] gap-4 border-b border-ink-950/15 py-10 md:grid-cols-[7rem_1fr] md:py-12"
@@ -278,24 +274,12 @@ export function Home() {
             </section>
 
             {/* ============================ CHAMADA FINAL (seção laranja) ============================ */}
-            <section className="bg-brand-neon text-ink-950">
-                <div className="bg-ink-950 p-2">
-                    <LedScreen scenes={CTA_SCENES} cols={240} rows={18} label="Letreiro de LED" className="block h-14 w-full md:h-20" />
-                </div>
-                <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-end gap-10 px-4 py-20 md:px-8 md:py-28 lg:grid-cols-[1fr_auto]">
-                    <h2 className="text-5xl font-semibold uppercase leading-[0.9] tracking-tighter md:text-8xl">
-                        Pronto para<br />aparecer?
-                    </h2>
-                    <div className="flex flex-wrap gap-3">
-                        <Link to="/mapa" className="inline-flex items-center gap-2 bg-ink-950 px-6 py-4 text-sm font-semibold text-ink-100 transition-colors hover:bg-ink-800 active:translate-y-px">
-                            Montar meu pacote <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-                        </Link>
-                        <Link to="/contato" className="inline-flex items-center border border-ink-950/40 px-6 py-4 text-sm font-semibold text-ink-950 transition-colors hover:border-ink-950 active:translate-y-px">
-                            Falar com o comercial
-                        </Link>
-                    </div>
-                </div>
-            </section>
+            <CtaBand title={<>Pronto para<br />aparecer?</>}>
+                <Link to="/mapa" className={btnDark}>
+                    Montar meu pacote <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                </Link>
+                <Link to="/contato" className={btnOnOrange}>Falar com o comercial</Link>
+            </CtaBand>
         </>
     );
 }
