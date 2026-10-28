@@ -1,9 +1,9 @@
 import { ComponentType, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeftRight, Globe, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeftRight, Globe, LogOut, Menu, Moon, Sun, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAvatarClass, useTheme } from '@/contexts/ThemeContext';
 import { roleLabel } from '@/lib/roles';
 
 export interface ShellNavItem {
@@ -30,6 +30,7 @@ interface AppShellProps {
 export function AppShell({ area, nav, switchTo }: AppShellProps) {
     const { signOut, user } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const avatarClass = useAvatarClass();
     const navigate = useNavigate();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -85,11 +86,14 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                     <Link to="/" className={secondary}>
                         <Globe className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Site público
                     </Link>
+                    <Link to="/perfil" className={secondary}>
+                        <UserRound className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Meu perfil
+                    </Link>
                     <button type="button" onClick={toggleTheme} className={`${secondary} text-left`}>
                         <ThemeIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {themeLabel}
                     </button>
                     <div className="mt-2 flex items-center gap-3 border-t border-brand-border px-3 pt-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-brand-neon font-mono text-xs font-semibold text-ink-950" aria-hidden="true">
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center font-mono text-xs font-semibold ${avatarClass}`} aria-hidden="true">
                             {user?.name?.charAt(0).toUpperCase() || 'T'}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -156,7 +160,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                             <button type="button" aria-label="Fechar" onClick={() => setMenuOpen(false)} className="p-3 text-brand-muted hover:text-brand-text"><X className="h-5 w-5" strokeWidth={1.75} /></button>
                         </div>
                         <div className="flex items-center gap-3 border-b border-brand-border px-4 py-4">
-                            <span className="flex h-10 w-10 items-center justify-center bg-brand-neon font-mono font-semibold text-ink-950" aria-hidden="true">{user?.name?.charAt(0).toUpperCase() || 'T'}</span>
+                            <span className={`flex h-10 w-10 items-center justify-center font-mono font-semibold ${avatarClass}`} aria-hidden="true">{user?.name?.charAt(0).toUpperCase() || 'T'}</span>
                             <div className="min-w-0">
                                 <p className="truncate font-medium">{user?.name || 'Equipe T3'}</p>
                                 <p className="text-sm text-brand-muted">{roleLabel(user?.role)}</p>
@@ -170,6 +174,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                             ))}
                             {switchTo && <Link to={switchTo.to} className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><ArrowLeftRight className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}</Link>}
                             <Link to="/" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><Globe className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Site público</Link>
+                            <Link to="/perfil" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><UserRound className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Meu perfil</Link>
                         </nav>
                         <div className="mt-auto border-t border-brand-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <button type="button" onClick={handleLogout} className="flex w-full items-center justify-center gap-2 border border-brand-border py-3 text-sm text-brand-text">

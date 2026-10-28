@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { LedScreen, LedScene } from './LedScreen';
+import { useTheme } from '@/contexts/ThemeContext';
 
 /**
  * Fundo realista: foto real de Goiânia com
@@ -87,7 +88,11 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     const boxRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [cover, setCover] = useState<Cover>({ scale: 1, x: 0, y: 0 });
-    const [useVideo] = useState(() => Boolean(BACKGROUND_VIDEO) && !prefersStill());
+    // Perfil → Aparência: a pessoa pode trocar o vídeo pela foto e pedir menos movimento
+    const { preferences } = useTheme();
+    const [deviceStill] = useState(prefersStill);
+    const useVideo = Boolean(BACKGROUND_VIDEO) && !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
+    const reducedByUser = preferences.motion === 'reduced';
     const [videoReady, setVideoReady] = useState(false);
     // Depois do cross-fade, a foto e o canvas saem da árvore (e a animação para)
     const [photoGone, setPhotoGone] = useState(false);
@@ -96,6 +101,12 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
         const t = window.setTimeout(() => setPhotoGone(true), 800);
         return () => window.clearTimeout(t);
     }, [videoReady]);
+    // Trocou para a foto no perfil: ela volta para a tela
+    useEffect(() => {
+        if (useVideo) return;
+        setVideoReady(false);
+        setPhotoGone(false);
+    }, [useVideo]);
 
     // Rolagem: aproximação lenta da câmera (zoom) e leve subida
     const { scrollY } = useScroll();
@@ -108,7 +119,7 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
         if (!box || !canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const reduceMotion = reducedByUser || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         let W = 0, H = 0, c = coverFor(1, 1);
         const resize = () => {
@@ -199,7 +210,7 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
             ro.disconnect();
             document.removeEventListener('visibilitychange', onVisibility);
         };
-    }, [scrollY, photoGone]);
+    }, [scrollY, photoGone, reducedByUser]);
 
     // Converte um retângulo da foto para estilo absoluto na tela
     const place = (x: number, yy: number, w: number, h: number) => ({

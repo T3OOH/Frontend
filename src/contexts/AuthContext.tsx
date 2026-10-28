@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
 import { api, AUTH_STORAGE_KEY } from '@/lib/axios';
 
 export interface User {
@@ -6,6 +6,8 @@ export interface User {
     name: string;
     email: string;
     role: 'USER' | 'ADMIN' | 'MANAGER' | 'COMERCIAL' | 'COMPANY';
+    /** Personalização visual salva na conta (ver ThemeContext). */
+    preferences?: Record<string, unknown> | null;
 }
 
 interface StoredSession {
@@ -18,6 +20,10 @@ interface AuthContextData {
     isAuthenticated: boolean;
     signIn: (token: string, user: User) => void;
     signOut: () => void;
+    /** Atualiza dados do usuário na sessão atual (ex.: preferências salvas no perfil). */
+    updateUser: (patch: Partial<User>) => void;
+    /** Entra (ou cria a conta) com a credencial devolvida pelo botão do Google. */
+    signInWithGoogle: (credential: string) => Promise<{ created: boolean }>;
     
     // Novas funções do fluxo de autenticação e recuperação
     registerUser: (email: string, password: string, name: string) => Promise<void>;
@@ -77,6 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(nextSession);
     };
 
+    const updateUser = useCallback((patch: Partial<User>) => {
+        setSession((current) => {
+            if (!current) return current;
+            const next = { ...current, user: { ...current.user, ...patch } };
+            window.sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const signInWithGoogle = async (credential: string) => {
+        const { data } = await api.post('/auth/google', { credential });
+        signIn(data.token, data.user);
+        return { created: Boolean(data.created) };
+    };
+
     /**
      * Encerra a sessão do usuário, limpando os dados locais e redirecionando para o login.
      */
@@ -122,6 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 isAuthenticated: Boolean(session),
                 signIn,
                 signOut,
+                updateUser,
+                signInWithGoogle,
                 registerUser,
                 sendPasswordResetEmail,
                 updatePassword,

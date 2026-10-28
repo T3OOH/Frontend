@@ -245,3 +245,13 @@
 
 /* Evita o "flash" azul do toque no Android/iOS; o estado ativo já é visual */
 html { -webkit-tap-highlight-color: transparent; }
+
+/* Perfil → Aparência → "Menos movimento": desliga animações e transições de CSS no site todo */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

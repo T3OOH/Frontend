@@ -13,6 +13,7 @@ import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { z } from 'zod';
 import { Seo } from '@/components/Seo';
 import { AuthShell, authInput } from '@/components/AuthShell';
+import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { btnPrimary } from '@/lib/ui';
 
 // ==========================================
@@ -176,6 +177,8 @@ export function Register() {
                         <p className="mt-2 text-sm leading-relaxed text-ink-400">Você já pode entrar com seu e-mail e senha. Redirecionando para o login…</p>
                     </motion.div>
                 ) : (
+                    <>
+                    <GoogleSignIn mode="signup" />
                     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
                         <fieldset>
                             <legend className="mb-2 text-sm font-medium text-ink-300">Tipo de conta</legend>
@@ -280,6 +283,7 @@ export function Register() {
                             a <Link to="/privacidade" className="underline underline-offset-2 hover:text-ink-100">Política de Privacidade</Link>.
                         </p>
                     </form>
+                    </>
                 )}
             </AuthShell>
         </>

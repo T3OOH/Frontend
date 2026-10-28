@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
-import { MotionConfig } from 'framer-motion';
 import { Seo } from '@/components/Seo';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
@@ -106,11 +105,11 @@ function NotFound() {
 
 export function AppRoutes() {
     return (
-        // reducedMotion="user": animações do Framer Motion respeitam a preferência do sistema
-        <MotionConfig reducedMotion="user">
-        <ThemeProvider>
-            <ToastProvider>
-                <AuthProvider>
+        // ThemeProvider (preferências visuais) fica dentro do AuthProvider: sincroniza com a conta
+        // e controla o MotionConfig (segue o sistema ou o "menos movimento" do perfil)
+        <ToastProvider>
+            <AuthProvider>
+                <ThemeProvider>
                     <CartProvider>
                         <BrowserRouter>
                             {/* 
@@ -194,9 +193,8 @@ export function AppRoutes() {
 
                         </BrowserRouter>
                     </CartProvider>
-                </AuthProvider>
-            </ToastProvider>
-        </ThemeProvider>
-        </MotionConfig>
+                </ThemeProvider>
+            </AuthProvider>
+        </ToastProvider>
     );
 }

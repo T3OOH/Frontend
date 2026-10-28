@@ -1,8 +1,11 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, MessageCircle, Pencil } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MessageCircle, Pencil, RotateCcw } from 'lucide-react';
 import { DEFAULT_SALES_PHONE } from '@/lib/contacts';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { AVATAR_COLORS, Preferences, usePreferences, useAvatarClass } from '@/contexts/ThemeContext';
+import { roleLabel } from '@/lib/roles';
 import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
@@ -39,11 +42,129 @@ const maskPhone = (value: string) => {
     return v ? `(${v}` : '';
 };
 
+type Option<K extends keyof Preferences> = { value: Preferences[K]; label: string };
+type Group = { [K in keyof Preferences]: { key: K; title: string; hint: string; options: Option<K>[]; staffOnly?: boolean } }[keyof Preferences];
+
+const GROUPS: Group[] = [
+    { key: 'background', title: 'Fundo do site', hint: 'O vídeo da cidade ou a foto animada, mais leve. No celular o site usa sempre a foto.', options: [{ value: 'video', label: 'Vídeo da cidade' }, { value: 'still', label: 'Foto animada' }] },
+    { key: 'motion', title: 'Movimento', hint: 'Menos movimento desliga animações, transições e o vídeo de fundo.', options: [{ value: 'full', label: 'Completo' }, { value: 'reduced', label: 'Menos movimento' }] },
+    { key: 'textSize', title: 'Tamanho do texto', hint: 'Aumenta textos e espaçamentos do site inteiro.', options: [{ value: 'default', label: 'Padrão' }, { value: 'large', label: 'Maior' }] },
+    { key: 'mapStyle', title: 'Mapa de painéis', hint: 'Cor do mapa na página de painéis.', options: [{ value: 'dark', label: 'Escuro' }, { value: 'light', label: 'Claro' }] },
+    { key: 'theme', title: 'Tema da Gestão e do CRM', hint: 'Cor das áreas internas da equipe.', options: [{ value: 'dark', label: 'Escuro' }, { value: 'light', label: 'Claro' }], staffOnly: true },
+];
+
+function Appearance({ isStaff, initial }: { isStaff: boolean; initial: string }) {
+    const { preferences, setPreference, resetPreferences } = usePreferences();
+    const { isAuthenticated } = useAuth();
+    const { addToast } = useToast();
+    const avatarClass = useAvatarClass();
+    const [savedAt, setSavedAt] = useState<number | null>(null);
+
+    const change = async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
+        try {
+            await setPreference(key, value);
+            setSavedAt(Date.now());
+        } catch {
+            addToast('A mudança vale neste navegador, mas não foi salva na sua conta. Tente de novo.', 'error');
+        }
+    };
+
+    const reset = async () => {
+        try {
+            await resetPreferences();
+            setSavedAt(Date.now());
+        } catch {
+            addToast('Não foi possível restaurar na sua conta. Tente de novo.', 'error');
+        }
+    };
+
+    return (
+        <div className="mt-6 border border-white/[0.08] bg-ink-950/90">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] p-5 md:px-8">
+                <p className="max-w-[56ch] text-sm text-ink-400">
+                    As escolhas mudam o site na hora e ficam salvas na sua conta: valem em qualquer aparelho em que você entrar.
+                </p>
+                <p aria-live="polite" className="flex items-center gap-1.5 font-mono text-xs text-ink-500">
+                    {savedAt && isAuthenticated && <><Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" /> Salvo</>}
+                </p>
+            </div>
+
+            <div className="divide-y divide-white/[0.08]">
+                {GROUPS.filter((g) => !g.staffOnly || isStaff).map((group) => (
+                    <div key={group.key} className="grid gap-3 p-5 md:grid-cols-[1fr_auto] md:items-center md:gap-8 md:px-8">
+                        <div>
+                            <p id={`pref-${group.key}`} className="text-sm text-ink-100">{group.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-ink-500">{group.hint}</p>
+                        </div>
+                        <div role="radiogroup" aria-labelledby={`pref-${group.key}`} className="grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08] md:w-80">
+                            {(group.options as Option<keyof Preferences>[]).map((opt) => {
+                                const active = preferences[group.key] === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={active}
+                                        onClick={() => !active && change(group.key, opt.value)}
+                                        className={`min-h-11 px-3 py-2.5 text-sm transition-colors ${active ? 'bg-ink-900 text-ink-100 shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-ink-950 text-ink-400 hover:text-ink-100'}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+
+                <div className="grid gap-3 p-5 md:grid-cols-[1fr_auto] md:items-center md:gap-8 md:px-8">
+                    <div className="flex items-center gap-4">
+                        <span className={`flex h-11 w-11 shrink-0 items-center justify-center font-mono text-lg font-semibold ${avatarClass}`} aria-hidden="true">{initial}</span>
+                        <div>
+                            <p id="pref-avatar" className="text-sm text-ink-100">Cor do avatar</p>
+                            <p className="mt-1 text-xs leading-relaxed text-ink-500">Aparece no menu da conta e nas áreas internas.</p>
+                        </div>
+                    </div>
+                    <div role="radiogroup" aria-labelledby="pref-avatar" className="flex flex-wrap gap-2 md:w-80 md:justify-end">
+                        {(Object.keys(AVATAR_COLORS) as Preferences['avatarColor'][]).map((color) => {
+                            const active = preferences.avatarColor === color;
+                            return (
+                                <button
+                                    key={color}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={active}
+                                    aria-label={AVATAR_COLORS[color].label}
+                                    title={AVATAR_COLORS[color].label}
+                                    onClick={() => !active && change('avatarColor', color)}
+                                    className={`flex h-11 w-11 items-center justify-center ${AVATAR_COLORS[color].className} ${active ? 'outline outline-2 outline-offset-2 outline-ink-100' : 'opacity-70 hover:opacity-100'}`}
+                                >
+                                    {active && <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end border-t border-white/[0.08] p-5 md:px-8">
+                <button type="button" onClick={reset} className={btnGhost}>
+                    <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Restaurar padrão
+                </button>
+            </div>
+        </div>
+    );
+}
+
 const field = 'w-full border border-white/15 bg-ink-900 px-4 py-3.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-brand-neon focus:outline-none disabled:border-white/[0.06] disabled:bg-ink-950 disabled:text-ink-400';
 
 export function UserProfile() {
     const { addToast } = useToast();
-    const [tab, setTab] = useState<'data' | 'orders'>('data');
+    const { user } = useAuth();
+    const avatarClass = useAvatarClass();
+    // Equipe (gestão e comercial) não faz orçamentos pelo site: vê dados e aparência
+    const isStaff = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'COMERCIAL';
+    const [tab, setTab] = useState<'data' | 'orders' | 'appearance'>('data');
+    const [googleLinked, setGoogleLinked] = useState(false);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -55,7 +176,7 @@ export function UserProfile() {
     const load = useCallback(async () => {
         try {
             setStatus('loading');
-            const [profile, list] = await Promise.all([profileService.getProfile(), profileService.getMyOrders()]);
+            const [profile, list] = await Promise.all([profileService.getProfile(), isStaff ? Promise.resolve([]) : profileService.getMyOrders()]);
             const data = {
                 name: profile.name || '',
                 email: profile.email || '',
@@ -64,12 +185,13 @@ export function UserProfile() {
             };
             setForm(data);
             setSaved(data);
+            setGoogleLinked(Boolean(profile.googleLinked));
             setOrders(Array.isArray(list) ? list : []);
             setStatus('ready');
         } catch {
             setStatus('error');
         }
-    }, []);
+    }, [isStaff]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -104,19 +226,22 @@ export function UserProfile() {
             <section className="mx-auto max-w-[1000px] px-4 pb-20 pt-10 md:px-8 md:pt-16">
                 {/* ============================ CABEÇALHO ============================ */}
                 <header className="flex items-center gap-4 border-b border-white/[0.08] pb-8 md:gap-6">
-                    <span className="flex h-16 w-16 shrink-0 items-center justify-center bg-brand-neon font-mono text-2xl font-semibold text-ink-950 md:h-20 md:w-20 md:text-3xl" aria-hidden="true">
+                    <span className={`flex h-16 w-16 shrink-0 items-center justify-center font-mono text-2xl font-semibold md:h-20 md:w-20 md:text-3xl ${avatarClass}`} aria-hidden="true">
                         {(saved.name || 'U').charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                        <p className={eyebrow}>Minha conta</p>
+                        <p className={`${eyebrow} flex flex-wrap items-center gap-2`}>
+                            Minha conta
+                            <span className="border border-white/15 px-1.5 py-0.5 text-[10px] tracking-[0.15em] text-ink-300">{roleLabel(user?.role)}</span>
+                        </p>
                         <h1 className="mt-2 truncate text-3xl font-light uppercase leading-none tracking-tight text-ink-100 md:text-5xl">{saved.name || 'Meu perfil'}</h1>
                         <p className="mt-2 truncate text-sm text-ink-400">{[saved.companyName, saved.email].filter(Boolean).join(' · ')}</p>
                     </div>
                 </header>
 
                 {/* ============================ ABAS ============================ */}
-                <div role="tablist" aria-label="Seções do perfil" className="mt-6 grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08]">
-                    {([['data', 'Meus dados'], ['orders', `Meus orçamentos`]] as const).map(([id, label]) => (
+                <div role="tablist" aria-label="Seções do perfil" className={`mt-6 grid gap-px border border-white/[0.08] bg-white/[0.08] ${isStaff ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                    {([['data', 'Meus dados'], ...(isStaff ? [] : [['orders', 'Orçamentos']] as const), ['appearance', 'Aparência']] as const).map(([id, label]) => (
                         <button key={id} role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setOpen(null); }}
                             className={`flex items-center justify-center gap-2 px-4 py-3 text-sm transition-colors ${tab === id ? 'bg-ink-900 text-ink-100 shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-ink-950 text-ink-400 hover:text-ink-100'}`}>
                             {label} {id === 'orders' && status === 'ready' && <span className="font-mono text-xs text-ink-500">{orders.length}</span>}
@@ -124,9 +249,11 @@ export function UserProfile() {
                     ))}
                 </div>
 
-                {status === 'loading' && <div className="mt-6 flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse bg-ink-900" />)}</div>}
+                {tab === 'appearance' && <Appearance isStaff={isStaff} initial={(saved.name || user?.name || 'U').charAt(0).toUpperCase()} />}
 
-                {status === 'error' && (
+                {status === 'loading' && tab !== 'appearance' && <div className="mt-6 flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse bg-ink-900" />)}</div>}
+
+                {status === 'error' && tab !== 'appearance' && (
                     <div className="mt-6 border border-dashed border-white/15 p-8">
                         <p className="text-ink-100">Não foi possível carregar seu perfil</p>
                         <button type="button" onClick={load} className={`mt-4 ${btnGhost}`}>Tentar de novo</button>
@@ -144,6 +271,7 @@ export function UserProfile() {
                             <div>
                                 <label htmlFor="pf-email" className="mb-2 block text-sm text-ink-300">E-mail <span className="text-ink-500">(não pode ser alterado)</span></label>
                                 <input id="pf-email" type="email" disabled value={form.email} className={field} />
+                                {googleLinked && <p className="mt-2 text-xs text-ink-500">Conta ligada ao Google: você também pode entrar com o botão do Google.</p>}
                             </div>
                             <div>
                                 <label htmlFor="pf-phone" className="mb-2 block text-sm text-ink-300">WhatsApp</label>
