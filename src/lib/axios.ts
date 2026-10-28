@@ -9,7 +9,12 @@ export const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401 && typeof window !== 'undefined') {
+        const isAuthRequest = String(error.config?.url ?? '').startsWith('/auth/');
+        const hadSession = Boolean(error.config?.headers?.Authorization);
+
+        // Só derruba a sessão quando um token existente foi recusado.
+        // Erros de login/reset (/auth/*) são tratados pela própria tela.
+        if (error.response?.status === 401 && hadSession && !isAuthRequest && typeof window !== 'undefined') {
             delete api.defaults.headers.common.Authorization;
             window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
             window.location.assign('/login');

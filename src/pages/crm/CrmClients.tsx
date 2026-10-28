@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, Plus, MoreVertical, Mail, Phone, Calendar, ArrowUpRight, MapPin, X, Loader2, Edit2, Trash2, Briefcase, Users, FileDown, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { crmService, CrmClient, CreateClientData } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
@@ -34,6 +34,7 @@ export function CrmClients() {
     });
 
     const { addToast } = useToast();
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchData();
@@ -144,9 +145,15 @@ export function CrmClients() {
         setIsProfileOpen(true);
     };
 
-    const handleNewDeal = (client: CrmClient) => {
-        addToast(`Iniciando nova oportunidade para ${client.name}...`, 'success');
+    const handleNewDeal = async (client: CrmClient) => {
         setOpenDropdownId(null);
+        try {
+            await crmService.createDeal({ clientId: client.id, title: `Nova oportunidade - ${client.name}`, expectedValue: 0 });
+            addToast(`Oportunidade criada para ${client.name}.`, 'success');
+            navigate('/crm/pipeline');
+        } catch (error: any) {
+            addToast(error.response?.data?.error || 'Não foi possível criar a oportunidade.', 'error');
+        }
     };
 
     // =========================================================

@@ -7,14 +7,8 @@ import { Input } from '@/components/Input';
 import { Textarea } from '@/components/Textarea';
 import { contactSchema, ContactFormData } from '@/schemas/contact.schema';
 import { Link } from 'react-router-dom';
+import { ATTENDANTS } from '@/lib/contacts';
 
-/**
- * Domain constants for WhatsApp routing.
- */
-const ATTENDANTS = [
-    { id: 'victor', name: 'Victor Hugo', fullName: 'Victor Hugo Dourado', phone: '556293206010' },
-    { id: 'lucas', name: 'Lucas Dourado', fullName: 'Lucas Dourado', phone: '556492832807' }
-];
 
 /**
  * Contact Component
@@ -185,7 +179,7 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8F8F91] ml-0.5">Especificações (Opcional)</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#8F8F91] ml-0.5">Especificações *</label>
                             <Textarea
                                 placeholder="Descreva os objetivos da campanha, rotas de interesse ou dúvidas pontuais..."
                                 error={errors.message?.message}

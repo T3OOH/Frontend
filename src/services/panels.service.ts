@@ -1,11 +1,12 @@
 import { api } from '../lib/axios';
 
-export type PanelStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+export type PanelStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED';
 
 export const panelStatusLabel: Record<PanelStatus, string> = {
     AVAILABLE: 'Disponível',
     OCCUPIED: 'Ocupado',
     MAINTENANCE: 'Em manutenção',
+    RESERVED: 'Reservado',
 };
 export interface PanelData {
     id: string;

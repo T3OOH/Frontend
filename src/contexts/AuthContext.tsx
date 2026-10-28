@@ -5,7 +5,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    role: 'USER' | 'ADMIN' | 'MANAGER';
+    role: 'USER' | 'ADMIN' | 'MANAGER' | 'COMERCIAL' | 'COMPANY';
 }
 
 interface StoredSession {
@@ -38,6 +38,13 @@ function readSession(): StoredSession | null {
 
         const session = JSON.parse(serialized) as StoredSession;
         if (!session.token || !session.user) return null;
+
+        // Descarta sessões com JWT expirado (evita exibir telas restritas sem acesso real)
+        const payload = JSON.parse(atob(session.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
+            window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+            return null;
+        }
         return session;
     } catch {
         window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
@@ -104,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     /**
      * Envia a nova senha para o backend após o usuário acessar o link seguro.
      */
-    const updatePassword = async (password: string) => {
-        await api.post('/auth/reset-password', { password });
+    const updatePassword = async (password: string, token: string) => {
+        await api.post('/auth/reset-password', { token, password });
     };
 
     return (

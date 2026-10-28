@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext'; // <-- Adicionado o Contexto de Tema
 import { 
@@ -24,6 +25,7 @@ export function CrmLayout() {
     const { theme, toggleTheme } = useTheme(); // Puxa o tema atual e a função de trocar
     const navigate = useNavigate();
     const location = useLocation();
+    const isDesktop = useIsDesktop();
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -155,7 +157,7 @@ export function CrmLayout() {
             {/* ÁREA CENTRAL DESKTOP */}
             <main className="hidden lg:flex flex-1 flex-col h-screen overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <Outlet />
+                    {isDesktop && <Outlet />}
                 </div>
             </main>
 
@@ -168,7 +170,7 @@ export function CrmLayout() {
                 <div className="sticky top-0 z-40 bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border px-4 py-3 flex items-center justify-between shadow-sm pt-[env(safe-area-inset-top,12px)] transition-colors duration-300">
                     <div className="flex items-center gap-3">
                         <img 
-                            src={theme === 'dark' ? "/t3d 2.png" : "/logo-preta.png"} // <-- NOME DA SUA LOGO PRETA AQUI
+                            src={theme === 'dark' ? "/t3d 2.png" : "/T3 Black.png"}
                             alt="T3 Logo" 
                             className="h-7 w-auto object-contain" 
                         />
@@ -183,7 +185,7 @@ export function CrmLayout() {
 
                 {/* Área de Rolagem do Conteúdo. */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar pb-[100px]">
-                    <Outlet />
+                    {!isDesktop && <Outlet />}
                 </div>
 
                 {/* Bottom Navigation Nativa */}

@@ -100,6 +100,12 @@ export function Users() {
         { value: 'ADMIN', label: 'Administrador Geral' }
     ];
 
+    // Apenas ADMIN concede o perfil ADMIN ou altera outro ADMIN (regra também aplicada no backend)
+    const isAdmin = currentUser?.role === 'ADMIN';
+    const assignableRoles = isAdmin ? roleOptions : roleOptions.filter(option => option.value !== 'ADMIN');
+    const isRoleLocked = (target: { id: string; role: string }) =>
+        target.id === currentUser?.id || (!isAdmin && target.role === 'ADMIN');
+
     const filterOptions = [
         { value: '', label: 'Todos os Cargos' },
         ...roleOptions
@@ -207,7 +213,7 @@ export function Users() {
                                                         <Loader2 className="w-4 h-4 animate-spin" />
                                                         Atualizando...
                                                     </div>
-                                                ) : user.id === currentUser?.id ? (
+                                                ) : isRoleLocked(user) ? (
                                                     /* Solução do Erro TypeScript: Mostra um bloqueio visual ao invés de passar disabled para o componente */
                                                     <div className="flex items-center gap-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest px-4 py-3 bg-brand-background border border-brand-border rounded-md w-52 justify-center cursor-not-allowed">
                                                         Acesso Bloqueado
@@ -215,7 +221,7 @@ export function Users() {
                                                 ) : (
                                                     <div className="w-52">
                                                         <CustomSelect
-                                                            options={roleOptions}
+                                                            options={assignableRoles}
                                                             value={user.role}
                                                             onChange={(value: string) => handleRoleChange(user.id, value as 'USER' | 'ADMIN' | 'MANAGER' | 'COMERCIAL')}
                                                         />
@@ -316,14 +322,14 @@ export function Users() {
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                             Atualizando...
                                         </div>
-                                    ) : user.id === currentUser?.id ? (
+                                    ) : isRoleLocked(user) ? (
                                         <div className="flex items-center justify-center h-12 text-[10px] font-bold text-brand-muted uppercase tracking-widest bg-brand-background border border-brand-border rounded-md cursor-not-allowed">
                                             Acesso Bloqueado
                                         </div>
                                     ) : (
                                         <div className="bg-brand-background rounded-md border border-brand-border">
                                             <CustomSelect
-                                                options={roleOptions}
+                                                options={assignableRoles}
                                                 value={user.role}
                                                 onChange={(value: string) => handleRoleChange(user.id, value as 'USER' | 'ADMIN' | 'MANAGER' | 'COMERCIAL')}
                                             />

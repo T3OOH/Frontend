@@ -1,5 +1,7 @@
+import { toDateKey, dateKeyToISO } from '@/lib/date';
 import { useState, useEffect, useMemo } from 'react';
 import { agendaService, Task } from '@/services/agenda.service';
+import { useToast } from '@/contexts/ToastContext';
 import { 
     Calendar as CalendarIcon, 
     Clock, 
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export function CrmAgenda() {
+    const { addToast } = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     
@@ -48,6 +51,7 @@ export function CrmAgenda() {
             setTasks(data);
         } catch (error) {
             console.error("Erro ao buscar tarefas", error);
+            addToast('Não foi possível carregar a agenda.', 'error');
         } finally {
             setLoading(false);
         }
@@ -57,7 +61,8 @@ export function CrmAgenda() {
         fetchTasks();
     }, []);
 
-    const selectedDateString = selectedDate.toISOString().split('T')[0];
+    // Datas locais: toISOString() mudaria o dia após as 21h no horário de Brasília
+    const selectedDateString = toDateKey(selectedDate);
     const filteredTasks = useMemo(() => {
         return tasks.filter(t => t.date.startsWith(selectedDateString));
     }, [tasks, selectedDateString]);
@@ -70,6 +75,7 @@ export function CrmAgenda() {
             await agendaService.toggleTaskStatus(id, newStatus);
         } catch (error) {
             console.error("Erro ao atualizar status", error);
+            addToast('Não foi possível atualizar a tarefa.', 'error');
             fetchTasks(); 
         }
     };
@@ -79,13 +85,14 @@ export function CrmAgenda() {
         try {
             const createdTask = await agendaService.createTask({
                 ...newTask,
-                date: selectedDate.toISOString()
+                date: dateKeyToISO(selectedDateString)
             });
-            setTasks([...tasks, createdTask]);
+            setTasks(prev => [...prev, createdTask]);
             setIsModalOpen(false);
             setNewTask({ title: '', client: '', time: '09:00', type: 'meeting' });
         } catch (error) {
             console.error("Erro ao criar tarefa", error);
+            addToast('Não foi possível criar a tarefa.', 'error');
         }
     };
 
@@ -153,7 +160,7 @@ export function CrmAgenda() {
                                     const loopDate = new Date(year, month, day);
                                     const isSelected = loopDate.toDateString() === selectedDate.toDateString();
                                     const isToday = loopDate.toDateString() === new Date().toDateString();
-                                    const dateString = loopDate.toISOString().split('T')[0];
+                                    const dateString = toDateKey(loopDate);
                                     const hasEvent = tasks.some(t => t.date.startsWith(dateString));
 
                                     return (
@@ -314,7 +321,7 @@ export function CrmAgenda() {
                             const loopDate = new Date(year, month, day);
                             const isSelected = loopDate.toDateString() === selectedDate.toDateString();
                             const isToday = loopDate.toDateString() === new Date().toDateString();
-                            const dateString = loopDate.toISOString().split('T')[0];
+                            const dateString = toDateKey(loopDate);
                             const hasEvent = tasks.some(t => t.date.startsWith(dateString));
 
                             return (

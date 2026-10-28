@@ -68,6 +68,11 @@ export function CrmPipeline() {
             return;
         }
 
+        if (formData.title.trim().length < 3) {
+            toast.error('O título deve ter ao menos 3 caracteres.');
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             await crmService.createDeal(formData);
