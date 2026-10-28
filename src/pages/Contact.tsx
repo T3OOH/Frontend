@@ -78,18 +78,13 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                 
                 {/* Left Column: Brand Positioning & Hero Text */}
                 <div className="w-full lg:w-1/2 flex flex-col justify-center">
-                    <img 
-                        src="/t3-logo.webp" 
-                        alt="T3 OOH Logo" 
-                        className="h-24 md:h-32 lg:h-40 w-auto object-contain mb-8 origin-left opacity-90"
-                    />
-                    
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] mb-6">
-                        Fale com um<br />Especialista
+                    <p className="mb-6 font-mono text-[11px] uppercase tracking-[0.25em] text-[#8F8F91]">Contato comercial</p>
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-light uppercase text-white tracking-tight leading-[1.1] mb-6">
+                        Fale com<br />o comercial
                     </h1>
                     
                     <p className="text-base md:text-lg text-[#8F8F91] leading-relaxed mb-10 max-w-lg font-medium">
-                        Impacto visual ininterrupto. Gerencie a exibição da sua marca nos pontos de maior fluxo da cidade. Insira seus dados e inicie o atendimento imediato.
+                        Conte o que você quer anunciar e para quem. A mensagem chega direto no WhatsApp do atendente escolhido.
                     </p>
 
                     <div className="flex items-center gap-4">
@@ -99,7 +94,7 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                                 className="border border-white/10 bg-[#111113] text-white hover:bg-white/5 hover:border-white/20 rounded-sm px-8 py-6 uppercase tracking-widest text-xs font-bold transition-all"
                                 rightIcon={<ArrowRight className="w-4 h-4 text-[#FF5E00]" />}
                             >
-                                Explorar Inventário
+                                Ver painéis no mapa
                             </Button>
                         </Link>
                     </div>
@@ -196,7 +191,7 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                             <Button
                                 type="submit"
                                 size="lg"
-                                className="w-full bg-[#25D366] hover:bg-[#1eb858] text-[#0A0A0B] font-black border-none uppercase tracking-widest text-xs h-14 rounded-sm transition-colors"
+                                className="w-full bg-[#FF5E00] hover:bg-[#FF7A29] text-[#0A0A0B] font-black border-none uppercase tracking-widest text-xs h-14 rounded-sm transition-colors"
                                 rightIcon={<Send className="w-4 h-4" />}
                             >
                                 Iniciar Atendimento Via WhatsApp

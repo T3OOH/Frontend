@@ -82,7 +82,7 @@ export function Users() {
     const roleColors = {
         ADMIN: 'bg-red-500/10 text-red-500 border-red-500/20',
         MANAGER: 'bg-brand-neon/10 text-brand-neon border-brand-neon/20',
-        COMERCIAL: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+        COMERCIAL: 'bg-brand-text/5 text-brand-text border-brand-border',
         USER: 'bg-brand-background text-brand-muted border-brand-border'
     };
 

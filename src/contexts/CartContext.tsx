@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import { parseImpacts } from '@/lib/impacts';
 
 export interface Panel {
     id: string;
@@ -27,21 +28,6 @@ interface CartContextData {
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
-const parseImpacts = (impactStr?: string | number): number => {
-    if (!impactStr) return 0;
-    if (typeof impactStr === 'number') return impactStr;
-    const normalized = String(impactStr).toLowerCase().trim();
-    const numMatch = normalized.match(/[\d.,]+/);
-    if (!numMatch) return 0;
-    
-    let numStr = numMatch[0].replace(',', '.');
-    // Milhões: "1,2 milhão", "3 milhões", "2 mi", "4m". Milhares: "700 mil", "50k".
-    // (antes, qualquer "m" — inclusive de "mil" — era tratado como milhão)
-    if (/milh(ão|ao|ões|oes)|\bmi\b|\bmm\b|\d\s*m\b/.test(normalized)) return parseFloat(numStr) * 1000000;
-    if (/\bmil\b|\d\s*k\b/.test(normalized)) return parseFloat(numStr) * 1000;
-    
-    return parseInt(numStr.replace(/\./g, ''), 10);
-};
 
 export function CartProvider({ children }: { children: ReactNode }) {
     const [cart, setCart] = useState<Panel[]>(() => {

@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     totalValue: { fontSize: 10, color: '#111113', fontWeight: 'bold' },
     grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid #DDDDDD' },
     grandTotalText: { fontSize: 12, color: '#111113', fontWeight: 'bold' },
-    grandTotalValue: { fontSize: 14, color: '#25D366', fontWeight: 'bold' },
+    grandTotalValue: { fontSize: 14, color: '#FF5E00', fontWeight: 'bold' },
     
     imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 15 },
     imageCard: { width: '48%', marginBottom: 10 },
@@ -440,7 +440,7 @@ export function CrmProposals() {
                 <Button 
                     onClick={handleDownloadPDF} 
                     disabled={!currentClient || calculatedPanels.length === 0}
-                    className="bg-[#25D366] hover:brightness-110 text-[#0A0A0B] border-none font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 md:h-12 px-4 md:px-6 rounded-xl"
+                    className="bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] border-none font-semibold uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 md:h-12 px-4 md:px-6 rounded-xl"
                 >
                     <Download className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">Baixar </span>PDF
                 </Button>
@@ -453,7 +453,7 @@ export function CrmProposals() {
                 <div className={`w-full lg:w-[420px] flex flex-col relative z-10 shrink-0 ${activeTab === 'preview' ? 'flex-none' : 'flex-1 min-h-0 lg:h-full'}`}>
                     
                     {/* Navegação de Abas */}
-                    <div className="flex bg-brand-surface p-1.5 rounded-[16px] border border-brand-border mb-4 shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 transition-colors">
+                    <div className="flex bg-brand-surface p-1.5 rounded-none border border-brand-border mb-4 shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 transition-colors">
                         <button 
                             onClick={() => setActiveTab('dados')}
                             className={`min-w-[90px] flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors ${activeTab === 'dados' ? 'bg-brand-neon text-[#0A0A0B] shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-brand-background'}`}
@@ -492,7 +492,7 @@ export function CrmProposals() {
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
                                     className="flex flex-col gap-5 flex-1"
                                 >
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <UserIcon className="w-4 h-4 text-brand-neon" /> Cliente da Proposta
                                         </h2>
@@ -520,7 +520,7 @@ export function CrmProposals() {
                                         )}
                                     </div>
 
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4 text-brand-neon" /> Prazo da Campanha
                                         </h2>
@@ -543,7 +543,7 @@ export function CrmProposals() {
                                 <motion.div 
                                     key="paineis"
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
-                                    className="bg-brand-surface border border-brand-border p-5 md:p-6 rounded-[24px] flex-1 flex flex-col min-h-0 shadow-sm transition-colors"
+                                    className="bg-brand-surface border border-brand-border p-5 md:p-6 rounded-none flex-1 flex flex-col min-h-0 shadow-sm transition-colors"
                                 >
                                     <div className="flex justify-between items-center mb-5 shrink-0 px-1 border-b border-brand-border pb-4">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
@@ -565,7 +565,7 @@ export function CrmProposals() {
                                                 <div 
                                                     key={panel.id}
                                                     onClick={() => handleTogglePanel(panel.id)}
-                                                    className={`flex flex-col p-4 rounded-[20px] cursor-pointer transition-all border shadow-sm ${
+                                                    className={`flex flex-col p-4 rounded-none cursor-pointer transition-all border shadow-sm ${
                                                         isSelected 
                                                         ? 'bg-brand-neon/5 border-brand-neon/40' 
                                                         : 'bg-brand-background border-brand-border hover:border-brand-neon/50'
@@ -584,7 +584,7 @@ export function CrmProposals() {
                                                                 {panel.name}
                                                             </h4>
                                                             <p className="text-[10px] md:text-[11px] text-brand-muted font-medium truncate mt-0.5">{panel.city} - {panel.state}</p>
-                                                            <span className="text-[11px] md:text-[12px] font-black text-[#25D366] mt-1.5">
+                                                            <span className="text-[11px] md:text-[12px] font-semibold text-[#FF5E00] mt-1.5">
                                                                 {formatCurrency(currentPrice)} {currentDiscount > 0 && <span className="text-[9px] md:text-[10px] text-brand-muted line-through ml-1">{formatCurrency(originalPrice)}</span>}
                                                             </span>
                                                         </div>
@@ -634,7 +634,7 @@ export function CrmProposals() {
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
                                     className="flex flex-col gap-4 md:gap-6 flex-1 overflow-y-auto custom-scrollbar"
                                 >
-                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-[24px] relative overflow-hidden shrink-0 shadow-sm transition-colors">
+                                    <div className="bg-brand-surface border border-brand-border p-6 rounded-none relative overflow-hidden shrink-0 shadow-sm transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                                             <Percent className="w-4 h-4 text-brand-neon" /> Desconto Global Adicional (%)
                                         </h2>
@@ -646,15 +646,15 @@ export function CrmProposals() {
                                                 placeholder="0"
                                                 value={globalDiscount}
                                                 onChange={(e) => setGlobalDiscount(e.target.value === '' ? '' : Math.min(100, Math.max(0, Number(e.target.value))))}
-                                                className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 text-base font-black text-brand-neon focus:outline-none focus:border-brand-neon transition-colors shadow-sm text-center"
+                                                className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 text-base font-semibold text-brand-neon focus:outline-none focus:border-brand-neon transition-colors shadow-sm text-center"
                                             />
                                         </div>
                                         {Number(globalDiscount) > 0 && <div className="absolute right-0 bottom-0 w-32 h-32 bg-brand-neon/10 rounded-full blur-3xl pointer-events-none" />}
                                     </div>
 
-                                    <div className="bg-brand-surface border border-brand-neon/30 p-6 rounded-[24px] shadow-[0_0_20px_rgba(255,94,0,0.05)] shrink-0 transition-colors">
+                                    <div className="bg-brand-surface border border-brand-neon/30 p-6 rounded-none shadow-[0_0_20px_rgba(255,94,0,0.05)] shrink-0 transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-brand-border pb-3">
-                                            <CreditCard className="w-4 h-4 text-[#25D366]" /> Resumo Rápido Mensal
+                                            <CreditCard className="w-4 h-4 text-[#FF5E00]" /> Resumo Rápido Mensal
                                         </h2>
                                         <div className="flex flex-col gap-3.5 text-xs md:text-sm">
                                             <div className="flex justify-between items-center text-brand-muted font-medium">
@@ -675,7 +675,7 @@ export function CrmProposals() {
                                             )}
                                             <div className="border-t border-brand-border mt-3 pt-5 flex justify-between items-center">
                                                 <span className="font-bold text-brand-text uppercase tracking-widest text-[10px] md:text-[11px]">Final Mensal:</span>
-                                                <span className="font-black text-xl md:text-2xl text-[#25D366] tracking-tight">{formatCurrency(totals.finalMonthlyValue)}</span>
+                                                <span className="font-semibold text-xl md:text-2xl text-[#FF5E00] tracking-tight">{formatCurrency(totals.finalMonthlyValue)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -685,7 +685,7 @@ export function CrmProposals() {
                                         <Button 
                                             onClick={handleSendWhatsApp} 
                                             disabled={!currentClient || calculatedPanels.length === 0}
-                                            className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] h-14 uppercase tracking-widest text-[12px] font-black border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
+                                            className="w-full bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] h-14 uppercase tracking-widest text-[12px] font-semibold border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
                                         >
                                             Enviar Proposta
                                         </Button>
@@ -701,7 +701,7 @@ export function CrmProposals() {
                 </div>
 
                 {/* COLUNA DIREITA: PREVIEW DO PDF */}
-                <div className={`bg-brand-surface border border-brand-border rounded-[24px] flex-col overflow-hidden relative z-0 shadow-sm transition-colors ${activeTab === 'preview' ? 'flex flex-1 min-h-[400px]' : 'hidden lg:flex lg:flex-1 lg:min-h-[500px]'}`}>
+                <div className={`bg-brand-surface border border-brand-border rounded-none flex-col overflow-hidden relative z-0 shadow-sm transition-colors ${activeTab === 'preview' ? 'flex flex-1 min-h-[400px]' : 'hidden lg:flex lg:flex-1 lg:min-h-[500px]'}`}>
                     <div className="p-5 border-b border-brand-border flex justify-between items-center shrink-0 bg-brand-background/50">
                         <span className="text-[11px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
                             <Search className="w-4 h-4 text-brand-neon" /> Pré-visualização da Proposta

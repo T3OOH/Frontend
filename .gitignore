@@ -29,3 +29,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Artefatos locais do Playwright CLI
+.playwright-cli/

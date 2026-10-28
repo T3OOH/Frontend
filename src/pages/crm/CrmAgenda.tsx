@@ -100,9 +100,9 @@ export function CrmAgenda() {
 
     const getIconForType = (type: string) => {
         switch(type) {
-            case 'call': return <PhoneCall className="w-4 h-4 text-blue-500" />;
-            case 'meeting': return <Users className="w-4 h-4 text-purple-500" />;
-            case 'message': return <MessageSquare className="w-4 h-4 text-[#25D366]" />;
+            case 'call': return <PhoneCall className="w-4 h-4 text-brand-text" />;
+            case 'meeting': return <Users className="w-4 h-4 text-brand-text" />;
+            case 'message': return <MessageSquare className="w-4 h-4 text-[#FF5E00]" />;
             default: return <Clock className="w-4 h-4 text-brand-muted" />;
         }
     };
@@ -137,7 +137,7 @@ export function CrmAgenda() {
                     
                     {/* COLUNA ESQUERDA: CALENDÁRIO */}
                     <div className="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-6">
-                        <div className="bg-brand-surface p-6 rounded-[24px] border border-brand-border shadow-sm transition-colors">
+                        <div className="bg-brand-surface p-6 rounded-none border border-brand-border shadow-sm transition-colors">
                             
                             <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
                                 <h2 className="text-brand-text font-bold tracking-tight capitalize text-lg">{months[month]} {year}</h2>
@@ -189,7 +189,7 @@ export function CrmAgenda() {
                     </div>
 
                     {/* COLUNA DIREITA: LISTA DE TAREFAS */}
-                    <div className="flex-1 bg-brand-surface rounded-[24px] border border-brand-border p-6 md:p-8 flex flex-col relative overflow-hidden shadow-sm transition-colors">
+                    <div className="flex-1 bg-brand-surface rounded-none border border-brand-border p-6 md:p-8 flex flex-col relative overflow-hidden shadow-sm transition-colors">
                         
                         <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-5 shrink-0">
                             <div>
@@ -200,7 +200,7 @@ export function CrmAgenda() {
                                     {filteredTasks.filter(t => t.status === 'pending').length} tarefas pendentes para hoje
                                 </p>
                             </div>
-                            <div className="bg-brand-background p-3 rounded-[16px] border border-brand-border shadow-sm">
+                            <div className="bg-brand-background p-3 rounded-none border border-brand-border shadow-sm">
                                 <CalendarIcon className="w-6 h-6 text-brand-neon" />
                             </div>
                         </div>
@@ -211,7 +211,7 @@ export function CrmAgenda() {
                                     <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-4" />
                                 </div>
                             ) : filteredTasks.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 bg-brand-background/50 border-2 border-dashed border-brand-border rounded-[24px]">
+                                <div className="flex flex-col items-center justify-center py-20 bg-brand-background/50 border-2 border-dashed border-brand-border rounded-none">
                                     <CalendarIcon className="w-10 h-10 text-brand-muted opacity-50 mb-3" />
                                     <p className="text-brand-muted font-bold">Nenhuma tarefa para este dia.</p>
                                 </div>
@@ -225,7 +225,7 @@ export function CrmAgenda() {
                                             <div key={task.id} className="flex gap-4 sm:gap-6 group">
                                                 
                                                 <div className="flex flex-col items-end w-12 sm:w-16 flex-shrink-0 pt-3">
-                                                    <span className={`text-sm font-black tracking-tight ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
+                                                    <span className={`text-sm font-semibold tracking-tight ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
                                                         {task.time}
                                                     </span>
                                                 </div>
@@ -236,7 +236,7 @@ export function CrmAgenda() {
                                                     } z-10`}></div>
                                                 </div>
 
-                                                <div className={`flex-1 p-5 rounded-[20px] border shadow-sm transition-all ${
+                                                <div className={`flex-1 p-5 rounded-none border shadow-sm transition-all ${
                                                     task.status === 'completed' 
                                                         ? 'bg-brand-background/50 border-brand-border/50 opacity-70' 
                                                         : 'bg-brand-background border-brand-border hover:border-brand-neon/40'
@@ -258,7 +258,7 @@ export function CrmAgenda() {
                                                             onClick={() => toggleTaskStatus(task.id, task.status)}
                                                             className={`p-2.5 rounded-full transition-all border ${
                                                                 task.status === 'completed' 
-                                                                    ? 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20' 
+                                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
                                                                     : 'text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 border-transparent hover:border-brand-neon/20 bg-brand-surface shadow-sm'
                                                             }`} 
                                                             title={task.status === 'completed' ? "Marcar como pendente" : "Concluir tarefa"}
@@ -299,7 +299,7 @@ export function CrmAgenda() {
                 </div>
 
                 {/* Calendário Mobile */}
-                <div className="bg-brand-surface p-5 rounded-[24px] border border-brand-border shadow-sm mx-4 transition-colors">
+                <div className="bg-brand-surface p-5 rounded-none border border-brand-border shadow-sm mx-4 transition-colors">
                     <div className="flex items-center justify-between mb-5 border-b border-brand-border pb-3">
                         <h2 className="text-brand-text font-bold tracking-tight capitalize text-[15px]">{months[month]} {year}</h2>
                         <div className="flex gap-2">
@@ -367,18 +367,18 @@ export function CrmAgenda() {
                                 <span className="text-[10px] text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
                             </div>
                         ) : filteredTasks.length === 0 ? (
-                            <div className="bg-brand-surface border border-brand-border rounded-[24px] p-6 flex flex-col items-center text-center shadow-sm">
+                            <div className="bg-brand-surface border border-brand-border rounded-none p-6 flex flex-col items-center text-center shadow-sm">
                                 <CalendarIcon className="w-8 h-8 text-brand-muted opacity-50 mb-2" />
                                 <h3 className="text-[13px] font-bold text-brand-text mb-1">Dia livre</h3>
                                 <p className="text-[11px] text-brand-muted font-medium">Sem compromissos nesta data.</p>
                             </div>
                         ) : (
                             filteredTasks.map((task) => (
-                                <div key={task.id} className={`bg-brand-surface border rounded-[20px] p-4 flex gap-3 shadow-sm transition-all ${
+                                <div key={task.id} className={`bg-brand-surface border rounded-none p-4 flex gap-3 shadow-sm transition-all ${
                                     task.status === 'completed' ? 'border-brand-border/50 opacity-70 bg-brand-background/50' : 'border-brand-border'
                                 }`}>
                                     <div className="flex flex-col items-center min-w-[45px] shrink-0 pt-0.5">
-                                        <span className={`text-[13px] font-black ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
+                                        <span className={`text-[13px] font-semibold ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
                                             {task.time}
                                         </span>
                                         <div className="mt-2 flex items-center justify-center w-8 h-8 rounded-full bg-brand-background border border-brand-border shadow-sm">
@@ -400,7 +400,7 @@ export function CrmAgenda() {
                                             onClick={() => toggleTaskStatus(task.id, task.status)}
                                             className={`p-2.5 rounded-full transition-colors border shadow-sm ${
                                                 task.status === 'completed' 
-                                                    ? 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20' 
+                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
                                                     : 'text-brand-muted bg-brand-background border-brand-border active:scale-95'
                                             }`} 
                                         >
@@ -419,7 +419,7 @@ export function CrmAgenda() {
             {/* ========================================================= */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-brand-background/80 backdrop-blur-md p-4">
-                    <div className="bg-brand-surface border border-brand-border rounded-[24px] p-6 md:p-8 w-full max-w-md shadow-2xl relative overflow-hidden transition-colors">
+                    <div className="bg-brand-surface border border-brand-border rounded-none p-6 md:p-8 w-full max-w-md shadow-2xl relative overflow-hidden transition-colors">
                         <div className="flex items-center justify-between mb-6 relative z-10 border-b border-brand-border pb-4">
                             <h3 className="text-lg font-bold text-brand-text tracking-tight flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-brand-neon" /> Novo Compromisso
