@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { Seo } from '@/components/Seo';
 
 export function Login() {
@@ -129,13 +130,13 @@ export function Login() {
                         </div>
 
                         <div className="rounded-xl overflow-hidden mt-2 w-fit">
-                            <ReCAPTCHA ref={captchaRef} sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""} onChange={(token) => setCaptchaToken(token)} theme="dark" />
+                            <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
                         </div>
 
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting}
-                            className="w-full bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-16 rounded-none transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99]"
+                        <button
+                            type="submit"
+                            disabled={isSubmitting || !RECAPTCHA_SITE_KEY}
+                            className="w-full bg-white hover:bg-gray-200 text-[#0A0A0B] font-black uppercase tracking-widest text-[13px] h-16 rounded-none transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Entrar no Sistema <Send className="w-4 h-4" /></>}
                         </button>
