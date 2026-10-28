@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { Seo } from '@/components/Seo';
 
 export function Login() {
     const navigate = useNavigate();
@@ -54,12 +55,14 @@ export function Login() {
     };
 
     return (
+        <>
+        <Seo title="Entrar" description="Acesse sua conta na plataforma T3 OOH." path="/login" noIndex />
         <div className="relative min-h-[100dvh] w-full flex items-center bg-[#0A0A0B] overflow-x-hidden">
             
             {/* BACKGROUND IMERSIVO */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <img 
-                    src="/cidadet3 2.png" 
+                    src="/cidade-t3-noite.webp" 
                     alt="Background Cidade" 
                     className="w-full h-full object-cover opacity-30 mix-blend-luminosity" 
                 />
@@ -73,7 +76,7 @@ export function Login() {
                 <div className="w-full lg:w-[45%] flex flex-col justify-center">
                     <motion.img 
                         initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, ease: "easeOut" }}
-                        src="/t3d 2.png" 
+                        src="/t3-logo.webp" 
                         alt="T3 OOH Logo Gigante" 
                         className="w-[60%] md:w-[70%] max-w-[400px] h-auto object-contain drop-shadow-[0_0_40px_rgba(255,94,0,0.3)] origin-left mb-8"
                     />
@@ -147,5 +150,6 @@ export function Login() {
 
             </div>
         </div>
+        </>
     );
 }

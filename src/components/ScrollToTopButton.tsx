@@ -49,15 +49,11 @@ export function ScrollToTopButton() {
             }
         };
 
-        // Captura a rolagem global (Site Público)
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        
-        // Configuração para capturar a rolagem interna no Dashboard (captura na fase de captura)
-        window.addEventListener('scroll', handleScroll, true);
+        // Fase de captura: recebe a rolagem da janela (site público) e dos contêineres internos (dashboard)
+        window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
 
         return () => {
-            window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('scroll', handleScroll, { capture: true });
         };
     }, []);
 

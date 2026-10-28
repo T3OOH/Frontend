@@ -1,8 +1,10 @@
+import { COMPANY_FOOTER } from '@/lib/company';
 import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, Plus, MoreVertical, Mail, Phone, Calendar, ArrowUpRight, MapPin, X, Loader2, Edit2, Trash2, Briefcase, Users, FileDown, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { crmService, CrmClient, CreateClientData } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // Dependências de exportação de documentos
 import jsPDF from 'jspdf';
@@ -22,6 +24,7 @@ export function CrmClients() {
     // Estados de Modais
     const [isModalOpen, setIsModalOpen] = useState(false); 
     const [isProfileOpen, setIsProfileOpen] = useState(false); 
+    useEscapeKey(isModalOpen || isProfileOpen, () => { setIsModalOpen(false); setIsProfileOpen(false); });
     const [clientToDelete, setClientToDelete] = useState<string | null>(null); // Estado para o modal de exclusão
     const [selectedClient, setSelectedClient] = useState<CrmClient | null>(null);
 
@@ -284,7 +287,7 @@ export function CrmClients() {
                 doc.setFontSize(8);
                 doc.setTextColor(150, 150, 150);
                 const footerY = pageHeight - 15;
-                doc.text("T3 LED Mídia e Tecnologia • CNPJ: 00.000.000/0000-00", pageWidth / 2, footerY, { align: "center" });
+                doc.text(COMPANY_FOOTER, pageWidth / 2, footerY, { align: "center" });
             }
 
             doc.save(`Contrato_${clientName.replace(/\s+/g, '_')}.pdf`);
@@ -459,7 +462,7 @@ export function CrmClients() {
                                                     </button>
 
                                                     <div className="relative">
-                                                        <button
+                                                        <button aria-label="Mais opções"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setOpenDropdownId(openDropdownId === client.id ? null : client.id);
@@ -516,7 +519,7 @@ export function CrmClients() {
                         </h1>
                         <p className="text-[11px] text-brand-muted mt-0.5 font-medium">Sua carteira comercial</p>
                     </div>
-                    <button
+                    <button aria-label="Adicionar"
                         onClick={openModalForCreate}
                         className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
                     >
@@ -584,13 +587,13 @@ export function CrmClients() {
                                     >
                                         <Briefcase className="w-4 h-4" /> Nova Oportunidade
                                     </button>
-                                    <button
+                                    <button aria-label="Editar"
                                         onClick={() => openModalForEdit(client)}
                                         className="p-3 bg-brand-background text-brand-text rounded-xl border border-brand-border active:border-brand-neon transition-colors shadow-sm"
                                     >
                                         <Edit2 className="w-4 h-4" />
                                     </button>
-                                    <button
+                                    <button aria-label="Excluir"
                                         onClick={() => setClientToDelete(client.id)}
                                         className="p-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20 active:bg-red-500/20 transition-colors shadow-sm"
                                     >
@@ -623,7 +626,7 @@ export function CrmClients() {
                                     <p className="text-[11px] text-brand-muted uppercase tracking-widest font-bold mt-0.5">Ficha do Cliente</p>
                                 </div>
                             </div>
-                            <button
+                            <button aria-label="Fechar"
                                 onClick={() => setIsProfileOpen(false)}
                                 className="text-brand-muted hover:text-brand-text bg-brand-background p-2.5 rounded-full border border-brand-border transition-colors active:scale-95 shadow-sm"
                             >
@@ -709,7 +712,7 @@ export function CrmClients() {
                                 {editingClient ? <Edit2 className="w-6 h-6 text-brand-neon" /> : <Plus className="w-6 h-6 text-brand-neon" />}
                                 {editingClient ? 'Editar Cliente' : 'Cadastrar Cliente'}
                             </h2>
-                            <button
+                            <button aria-label="Fechar"
                                 onClick={closeModal}
                                 className="text-brand-muted hover:text-brand-text bg-brand-background p-2.5 rounded-full border border-brand-border transition-colors active:scale-95 shadow-sm"
                             >

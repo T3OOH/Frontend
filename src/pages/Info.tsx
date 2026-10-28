@@ -4,6 +4,7 @@ import { Target, Eye, BarChart3, ShieldCheck, MapPin, ArrowRight, Handshake, Use
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { api } from '@/lib/axios';
+import { Seo } from '@/components/Seo';
 
 /**
  * Data fallback constants to ensure UI consistency during API hydration delays or failures.
@@ -78,7 +79,9 @@ export function Info() {
     };
 
     return (
-        <main className="w-full min-h-screen bg-[#0A0A0B] overflow-x-hidden selection:bg-[#FF5E00]/30 selection:text-[#FF5E00]">
+        <>
+        <Seo title="Sobre a T3" description="Conheça a T3 OOH, nossa equipe e as marcas que anunciam na nossa rede de painéis de LED." path="/sobre" />
+        <div className="w-full min-h-screen bg-[#0A0A0B] overflow-x-hidden selection:bg-[#FF5E00]/30 selection:text-[#FF5E00]">
             
             {/* ========================================================= */}
             {/* HERO SECTION                                              */}
@@ -89,7 +92,7 @@ export function Info() {
                 {/* Background Treatment: Subtle image with strong gradient masking for text legibility */}
                 <div className="absolute inset-0 z-0">
                     <img 
-                        src="/Cidadet3.png" 
+                        src="/cidade-t3.webp" 
                         alt="Cidade T3 Goiânia" 
                         className="w-full h-full object-cover opacity-20 mix-blend-luminosity" 
                     />
@@ -292,12 +295,12 @@ export function Info() {
                     
                     <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
                         <Link to="/mapa" className="w-full sm:w-auto">
-                            <Button size="lg" className="w-full sm:w-auto bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black border-none uppercase tracking-widest text-[11px] h-14 rounded-xl transition-all shadow-[0_10px_30px_rgba(255,94,0,0.2)]">
+                            <Button as="span" size="lg" className="w-full sm:w-auto bg-[#FF5E00] hover:bg-[#e05300] text-[#0A0A0B] font-black border-none uppercase tracking-widest text-[11px] h-14 rounded-xl transition-all shadow-[0_10px_30px_rgba(255,94,0,0.2)]">
                                 Explorar Telões
                             </Button>
                         </Link>
                         <Link to="/contato" className="w-full sm:w-auto">
-                            <Button variant="ghost" size="lg" className="w-full sm:w-auto bg-[#0A0A0B] hover:bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest text-[11px] h-14 rounded-xl transition-all" rightIcon={<ArrowRight className="w-4 h-4 text-[#FF5E00]" />}>
+                            <Button as="span" variant="ghost" size="lg" className="w-full sm:w-auto bg-[#0A0A0B] hover:bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest text-[11px] h-14 rounded-xl transition-all" rightIcon={<ArrowRight className="w-4 h-4 text-[#FF5E00]" />}>
                                 Falar com Comercial
                             </Button>
                         </Link>
@@ -311,6 +314,7 @@ export function Info() {
                     display: flex !important;
                 }
             `}</style>
-        </main>
+        </div>
+        </>
     );
 }

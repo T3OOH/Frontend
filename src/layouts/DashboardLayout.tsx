@@ -55,7 +55,7 @@ export function DashboardLayout() {
 
                 {/* LOGO */}
                 <div className="h-24 flex flex-col justify-center items-center gap-1 border-b border-brand-border/30 shrink-0">
-                    <img src={theme === 'dark' ? "/t3d 2.png" : "/T3 Black.png"} alt="Logo T3 OOH" className="h-9 w-auto object-contain" />
+                    <img src={theme === 'dark' ? "/t3-logo.webp" : "/t3-logo-black.webp"} alt="Logo T3 OOH" className="h-9 w-auto object-contain" />
                     <p className="text-[9px] text-brand-muted tracking-[0.2em] uppercase font-bold text-center">Painel de Gestão</p>
                 </div>
 
@@ -104,6 +104,9 @@ export function DashboardLayout() {
                         <span className="text-xs font-bold text-brand-muted ml-1">Tema</span>
                         <button
                             onClick={toggleTheme}
+                            role="switch"
+                            aria-checked={theme === 'dark'}
+                            aria-label="Tema escuro"
                             className="relative flex items-center justify-between w-12 h-6 bg-brand-border rounded-full p-1 transition-colors focus:outline-none"
                         >
                             <motion.div
@@ -154,12 +157,12 @@ export function DashboardLayout() {
 
                 <div className="sticky top-0 z-40 bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border/50 px-4 py-3 flex items-center justify-between shadow-sm pt-[env(safe-area-inset-top,12px)] transition-colors duration-300">
                     <div className="flex items-center gap-3">
-                        <img src="/t3d 2.png" alt="T3 Logo" className="h-7 w-auto object-contain" />
+                        <img src="/t3-logo.webp" alt="T3 Logo" className="h-7 w-auto object-contain" />
                         <span className="text-[9px] font-bold text-brand-neon uppercase tracking-widest bg-brand-neon/10 px-2 py-1 rounded border border-brand-neon/20">
                             Gestor
                         </span>
                     </div>
-                    <button onClick={toggleTheme} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-text">
+                    <button onClick={toggleTheme} aria-label="Alternar tema claro/escuro" className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-text">
                         {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     </button>
                 </div>
@@ -200,7 +203,7 @@ export function DashboardLayout() {
                     >
                         <div className="flex items-center justify-between px-5 py-4 border-b border-brand-border">
                             <h2 className="text-lg font-bold text-brand-text tracking-tight">Mais Opções</h2>
-                            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-brand-surface rounded-full border border-brand-border text-brand-muted hover:text-brand-text">
+                            <button aria-label="Fechar" onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-brand-surface rounded-full border border-brand-border text-brand-muted hover:text-brand-text">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

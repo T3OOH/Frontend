@@ -85,7 +85,7 @@ export function Panels() {
                     </div>
 
                     <Link to="/dashboard/paineis/novo">
-                        <Button leftIcon={<Plus className="w-4 h-4" />} className="bg-brand-neon hover:bg-brand-neonHover text-white shadow-lg font-bold rounded-xl px-6">
+                        <Button as="span" leftIcon={<Plus className="w-4 h-4" />} className="bg-brand-neon hover:bg-brand-neonHover text-white shadow-lg font-bold rounded-xl px-6">
                             Novo Painel
                         </Button>
                     </Link>
@@ -165,10 +165,10 @@ export function Panels() {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Link to={`/dashboard/paineis/editar/${panel.id}`}>
-                                                            <button className="p-2 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded-lg border border-transparent hover:border-brand-neon/20 transition-all" title="Editar">
+                                                        <Link aria-label="Editar" to={`/dashboard/paineis/editar/${panel.id}`}>
+                                                            <span className="inline-flex p-2 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded-lg border border-transparent hover:border-brand-neon/20 transition-all" aria-hidden="true">
                                                                 <Edit2 className="w-4 h-4" />
-                                                            </button>
+                                                            </span>
                                                         </Link>
                                                         <button
                                                             className="p-2 text-brand-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all"
@@ -199,10 +199,10 @@ export function Panels() {
                         <h1 className="text-2xl font-bold text-brand-text tracking-tight">Meus Painéis</h1>
                         <p className="text-[11px] text-brand-muted mt-0.5 font-medium">Gerencie seu circuito</p>
                     </div>
-                    <Link to="/dashboard/paineis/novo">
-                        <button className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                    <Link aria-label="Adicionar" to="/dashboard/paineis/novo">
+                        <span className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform" aria-hidden="true">
                             <Plus className="w-6 h-6" />
-                        </button>
+                        </span>
                     </Link>
                 </div>
 
@@ -282,11 +282,11 @@ export function Panels() {
 
                                         <div className="flex items-center gap-3 pt-4 border-t border-brand-border">
                                             <Link to={`/dashboard/paineis/editar/${panel.id}`} className="flex-1">
-                                                <Button variant="secondary" className="w-full h-11 text-xs font-bold bg-brand-background border-brand-border text-brand-text hover:border-brand-neon hover:text-brand-neon transition-colors" leftIcon={<Edit2 className="w-4 h-4" />}>
+                                                <Button as="span" variant="secondary" className="w-full h-11 text-xs font-bold bg-brand-background border-brand-border text-brand-text hover:border-brand-neon hover:text-brand-neon transition-colors" leftIcon={<Edit2 className="w-4 h-4" />}>
                                                     Editar
                                                 </Button>
                                             </Link>
-                                            <Button
+                                            <Button aria-label="Excluir"
                                                 variant="secondary"
                                                 className="w-12 h-11 px-0 flex items-center justify-center border-red-500/20 text-red-500 bg-red-500/10 active:bg-red-500/20 shrink-0 transition-colors"
                                                 onClick={() => handleDelete(panel.id)}

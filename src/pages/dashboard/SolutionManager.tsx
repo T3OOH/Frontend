@@ -174,7 +174,7 @@ export function SolutionManager() {
                                 />
 
                                 <div className="flex gap-2 mt-2">
-                                    <Button 
+                                    <Button aria-label="Fechar" 
                                         type="button" 
                                         variant="secondary" 
                                         onClick={handleCancel} 

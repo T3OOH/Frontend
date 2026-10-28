@@ -196,7 +196,7 @@ export function DashboardInfo() {
                         ) : (
                             team.map((member) => (
                                 <div key={member.id} className="flex flex-col md:flex-row gap-6 p-5 border border-white/5 rounded-sm bg-[#0A0A0B] relative group">
-                                    <button onClick={() => removeTeamMember(member.id)} className="absolute top-4 right-4 text-[#8F8F91] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                    <button aria-label="Excluir" onClick={() => removeTeamMember(member.id)} className="absolute top-4 right-4 text-[#8F8F91] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
 
@@ -252,7 +252,7 @@ export function DashboardInfo() {
                         ) : (
                             brands.map((brand) => (
                                 <div key={brand.id} className="flex flex-col gap-3 p-3 border border-white/5 rounded-sm bg-[#0A0A0B] relative group">
-                                    <button onClick={() => removeBrand(brand.id)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-sm shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 z-10">
+                                    <button aria-label="Fechar" onClick={() => removeBrand(brand.id)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-sm shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 z-10">
                                         <X className="w-3 h-3" />
                                     </button>
 

@@ -5,6 +5,7 @@ import {
     Ticket, Plus, Trash2, Copy, Check, 
     Calendar, DollarSign, Percent, AlertCircle, X, Loader2
 } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface Coupon {
     id: string;
@@ -25,6 +26,7 @@ export function CrmCoupons() {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    useEscapeKey(isCreating, () => setIsCreating(false));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -228,6 +230,7 @@ export function CrmCoupons() {
                                         <button 
                                             type="button" 
                                             onClick={generateRandomCode}
+                                        aria-label="Gerar código aleatório"
                                             className="bg-brand-background border border-brand-border rounded-xl px-4 text-brand-muted hover:text-brand-neon hover:border-brand-neon transition-colors shadow-sm"
                                             title="Gerar Aleatório"
                                         >
@@ -325,7 +328,7 @@ export function CrmCoupons() {
                         </h1>
                         <p className="text-[11px] text-brand-muted font-medium mt-0.5">Gerencie os descontos</p>
                     </div>
-                    <button 
+                    <button aria-label="Adicionar" 
                         onClick={() => setIsCreating(true)}
                         className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
                     >
@@ -356,7 +359,7 @@ export function CrmCoupons() {
                                 
                                 <div className="flex justify-between items-start mb-4 border-b border-brand-border pb-4 px-1">
                                     {getStatus(coupon)}
-                                    <button 
+                                    <button aria-label="Excluir" 
                                         onClick={() => handleDelete(coupon.id)}
                                         className="p-2 bg-brand-background border border-brand-border text-brand-muted hover:text-red-500 rounded-lg active:scale-95 transition-all shadow-sm"
                                     >
@@ -411,7 +414,7 @@ export function CrmCoupons() {
                             <h3 className="text-lg font-bold text-brand-text tracking-tight flex items-center gap-2">
                                 <Plus className="w-5 h-5 text-brand-neon" /> Novo Cupom
                             </h3>
-                            <button onClick={() => setIsCreating(false)} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-muted hover:text-brand-text transition-colors shadow-sm">
+                            <button aria-label="Fechar" onClick={() => setIsCreating(false)} className="p-2 bg-brand-background rounded-full border border-brand-border text-brand-muted hover:text-brand-text transition-colors shadow-sm">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -430,6 +433,7 @@ export function CrmCoupons() {
                                     <button 
                                         type="button" 
                                         onClick={generateRandomCode}
+                                        aria-label="Gerar código aleatório"
                                         className="bg-brand-background border border-brand-border rounded-xl px-4 active:scale-95 transition-transform shadow-sm flex items-center justify-center text-brand-muted hover:text-brand-neon"
                                     >
                                         <Ticket className="w-5 h-5" />

@@ -425,7 +425,7 @@ const DepthCarousel = ({
                         }}
                         style={{ width: cardWidth, height: cardHeight, borderRadius: radius }}
                         aria-roledescription="slide"
-                        aria-label={`${i + 1} of ${count}`}
+                        aria-label={`Slide ${i + 1} de ${count}`}
                         aria-hidden={active !== i}
                         onClick={() => onCardClick(i)}
                     >
@@ -451,7 +451,7 @@ const DepthCarousel = ({
                     <button
                         type="button"
                         className="absolute left-4 top-1/2 z-[3000] grid h-[42px] w-[42px] -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-[rgba(18,20,26,0.55)] text-white backdrop-blur-md transition-[background,border-color,transform] duration-200 hover:border-white/40 hover:bg-[rgba(28,31,40,0.85)] active:scale-95"
-                        aria-label="Previous slide"
+                        aria-label="Slide anterior"
                         onClick={() => navigateBy(-1)}
                     >
                         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -468,7 +468,7 @@ const DepthCarousel = ({
                     <button
                         type="button"
                         className="absolute right-4 top-1/2 z-[3000] grid h-[42px] w-[42px] -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-[rgba(18,20,26,0.55)] text-white backdrop-blur-md transition-[background,border-color,transform] duration-200 hover:border-white/40 hover:bg-[rgba(28,31,40,0.85)] active:scale-95"
-                        aria-label="Next slide"
+                        aria-label="Próximo slide"
                         onClick={() => navigateBy(1)}
                     >
                         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

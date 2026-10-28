@@ -91,7 +91,7 @@ const ProposalDocument = ({ client, panels, months, totals, date, sellerName }: 
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Image src="/T3 Black.png" style={styles.logoImage} />
+                <Image src="/t3-logo-black.png" style={styles.logoImage} />
                 <View style={styles.headerInfo}>
                     <Text style={styles.headerTitle}>Proposta Comercial</Text>
                     <Text style={styles.headerDate}>{date}</Text>
@@ -425,7 +425,7 @@ export function CrmProposals() {
             <div className="flex flex-row items-center justify-between gap-4 shrink-0 px-4 lg:px-0">
                 <div className="flex items-center gap-3">
                     {loadedOrder && (
-                        <button onClick={() => navigate('/crm')} className="p-2 bg-brand-surface/30 border border-brand-border/40 hover:bg-brand-surface rounded-full transition-colors text-brand-muted hover:text-white">
+                        <button aria-label="Voltar" onClick={() => navigate('/crm')} className="p-2 bg-brand-surface/30 border border-brand-border/40 hover:bg-brand-surface rounded-full transition-colors text-brand-muted hover:text-white">
                             <ArrowLeft className="w-5 h-5" />
                         </button>
                     )}

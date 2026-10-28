@@ -8,6 +8,7 @@ import { Textarea } from '@/components/Textarea';
 import { contactSchema, ContactFormData } from '@/schemas/contact.schema';
 import { Link } from 'react-router-dom';
 import { ATTENDANTS } from '@/lib/contacts';
+import { Seo } from '@/components/Seo';
 
 
 /**
@@ -57,12 +58,14 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
     };
 
     return (
+        <>
+        <Seo title="Contato" description="Fale com o time comercial da T3 OOH pelo WhatsApp ou formulário e planeje sua campanha em mídia exterior." path="/contato" />
         <div className="relative min-h-[100dvh] w-full flex items-center bg-[#0A0A0B] overflow-x-hidden">
             
             {/* Background Layer: Image with gradient overlays for text contrast optimization */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <img 
-                    src="/Cidadet3.png" 
+                    src="/cidade-t3.webp" 
                     alt="Cidade T3" 
                     className="w-full h-full object-cover opacity-30 mix-blend-luminosity" 
                 />
@@ -71,12 +74,12 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
             </div>
 
             {/* Main Content Container: Constrained width, responsive row/col flex layout */}
-            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-28 lg:py-0 flex flex-col lg:flex-row items-center lg:items-stretch gap-16 lg:gap-24 h-full pt-[120px]">
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-6 pt-10 pb-20 lg:py-16 flex flex-col lg:flex-row items-center lg:items-stretch gap-16 lg:gap-24 h-full">
                 
                 {/* Left Column: Brand Positioning & Hero Text */}
                 <div className="w-full lg:w-1/2 flex flex-col justify-center">
                     <img 
-                        src="/t3d 2.png" 
+                        src="/t3-logo.webp" 
                         alt="T3 OOH Logo" 
                         className="h-24 md:h-32 lg:h-40 w-auto object-contain mb-8 origin-left opacity-90"
                     />
@@ -91,7 +94,7 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
 
                     <div className="flex items-center gap-4">
                         <Link to="/mapa" className="inline-flex">
-                            <Button 
+                            <Button as="span" 
                                 variant="ghost" 
                                 className="border border-white/10 bg-[#111113] text-white hover:bg-white/5 hover:border-white/20 rounded-sm px-8 py-6 uppercase tracking-widest text-xs font-bold transition-all"
                                 rightIcon={<ArrowRight className="w-4 h-4 text-[#FF5E00]" />}
@@ -204,5 +207,6 @@ ${data.message || 'Gostaria de mais informações sobre os painéis de LED.'}`;
                 </div>
             </div>
         </div>
+        </>
     );
 }

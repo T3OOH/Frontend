@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     ArrowRight, MapPin, BarChart3, Shield, MonitorPlay, Activity,
-    Search, Filter, Heart, Compass, Flame, Star
+    Search, Filter, Heart, Compass, Flame
 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { panelsService } from '@/services/panels.service';
-import { Helmet } from 'react-helmet-async';
+import { Seo } from '@/components/Seo';
 
 import AccordionGallery from '@/components/AccordionGallery';
+
+/** Desconto progressivo do plano de 12 meses (mesma regra do backend). */
+const ANNUAL_DISCOUNT = 0.30;
 
 export function Home() {
     const navigate = useNavigate();
@@ -241,7 +244,7 @@ export function Home() {
                         <span className="text-[9px] text-[#8F8F91] font-medium mt-1 leading-none">Goiânia • Impacto Diário</span>
                     </div>
                 </div>
-                <button type="button" className="w-8 h-8 flex items-center justify-center bg-[#1A1A1D] hover:bg-[#111113]/80 rounded-full border border-white/10 transition-colors duration-300 ml-2 shrink-0">
+                <button aria-label="Filtros" type="button" className="w-8 h-8 flex items-center justify-center bg-[#1A1A1D] hover:bg-[#111113]/80 rounded-full border border-white/10 transition-colors duration-300 ml-2 shrink-0">
                     <Filter className="w-3.5 h-3.5 text-[#8F8F91]" />
                 </button>
             </form>
@@ -265,7 +268,7 @@ export function Home() {
                                             className="flex items-center gap-4 px-5 py-3 hover:bg-white/5 border-b border-white/5 last:border-none transition-colors duration-300 group"
                                         >
                                             <div className="w-10 h-10 rounded-lg bg-black overflow-hidden shrink-0 border border-white/10 group-hover:border-[#FF5E00]/50 transition-colors duration-300">
-                                                <img src={panel.images?.[0] || '/placeholder.jpg'} alt={panel.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt={panel.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                                             </div>
                                             <div className="flex flex-col flex-1">
                                                 <span className="text-sm font-bold text-white group-hover:text-[#FF5E00] transition-colors duration-300 line-clamp-1">{panel.name}</span>
@@ -289,13 +292,15 @@ export function Home() {
 
     return (
         <>
-            <Helmet>
-                <title>T3 OOH | Mídia Digital Outdoor e Painéis de LED</title>
-                <meta name="description" content="Escale sua marca com painéis de LED de alto impacto. Aluguel de paineis, mídias out of home, inteligência de dados, auditoria e pontos premium." />
-                <meta name="keywords" content="painel de led, out of home, mídias out of home, aluguel de paineis, paineis de led, publicidade, marketing outdoor" />
-            </Helmet>
+            <Seo
+                title="T3 OOH | Mídia OOH e painéis de LED"
+                description="Escale sua marca com painéis de LED de alto impacto em Goiânia, no Centro-Oeste e em todo o Brasil. Veja o mapa, monte seu pacote e solicite orçamento."
+                path="/"
+            />
 
             <div className="relative w-full min-h-screen bg-[#0A0A0B] overflow-x-hidden">
+                {/* Título principal da página para leitores de tela e buscadores (o layout é visual) */}
+                <h1 className="sr-only">T3 OOH: mídia exterior e painéis de LED em Goiânia, no Centro-Oeste e em todo o Brasil</h1>
 
                 {/* --- EFEITOS DE FUNDO GLOBAIS (Leves e Otimizados) --- */}
                 {/* Glow Neon suave no topo */}
@@ -325,7 +330,7 @@ export function Home() {
                                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                                 />
                                 <motion.img
-                                    src="/t3d 2.png"
+                                    src="/t3-logo.webp"
                                     alt="Logo T3 3D"
                                     loading="eager"
                                     className="w-[380px] h-[380px] object-contain mix-blend-screen relative z-10 drop-shadow-[0_0_40px_rgba(255,94,0,0.25)] cursor-pointer"
@@ -341,7 +346,7 @@ export function Home() {
 
                             <div className="flex flex-row items-center gap-4 w-auto relative z-20">
                                 <Link to="/servicos" title="Aluguel de paineis e mídias out of home">
-                                    <Button
+                                    <Button as="span"
                                         size="lg"
                                         rightIcon={<ArrowRight className="w-5 h-5" />}
                                         className="shadow-[0_0_20px_rgba(255,94,0,0.25)] hover:shadow-[0_0_30px_rgba(255,94,0,0.4)] transition-all duration-300"
@@ -355,7 +360,7 @@ export function Home() {
                                     title="Mapa de Paineis de LED"
                                     onMouseEnter={() => panelsService.getMapMarkers().catch(() => { })}
                                 >
-                                    <Button
+                                    <Button as="span"
                                         size="lg"
                                         variant="secondary"
                                         leftIcon={
@@ -388,7 +393,7 @@ export function Home() {
                                     <Activity className="w-4 h-4 text-[#8F8F91]/50 group-hover:text-[#FF5E00]/70 transition-colors duration-300" />
                                 </div>
                                 <h3 className="text-4xl font-black text-white mb-1 tracking-tight group-hover:text-[#FF5E00] transition-colors duration-300">
-                                    {activePanelsCount > 0 ? activePanelsCount : '+200'}
+                                    {activePanelsCount > 0 ? activePanelsCount : '—'}
                                 </h3>
                                 <p className="text-xs font-medium text-[#8F8F91] uppercase tracking-wider">Painéis Ativos</p>
                             </div>
@@ -404,7 +409,7 @@ export function Home() {
                                     </div>
                                 </div>
                                 <h3 className="text-4xl font-black text-white mb-1 tracking-tight group-hover:text-[#FF5E00] transition-colors duration-300">
-                                    {formattedImpacts !== '0' ? formattedImpacts : '1.5M'}
+                                    {formattedImpacts !== '0' ? formattedImpacts : '—'}
                                 </h3>
                                 <p className="text-xs font-medium text-[#8F8F91] uppercase tracking-wider">Impactos Diários</p>
 
@@ -481,14 +486,14 @@ export function Home() {
 
                             <div className="grid grid-cols-3 gap-6">
                                 {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => {
-                                    const basePrice = panel.price || 1500;
-                                    const discountedPrice = basePrice * 0.70;
+                                    const basePrice = Number(panel.price) || 0;
+                                    const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
 
                                     return (
                                         <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="bg-[#111113] rounded-[5px] overflow-hidden border border-white/10 shadow-lg block hover:-translate-y-2 hover:border-[#FF5E00]/40 hover:shadow-[0_15px_40px_rgba(255,94,0,0.15)] transition-all duration-300 group">
                                             <div className="h-[200px] relative bg-black">
-                                                <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
-                                                <button
+                                                <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
+                                                <button aria-label="Favoritar"
                                                     onClick={(e) => toggleFavorite(e, panel.id)}
                                                     className="absolute top-4 right-4 bg-[#0A0A0B]/60 backdrop-blur-md p-2 rounded-full border border-white/10 z-10 hover:scale-110 transition-transform duration-300"
                                                 >
@@ -504,25 +509,28 @@ export function Home() {
                                                 <div>
                                                     <div className="flex justify-between items-start mb-2">
                                                         <h4 className="font-bold text-lg text-white line-clamp-1 pr-2 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Circuito Urbano'}</h4>
-                                                        <div className="flex items-center gap-1 shrink-0 bg-white/5 px-2 py-1 rounded text-sm font-bold text-white">
-                                                            <Star className="w-4 h-4 fill-[#FF5E00] text-[#FF5E00]" /> 4.9
-                                                        </div>
                                                     </div>
                                                     <p className="text-sm text-[#8F8F91] flex items-center gap-1.5 mb-5">
-                                                        <MapPin className="w-4 h-4 text-[#FF5E00]" /> {panel.city || 'Goiânia'} - {panel.state || 'GO'}
+                                                        <MapPin className="w-4 h-4 text-[#FF5E00]" /> {[panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar'}
                                                     </p>
                                                 </div>
                                                 
                                                 <div className="flex justify-between items-end border-t border-white/5 pt-4 mt-auto">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs text-[#8F8F91] uppercase tracking-wider font-bold mb-1 flex items-center">
-                                                            Investimento Mensal
-                                                            <span className="line-through opacity-50 ml-1.5 font-normal text-[10px]">{formatCurrency(basePrice)}</span>
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xl font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
-                                                            <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[9px] font-black px-1.5 py-0.5 rounded border border-[#FF5E00]/30">-30%</span>
-                                                        </div>
+                                                        {basePrice > 0 ? (
+                                                            <>
+                                                                <span className="text-xs text-[#8F8F91] uppercase tracking-wider font-bold mb-1 flex items-center">
+                                                                    Mensal no plano anual
+                                                                    <span className="line-through opacity-50 ml-1.5 font-normal text-[10px]">{formatCurrency(basePrice)}</span>
+                                                                </span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xl font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
+                                                                    <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[9px] font-black px-1.5 py-0.5 rounded border border-[#FF5E00]/30">-30%</span>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-sm font-bold text-white">Valor sob consulta</span>
+                                                        )}
                                                     </div>
                                                     <div className="p-2.5 bg-[#FF5E00]/10 rounded-xl text-[#FF5E00] group-hover:bg-[#FF5E00] group-hover:text-[#0A0A0B] transition-colors duration-300">
                                                         <ArrowRight className="w-5 h-5" />
@@ -548,7 +556,7 @@ export function Home() {
                 <div className="flex lg:hidden flex-col relative z-20 pb-36 pt-4 w-full">
 
                     {/* BARRA DE PESQUISA INTELIGENTE (MOBILE) */}
-                    <div className="px-4 sticky top-0 z-50 pt-[80px] pb-4 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/5">
+                    <div className="px-4 sticky top-0 z-50 pt-2 pb-4 bg-[#0A0A0B]/90 backdrop-blur-xl border-b border-white/5">
                         {renderSearchBar(mobileDropdownRef, true)}
                     </div>
 
@@ -563,7 +571,7 @@ export function Home() {
                                     </p>
                                 </div>
                                 <div className="w-[40%] flex justify-end">
-                                    <img src="/t3d 2.png" alt="T3 3D" className="w-28 h-28 object-contain drop-shadow-[0_0_20px_rgba(255,94,0,0.5)]" />
+                                    <img src="/t3-logo.webp" alt="T3 3D" className="w-28 h-28 object-contain drop-shadow-[0_0_20px_rgba(255,94,0,0.5)]" />
                                 </div>
                             </div>
                         </div>
@@ -573,13 +581,13 @@ export function Home() {
                         <div className="flex gap-3 overflow-x-auto snap-x custom-scrollbar pb-2 -mx-4 px-4">
                             <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-[#FF5E00]/30 transition-colors duration-300">
                                 <MonitorPlay className="w-6 h-6 text-[#FF5E00]" />
-                                <span className="text-sm font-black text-white">{activePanelsCount > 0 ? activePanelsCount : '+200'}</span>
+                                <span className="text-sm font-black text-white">{activePanelsCount > 0 ? activePanelsCount : '—'}</span>
                                 <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-wider text-center">Ativos</span>
                             </div>
                             <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg relative overflow-hidden hover:border-[#FF5E00]/30 transition-colors duration-300">
                                 <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse"></div>
                                 <BarChart3 className="w-6 h-6 text-[#FF5E00]" />
-                                <span className="text-sm font-black text-white">{formattedImpacts !== '0' ? formattedImpacts : '1.5M'}</span>
+                                <span className="text-sm font-black text-white">{formattedImpacts !== '0' ? formattedImpacts : '—'}</span>
                                 <span className="text-[9px] text-[#8F8F91] uppercase font-bold tracking-wider text-center">Impactos</span>
                             </div>
                             <div className="snap-start flex-shrink-0 w-28 bg-[#111113] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-lg hover:border-[#FF5E00]/30 transition-colors duration-300">
@@ -605,15 +613,15 @@ export function Home() {
                         <div className="flex gap-4 overflow-x-auto snap-x custom-scrollbar pb-4 -mx-4 px-4">
                             {displayFeaturedPanels.length > 0 ? displayFeaturedPanels.map((panel, idx) => {
                                 const isFavorite = favorites.has(panel.id);
-                                const basePrice = panel.price || 1500;
-                                const discountedPrice = basePrice * 0.70;
+                                const basePrice = Number(panel.price) || 0;
+                                const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
 
                                 return (
                                     <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="snap-start flex-shrink-0 w-[260px] bg-[#111113] rounded-[24px] overflow-hidden border border-white/10 shadow-lg block hover:border-[#FF5E00]/40 transition-colors duration-300 group">
                                         <div className="h-[160px] relative bg-black">
-                                            <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
+                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
 
-                                            <button
+                                            <button aria-label="Favoritar"
                                                 onClick={(e) => toggleFavorite(e, panel.id)}
                                                 className="absolute top-3 right-3 bg-[#0A0A0B]/60 backdrop-blur-md p-1.5 rounded-full border border-white/10 z-10 active:scale-110 transition-transform duration-300"
                                             >
@@ -622,32 +630,34 @@ export function Home() {
 
                                             <div className="absolute bottom-3 left-3 bg-[#0A0A0B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1.5">
                                                 <Activity className="w-3 h-3 text-[#FF5E00]" />
-                                                <span className="text-[10px] font-black text-white tracking-wider">{panel.impacts || '1.2M'}</span>
+                                                <span className="text-[10px] font-black text-white tracking-wider">{panel.impacts || '—'}</span>
                                             </div>
                                         </div>
                                         <div className="p-4 flex flex-col justify-between">
                                             <div>
                                                 <div className="flex justify-between items-start mb-2">
                                                     <h4 className="font-bold text-sm text-white line-clamp-1 pr-2 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Painel Digital Premium'}</h4>
-                                                    <div className="flex items-center gap-1 shrink-0 bg-white/5 px-1.5 py-0.5 rounded text-xs font-bold text-white">
-                                                        <Star className="w-3 h-3 fill-[#FF5E00] text-[#FF5E00]" />
-                                                        4.9
-                                                    </div>
                                                 </div>
                                                 <p className="text-[11px] text-[#8F8F91] flex items-center gap-1.5 mb-4">
-                                                    <MapPin className="w-3 h-3 text-[#FF5E00]" /> {panel.city || 'Goiânia'} - {panel.state || 'GO'}
+                                                    <MapPin className="w-3 h-3 text-[#FF5E00]" /> {[panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar'}
                                                 </p>
                                             </div>
                                             <div className="flex justify-between items-end border-t border-white/5 pt-3 mt-auto">
                                                 <div className="flex flex-col">
-                                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                                        <span className="text-[9px] text-[#8F8F91] uppercase tracking-wider font-bold">Investimento Mensal</span>
-                                                        <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30% ANUAL</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-base font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
-                                                        <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
-                                                    </div>
+                                                    {basePrice > 0 ? (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                                <span className="text-[9px] text-[#8F8F91] uppercase tracking-wider font-bold">Mensal no plano anual</span>
+                                                                <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30%</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-base font-black text-[#FF5E00]">{formatCurrency(discountedPrice)}</span>
+                                                                <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-white">Valor sob consulta</span>
+                                                    )}
                                                 </div>
                                                 <div className="p-2 bg-[#FF5E00]/10 rounded-lg text-[#FF5E00]">
                                                     <ArrowRight className="w-4 h-4" />
@@ -684,26 +694,31 @@ export function Home() {
 
                         <div className="flex flex-col gap-3">
                             {nearbyPanels.length > 0 ? nearbyPanels.map((panel, idx) => {
-                                const basePrice = panel.price || 1500;
-                                const discountedPrice = basePrice * 0.70;
+                                const basePrice = Number(panel.price) || 0;
+                                const discountedPrice = basePrice * (1 - ANNUAL_DISCOUNT);
 
                                 return (
                                     <Link to={`/servicos?panelId=${panel.id}`} key={panel.id || idx} className="flex gap-4 bg-[#111113] p-3 rounded-[20px] border border-white/10 shadow-md items-center relative overflow-hidden hover:border-[#FF5E00]/40 transition-colors duration-300 group">
                                         <div className="w-24 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
-                                            <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
-                                            <div className="absolute top-1 left-1 bg-[#0A0A0B]/80 px-1.5 py-0.5 rounded text-[8px] font-bold text-white backdrop-blur-md">PRO</div>
+                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Painel" />
                                         </div>
                                         <div className="flex-1 min-w-0 py-1">
                                             <h4 className="font-bold text-sm text-white line-clamp-1 mb-1 group-hover:text-[#FF5E00] transition-colors duration-300">{panel.name || 'Circuito Urbano Principal'}</h4>
                                             <p className="text-[11px] text-[#8F8F91] flex items-center gap-1.5 mb-1.5">
                                                 <MapPin className="w-3 h-3 text-[#FF5E00]" />
-                                                {panel.distance !== Infinity ? `${panel.distance.toFixed(1)} km de distância` : 'Desconhecido'}
+                                                {panel.distance !== Infinity ? `${panel.distance.toFixed(1)} km de distância` : ([panel.city, panel.state].filter(Boolean).join(' - ') || 'Localização a confirmar')}
                                             </p>
-                                            <div className="flex items-center gap-1.5 mb-0.5">
-                                                <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
-                                                <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30% ANUAL</span>
-                                            </div>
-                                            <span className="text-sm font-black text-[#FF5E00] block">{formatCurrency(discountedPrice)}</span>
+                                            {basePrice > 0 ? (
+                                                <>
+                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                        <span className="text-[9px] text-[#8F8F91] line-through">{formatCurrency(basePrice)}</span>
+                                                        <span className="bg-[#FF5E00]/20 text-[#FF5E00] text-[8px] font-black px-1 py-0.5 rounded border border-[#FF5E00]/30">-30% no plano anual</span>
+                                                    </div>
+                                                    <span className="text-sm font-black text-[#FF5E00] block">{formatCurrency(discountedPrice)}/mês</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-xs font-bold text-white block">Valor sob consulta</span>
+                                            )}
                                         </div>
                                     </Link>
                                 )
@@ -717,7 +732,7 @@ export function Home() {
 
                     <div className="fixed bottom-[76px] left-4 right-4 z-[90]">
                         <Link to="/servicos">
-                            <Button className="w-full flex items-center justify-center gap-2 bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] text-sm transition-all duration-300 active:scale-[0.98]">
+                            <Button as="span" className="w-full flex items-center justify-center gap-2 bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] font-black py-4 rounded-xl shadow-[0_10px_25px_rgba(255,94,0,0.35)] text-sm transition-all duration-300 active:scale-[0.98]">
                                 Solicitar Orçamento
                                 <ArrowRight className="w-4 h-4" />
                             </Button>

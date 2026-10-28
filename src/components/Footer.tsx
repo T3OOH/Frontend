@@ -32,7 +32,7 @@ export function Footer() {
                         {/* Column 1: Institutional & Identity */}
                         <div className="col-span-4 flex flex-col items-start">
                             <Link to="/" className="flex items-center gap-1.5 mb-6 group">
-                                <img src="/t3d 2.png" alt="Logo T3" className="h-12 w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" />
+                                <img src="/t3-logo.webp" alt="Logo T3" className="h-12 w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" />
                             </Link>
                             <p className="text-[13px] text-[#8F8F91] leading-relaxed mb-8 font-medium pr-4">
                                 A plataforma inteligente para gestão e locação de painéis de LED em todo o Brasil. Conectamos anunciantes aos melhores pontos de mídia OOH com tecnologia, métricas e auditoria em tempo real.
@@ -128,7 +128,7 @@ export function Footer() {
                 <div className="lg:hidden flex flex-col pb-[120px]">
                     
                     <div className="flex flex-col items-center text-center mb-10 pt-2">
-                        <img src="/t3d 2.png" alt="Logo T3" className="h-16 w-auto object-contain mb-6 opacity-90" />
+                        <img src="/t3-logo.webp" alt="Logo T3" className="h-16 w-auto object-contain mb-6 opacity-90" />
                         <p className="text-[13px] text-[#8F8F91] leading-relaxed font-medium px-4">
                             A plataforma inteligente para gestão e locação de painéis de LED no Centro-Oeste e Brasil.
                         </p>
