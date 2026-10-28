@@ -1,214 +1,132 @@
 import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import './map-custom.css';
-import { Activity, Maximize } from 'lucide-react';
+import { BaseTiles } from './basemap';
+import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
 
-interface Panel {
+export interface MapPanel {
     id: string;
     name: string;
     lat: number | string;
     lng: number | string;
-    status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
-    impacts: string;
-    size: string;
-    px: string;
+    city?: string | null;
+    state?: string | null;
+    impacts?: string;
+    size?: string;
+    price?: number | string | null;
     images?: string[];
 }
 
 interface InteractiveMapProps {
-    panels: Panel[];
+    panels: MapPanel[];
     selectedPanelId?: string | null;
+    onSelect?: (id: string) => void;
+    /** Botão do popup: adiciona ou remove do orçamento. */
+    onToggle?: (panel: MapPanel) => void;
+    isInCart?: (id: string) => boolean;
+    /** Preço mensal mostrado no popup (o site exibe o valor do plano anual). */
+    priceLabel?: (panel: MapPanel) => string;
 }
 
-const worldBounds: L.LatLngBoundsLiteral = [
-    [-90, -180],
-    [90, 180]
-];
-
-// Ícone do Mapa Padrão
-const customMarker = L.divIcon({
-    className: 'custom-marker',
-    html: `
-      <div style="background-color: rgba(17, 17, 19, 0.9); backdrop-filter: blur(4px); border: 2px solid rgba(255, 94, 0, 0.4); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 94, 0, 0.2); overflow: hidden; transition: all 0.3s ease;">
-          <img src="/t3-marker.webp" alt="" style="width: 20px; height: 20px; object-fit: contain; opacity: 0.9;" />
-      </div>
-    `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-});
-
-// Ícone do Mapa para o painel SELECIONADO
-const selectedMarker = L.divIcon({
-    className: 'custom-marker-selected',
-    html: `
-      <div style="background-color: #111113; border: 2px solid #FF5E00; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(255, 94, 0, 0.6), inset 0 0 10px rgba(255, 94, 0, 0.2); z-index: 1000;">
-          <img src="/t3-marker.webp" alt="" style="width: 26px; height: 26px; object-fit: contain;" />
-      </div>
-    `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-});
-
-const parseSafeCoord = (value: any, fallback: number): number => {
-    if (value === null || value === undefined || value === '') return fallback;
-    const parsed = parseFloat(String(value).replace(',', '.'));
-    if (isNaN(parsed) || parsed === 0) return fallback;
-    return parsed;
+const toCoord = (value: number | string) => {
+    const n = typeof value === 'number' ? value : parseFloat(String(value).replace(',', '.'));
+    return Number.isFinite(n) && n !== 0 ? n : null;
 };
 
-// Componente que dá o Zoom e Centraliza no Ponto
-function MapController({ selectedPanelId, panels }: { selectedPanelId?: string | null, panels: Panel[] }) {
+/** Enquadra os pontos na primeira carga e acompanha o painel selecionado. */
+function Camera({ panels, selectedId }: { panels: MapPanel[]; selectedId?: string | null }) {
     const map = useMap();
+    const framed = useRef(false);
 
     useEffect(() => {
-        if (!map) return;
-        const timer = setTimeout(() => {
-            map.invalidateSize();
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [map, selectedPanelId]);
+        const t = setTimeout(() => map.invalidateSize(), 300);
+        return () => clearTimeout(t);
+    }, [map]);
 
     useEffect(() => {
-        if (!selectedPanelId || !map) return;
+        if (framed.current || panels.length === 0) return;
+        const points = panels.map((p) => [toCoord(p.lat), toCoord(p.lng)]).filter((c): c is [number, number] => c[0] !== null && c[1] !== null);
+        if (points.length) {
+            map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 14 });
+            framed.current = true;
+        }
+    }, [panels, map]);
 
-        const panel = panels.find(p => p.id === selectedPanelId);
-        if (!panel) return;
-
-        const safeLat = parseSafeCoord(panel.lat, -16.6868911);
-        const safeLng = parseSafeCoord(panel.lng, -49.2647943);
-
-        const timer = setTimeout(() => {
-            map.flyTo([safeLat, safeLng], 16, {
-                animate: true,
-                duration: 1.3,
-                easeLinearity: 0.25
-            });
-        }, 50);
-
-        return () => clearTimeout(timer);
-    }, [selectedPanelId, panels, map]);
+    useEffect(() => {
+        const panel = panels.find((p) => p.id === selectedId);
+        const lat = panel && toCoord(panel.lat);
+        const lng = panel && toCoord(panel.lng);
+        if (lat && lng) map.flyTo([lat, lng], Math.max(map.getZoom(), 16), { duration: 0.8 });
+    }, [selectedId, panels, map]);
 
     return null;
 }
 
-export function InteractiveMap({ panels, selectedPanelId }: InteractiveMapProps) {
-    const markerRefs = useRef<Record<string, L.Marker | null>>({});
+export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, isInCart, priceLabel }: InteractiveMapProps) {
+    const markers = useRef<Record<string, L.Marker | null>>({});
 
-    // Abre o popup automaticamente
     useEffect(() => {
-        if (selectedPanelId && markerRefs.current[selectedPanelId]) {
-            const marker = markerRefs.current[selectedPanelId];
-            if (marker && !marker.isPopupOpen()) {
-                marker.openPopup();
-            }
-        }
+        if (!selectedPanelId) return;
+        const t = setTimeout(() => markers.current[selectedPanelId]?.openPopup(), 850);
+        return () => clearTimeout(t);
     }, [selectedPanelId]);
 
-    const getStatusDisplay = (status: string) => {
-        switch (status) {
-            case 'AVAILABLE':
-                return { text: 'Disponível', dot: 'bg-[#25D366]', color: 'text-[#25D366]' };
-            case 'OCCUPIED':
-                return { text: 'Ocupado', dot: 'bg-red-500', color: 'text-red-500' };
-            case 'MAINTENANCE':
-                return { text: 'Manutenção', dot: 'bg-yellow-500', color: 'text-yellow-500' };
-            default:
-                return { text: 'Desconhecido', dot: 'bg-brand-muted', color: 'text-brand-muted' };
-        }
-    };
-
-    const defaultCenter: [number, number] = [-16.6869, -49.2648];
-
     return (
-        <div className="w-full h-full relative">
-            <MapContainer
-                center={defaultCenter}
-                zoom={13}
-                minZoom={3}
-                maxBounds={worldBounds}
-                maxBoundsViscosity={1.0}
-                // Filtro Balanceado: Inverte para escuro, tira a cor (grayscale), ajusta o brilho e dá um leve contraste
-                className="w-full h-full outline-none z-0 bg-[#0A0A0B] [&_.leaflet-layer]:filter [&_.leaflet-layer]:invert [&_.leaflet-layer]:grayscale [&_.leaflet-layer]:brightness-[0.85] [&_.leaflet-layer]:contrast-125"
-                zoomControl={false}
-            >
-                {/* Mantendo o OpenStreetMap gratuito como solicitado */}
-                <TileLayer
-                    noWrap={true}
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                />
+        <MapContainer center={GOIANIA} zoom={13} minZoom={4} maxBounds={BRAZIL_BOUNDS} maxBoundsViscosity={0.8} zoomControl={false} className="h-full w-full outline-none">
+            <BaseTiles theme="dark" />
+            <ZoomControl position="bottomright" />
+            <Camera panels={panels} selectedId={selectedPanelId} />
 
-                <MapController selectedPanelId={selectedPanelId} panels={panels} />
+            {panels.map((panel) => {
+                const lat = toCoord(panel.lat);
+                const lng = toCoord(panel.lng);
+                if (lat === null || lng === null) return null;
+                const active = panel.id === selectedPanelId;
+                const inCart = isInCart?.(panel.id) ?? false;
+                const impacts = parseImpacts(panel.impacts);
 
-                {panels.map((panel) => {
-                    const safeLat = parseSafeCoord(panel.lat, -16.6868911);
-                    const safeLng = parseSafeCoord(panel.lng, -49.2647943);
-
-                    const statusInfo = getStatusDisplay(panel.status);
-                    const isSelected = panel.id === selectedPanelId;
-
-                    return (
-                        <Marker
-                            key={panel.id}
-                            position={[safeLat, safeLng]}
-                            icon={isSelected ? selectedMarker : customMarker}
-                            zIndexOffset={isSelected ? 1000 : 0}
-                            ref={(r) => {
-                                if (r) markerRefs.current[panel.id] = r;
-                            }}
-                        >
-                            <Popup className="custom-popup" closeButton={true}>
-                                <div className="flex flex-col relative w-full">
-
-                                    <div className="relative h-36 w-full shrink-0">
-                                        <img
-                                            src={panel.images?.[0] || '/placeholder.svg'}
-                                            alt={panel.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#111113] via-[#111113]/40 to-transparent" />
-                                    </div>
-
-                                    <div className="px-5 pb-5 pt-0 flex flex-col gap-3 relative z-10 -mt-6">
-                                        <div>
-                                            <h3 className="font-extrabold text-white text-base leading-tight mb-2 drop-shadow-md pr-6">
-                                                {panel.name}
-                                            </h3>
-                                            <div className="flex items-center gap-2 bg-[#0A0A0B]/80 border border-white/5 px-2.5 py-1.5 rounded-lg w-fit backdrop-blur-sm">
-                                                <span className={`w-2 h-2 rounded-full ${statusInfo.dot} shadow-[0_0_8px_currentColor] animate-pulse`} />
-                                                <span className={`text-[9px] font-black uppercase tracking-widest ${statusInfo.color}`}>
-                                                    {statusInfo.text}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <hr className="border-white/5" />
-
-                                        <div className="grid grid-cols-2 gap-2 mt-1">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
-                                                    <Activity className="w-3 h-3 text-[#FF5E00]" />
-                                                    Impacto/dia
-                                                </span>
-                                                <span className="text-sm font-black text-white">{panel.impacts || '0'}</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] text-brand-muted uppercase tracking-widest mb-0.5 flex items-center gap-1 font-bold">
-                                                    <Maximize className="w-3 h-3 text-[#FF5E00]" />
-                                                    Formato
-                                                </span>
-                                                <span className="text-sm font-black text-white">{panel.size || 'N/A'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                return (
+                    <Marker
+                        key={panel.id}
+                        position={[lat, lng]}
+                        icon={brandMarker(inCart ? 'light' : 'brand', active)}
+                        zIndexOffset={active ? 1000 : inCart ? 500 : 0}
+                        eventHandlers={{ click: () => onSelect?.(panel.id) }}
+                        ref={(r) => { markers.current[panel.id] = r; }}
+                        title={panel.name}
+                        alt={panel.name}
+                    >
+                        <Popup closeButton>
+                            <div className="flex flex-col">
+                                <div className="aspect-[16/9] w-full bg-ink-850">
+                                    <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-full w-full object-cover" />
                                 </div>
-                            </Popup>
-                        </Marker>
-                    );
-                })}
-            </MapContainer>
-        </div>
+                                <div className="flex flex-col gap-3 p-4">
+                                    <div>
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-400">{[panel.city, panel.state].filter(Boolean).join(' · ') || 'Goiânia · GO'}</p>
+                                        <p className="mt-1 text-[15px] font-medium leading-snug text-ink-100">{panel.name}</p>
+                                    </div>
+                                    <dl className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3 font-mono text-xs">
+                                        <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-0.5 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
+                                        <div><dt className="text-ink-500">Formato</dt><dd className="mt-0.5 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                    </dl>
+                                    {priceLabel && <p className="font-mono text-sm text-brand-neon">{priceLabel(panel)}</p>}
+                                    {onToggle && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onToggle(panel)}
+                                            className={`w-full px-4 py-2.5 text-sm font-semibold transition-colors ${inCart ? 'border border-white/25 text-ink-100 hover:border-white/60' : 'bg-brand-neon text-ink-950 hover:bg-brand-neonHover'}`}
+                                        >
+                                            {inCart ? 'No orçamento · remover' : 'Adicionar ao orçamento'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                );
+            })}
+        </MapContainer>
     );
 }

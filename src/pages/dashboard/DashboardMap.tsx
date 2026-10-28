@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { BaseTiles } from '@/features/map/basemap';
+import { BRAZIL_BOUNDS, GOIANIA } from '@/features/map/markers';
 import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
 import { useTheme } from '@/contexts/ThemeContext';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
@@ -102,10 +103,10 @@ export function DashboardMap() {
                         )}
                     </aside>
 
-                    <div className={`relative h-[480px] bg-brand-background lg:h-[640px] ${theme === 'dark' ? '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.9)]' : ''}`}>
+                    <div className={`relative h-[480px] bg-brand-background lg:h-[640px]`}>
                         {status === 'loading' ? <Skeleton className="absolute inset-0" /> : (
-                            <MapContainer center={[-16.6869, -49.2648]} zoom={12} minZoom={4} className="absolute inset-0 z-0">
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                            <MapContainer center={GOIANIA} zoom={12} minZoom={4} maxBounds={BRAZIL_BOUNDS} className="absolute inset-0 z-0">
+                                <BaseTiles theme={theme} />
                                 <Camera panels={panels} focus={focus} />
                                 {shown.map((p) => (
                                     <Marker key={p.id} position={[p.lat, p.lng]} icon={icon(p.status, p.id === focusId)} eventHandlers={{ click: () => setFocusId(p.id) }}>
