@@ -213,7 +213,7 @@ export function PanelForm() {
                     </span>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-black text-white tracking-tight uppercase">
+                    <h1 className="text-2xl font-semibold text-white tracking-tight uppercase">
                         {isEditing ? 'Editar Ponto' : 'Cadastrar Ponto'}
                     </h1>
                     <p className="text-xs text-[#8F8F91] uppercase tracking-widest mt-0.5">Configure as informações do painel</p>
@@ -355,7 +355,7 @@ export function PanelForm() {
                                     type="button" 
                                     onClick={handleSave}
                                     disabled={isSaving || !formValues.name || !formValues.size || !formValues.price}
-                                    className="bg-[#25D366] border-none text-[#0A0A0B] rounded-sm text-[10px] uppercase font-black tracking-widest px-8 flex items-center gap-2 hover:bg-[#1eb858] transition-colors"
+                                    className="bg-[#FF5E00] border-none text-[#0A0A0B] rounded-sm text-[10px] uppercase font-semibold tracking-widest px-8 flex items-center gap-2 hover:bg-[#FF7A29] transition-colors"
                                 >
                                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                     {isSaving ? 'Salvando...' : 'Finalizar e Salvar'}

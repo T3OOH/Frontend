@@ -125,7 +125,7 @@ export function SolutionManager() {
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-black text-brand-text flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-brand-text flex items-center gap-2">
                         <Images className="w-6 h-6 text-brand-neon" /> Gestão T3 Solution
                     </h1>
                     <p className="text-sm text-brand-muted mt-1">Gerencie as imagens exibidas no carrossel de portfólio da página T3 Solution.</p>
@@ -186,7 +186,7 @@ export function SolutionManager() {
                                     <Button 
                                         type="submit" 
                                         disabled={isSaving}
-                                        className="w-2/3 bg-brand-neon hover:bg-brand-neonHover text-[#0A0A0B] font-black uppercase tracking-widest text-[11px] rounded-xl h-12 shadow-[0_0_15px_rgba(255,94,0,0.15)] flex items-center justify-center"
+                                        className="w-2/3 bg-brand-neon hover:bg-brand-neonHover text-[#0A0A0B] font-semibold uppercase tracking-widest text-[11px] rounded-xl h-12 shadow-[0_0_15px_rgba(255,94,0,0.15)] flex items-center justify-center"
                                     >
                                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UploadCloud className="w-4 h-4 mr-2" />}
                                         Salvar

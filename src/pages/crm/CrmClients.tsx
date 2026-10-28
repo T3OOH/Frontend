@@ -310,7 +310,7 @@ export function CrmClients() {
     };
 
     const getStatusInfo = (status: string) => {
-        if (status === 'WON') return { icon: <CheckCircle2 className="w-3.5 h-3.5" />, text: 'Ganho', color: 'text-[#25D366]', bg: 'bg-[#25D366]/10 border-[#25D366]/20' };
+        if (status === 'WON') return { icon: <CheckCircle2 className="w-3.5 h-3.5" />, text: 'Ganho', color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10 border-[#FF5E00]/20' };
         if (status === 'LOST') return { icon: <XCircle className="w-3.5 h-3.5" />, text: 'Perdido', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' };
         return { icon: <Clock className="w-3.5 h-3.5" />, text: 'Em Andamento', color: 'text-brand-neon', bg: 'bg-brand-neon/10 border-brand-neon/20' };
     };
@@ -402,7 +402,7 @@ export function CrmClients() {
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-xs font-black text-brand-text shadow-sm shrink-0">
+                                                    <div className="w-10 h-10 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-xs font-semibold text-brand-text shadow-sm shrink-0">
                                                         {getInitials(client.name)}
                                                     </div>
                                                     <div className="flex flex-col">
@@ -439,7 +439,7 @@ export function CrmClients() {
                                             </td>
 
                                             <td className="px-6 py-4 text-center">
-                                                <span className="bg-brand-background border border-brand-border text-brand-text text-xs font-black px-3 py-1.5 rounded-full inline-block min-w-[32px] shadow-sm">
+                                                <span className="bg-brand-background border border-brand-border text-brand-text text-xs font-semibold px-3 py-1.5 rounded-full inline-block min-w-[32px] shadow-sm">
                                                     {client._count?.deals || 0}
                                                 </span>
                                             </td>
@@ -555,7 +555,7 @@ export function CrmClients() {
 
                                 <div className="flex items-center justify-between border-b border-brand-border pb-4 mb-4">
                                     <div className="flex items-center gap-3 min-w-0" onClick={() => handleOpenProfile(client)}>
-                                        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-brand-text font-black text-[15px] shadow-sm">
+                                        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-brand-text font-semibold text-[15px] shadow-sm">
                                             {getInitials(client.name)}
                                         </div>
                                         <div className="flex flex-col min-w-0">
@@ -618,7 +618,7 @@ export function CrmClients() {
                         {/* Header Ficha */}
                         <div className="flex items-center justify-between p-6 lg:p-8 border-b border-brand-border bg-brand-surface shrink-0 sticky top-0 z-20">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-sm font-black text-brand-text shadow-sm">
+                                <div className="w-12 h-12 rounded-full bg-brand-background border border-brand-border flex items-center justify-center text-sm font-semibold text-brand-text shadow-sm">
                                     {getInitials(selectedClient.name)}
                                 </div>
                                 <div className="flex flex-col">
@@ -637,7 +637,7 @@ export function CrmClients() {
                         {/* Body Ficha */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
 
-                            <h3 className="text-xs font-black uppercase tracking-widest text-brand-muted mb-3">Informações de Contato</h3>
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-muted mb-3">Informações de Contato</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-brand-background p-6 rounded-none border border-brand-border mb-8 shadow-sm">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[10px] text-brand-muted font-bold uppercase tracking-wider">Email</span>
@@ -657,7 +657,7 @@ export function CrmClients() {
                                 </div>
                             </div>
 
-                            <h3 className="text-xs font-black uppercase tracking-widest text-brand-muted mb-3">Histórico de Contratos / Negócios</h3>
+                            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-muted mb-3">Histórico de Contratos / Negócios</h3>
                             <div className="flex flex-col gap-4">
                                 {clientDeals.length === 0 ? (
                                     <div className="text-center p-8 bg-brand-background border-2 border-dashed border-brand-border rounded-none text-brand-muted text-sm font-medium">
@@ -675,7 +675,7 @@ export function CrmClients() {
                                                         <span className="w-1 h-1 rounded-full bg-brand-border"></span>
                                                         <span className="text-brand-text">{formatCurrency(deal.expectedValue)}</span>
                                                     </div>
-                                                    <div className={`w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-widest shadow-sm ${statusInfo.bg} ${statusInfo.color}`}>
+                                                    <div className={`w-fit flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-semibold uppercase tracking-widest shadow-sm ${statusInfo.bg} ${statusInfo.color}`}>
                                                         {statusInfo.icon} {statusInfo.text}
                                                     </div>
                                                 </div>

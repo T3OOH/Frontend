@@ -102,7 +102,7 @@ export function CrmCoupons() {
     const getStatus = (coupon: Coupon) => {
         if (coupon.isUsed) return <span className="text-[10px] font-bold uppercase tracking-widest bg-red-500/10 text-red-500 px-2.5 py-1 rounded-md border border-red-500/20">Usado</span>;
         if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) return <span className="text-[10px] font-bold uppercase tracking-widest bg-brand-background text-brand-muted px-2.5 py-1 rounded-md border border-brand-border">Expirado</span>;
-        return <span className="text-[10px] font-bold uppercase tracking-widest bg-[#25D366]/10 text-[#25D366] px-2.5 py-1 rounded-md border border-[#25D366]/20">Ativo</span>;
+        return <span className="text-[10px] font-bold uppercase tracking-widest bg-[#FF5E00]/10 text-[#FF5E00] px-2.5 py-1 rounded-md border border-[#FF5E00]/20">Ativo</span>;
     };
 
     return (
@@ -170,9 +170,9 @@ export function CrmCoupons() {
 
                                         <div className="text-center mb-6 relative z-10">
                                             <div className="flex items-center justify-center gap-2 mb-1">
-                                                <h3 className="text-[24px] font-black text-brand-neon tracking-widest">{coupon.code}</h3>
+                                                <h3 className="text-[24px] font-semibold text-brand-neon tracking-widest">{coupon.code}</h3>
                                                 <button onClick={() => copyToClipboard(coupon.id, coupon.code)} className="text-brand-muted hover:text-brand-text transition-colors p-2 bg-brand-background rounded-lg border border-brand-border">
-                                                    {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#25D366]" /> : <Copy className="w-4 h-4" />}
+                                                    {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#FF5E00]" /> : <Copy className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                             <p className="text-3xl font-bold text-brand-text mt-2 tracking-tight">
@@ -369,9 +369,9 @@ export function CrmCoupons() {
 
                                 <div className="text-center mb-6">
                                     <div className="flex items-center justify-center gap-2 mb-1">
-                                        <h3 className="text-[22px] font-black text-brand-neon tracking-widest leading-none">{coupon.code}</h3>
+                                        <h3 className="text-[22px] font-semibold text-brand-neon tracking-widest leading-none">{coupon.code}</h3>
                                         <button onClick={() => copyToClipboard(coupon.id, coupon.code)} className="text-brand-muted hover:text-brand-text bg-brand-background border border-brand-border p-2 rounded-lg active:scale-95 shadow-sm transition-colors">
-                                            {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#25D366]" /> : <Copy className="w-4 h-4" />}
+                                            {copiedId === coupon.id ? <Check className="w-4 h-4 text-[#FF5E00]" /> : <Copy className="w-4 h-4" />}
                                         </button>
                                     </div>
                                     <p className="text-[28px] font-bold text-brand-text mt-2 leading-none tracking-tight">

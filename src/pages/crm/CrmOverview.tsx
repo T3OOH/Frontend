@@ -115,9 +115,9 @@ export function CrmOverview() {
 
     const statCards = [
         { title: 'Pipeline Ativo (Em aberto)', value: formatCurrency(metrics.totalExpectedValue), desc: 'Valor total em negociação', icon: Target, color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10' },
-        { title: 'Negócios Fechados (Ganhos)', value: formatCurrency(metrics.totalWonValue), desc: 'Seu faturamento consolidado', icon: DollarSign, color: 'text-[#25D366]', bg: 'bg-[#25D366]/10' },
-        { title: 'Oportunidades Abertas', value: metrics.totalActiveDeals, desc: 'Pacotes no seu funil', icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-        { title: 'Sua Carteira de Clientes', value: metrics.totalClients, desc: 'Total de clientes únicos', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' }
+        { title: 'Negócios Fechados (Ganhos)', value: formatCurrency(metrics.totalWonValue), desc: 'Seu faturamento consolidado', icon: DollarSign, color: 'text-[#FF5E00]', bg: 'bg-[#FF5E00]/10' },
+        { title: 'Oportunidades Abertas', value: metrics.totalActiveDeals, desc: 'Pacotes no seu funil', icon: TrendingUp, color: 'text-brand-text', bg: 'bg-brand-text/5' },
+        { title: 'Sua Carteira de Clientes', value: metrics.totalClients, desc: 'Total de clientes únicos', icon: Users, color: 'text-brand-text', bg: 'bg-brand-text/5' }
     ];
 
     return (
@@ -143,7 +143,7 @@ export function CrmOverview() {
                         </div>
                         <div>
                             <h3 className="text-[10px] lg:text-[11px] font-bold uppercase tracking-widest text-brand-muted mb-1 lg:mb-1.5 line-clamp-2">{stat.title}</h3>
-                            <p className="text-xl lg:text-2xl font-black text-brand-text tracking-tight mb-0 lg:mb-2">{stat.value}</p>
+                            <p className="text-xl lg:text-2xl font-semibold text-brand-text tracking-tight mb-0 lg:mb-2">{stat.value}</p>
                             <p className="hidden lg:block text-[10px] text-brand-muted/80 uppercase tracking-wider font-bold">{stat.desc}</p>
                         </div>
                     </div>
@@ -160,13 +160,6 @@ export function CrmOverview() {
                                 <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 text-brand-neon" /> Sua Fila de Atendimento
                             </h2>
                             <p className="hidden lg:block text-xs text-brand-muted font-medium mt-1">Pacotes atribuídos a você aguardando negociação.</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="flex h-2.5 w-2.5 lg:h-3 lg:w-3 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-neon opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 lg:h-3 lg:w-3 bg-brand-neon"></span>
-                            </span>
-                            <span className="text-[9px] lg:text-xs font-bold text-brand-neon uppercase tracking-widest">Ao Vivo</span>
                         </div>
                     </div>
                     
@@ -190,7 +183,7 @@ export function CrmOverview() {
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2 mb-1.5">
                                             <span className="text-sm font-bold text-brand-text group-hover:text-brand-neon transition-colors">{deal.clientName}</span>
-                                            <span className="text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20">
+                                            <span className="text-[9px] px-2 py-0.5 rounded font-semibold uppercase tracking-widest bg-[#FF5E00]/10 text-[#FF5E00] border border-[#FF5E00]/20">
                                                 Aberto
                                             </span>
                                         </div>
@@ -202,7 +195,7 @@ export function CrmOverview() {
                                     </div>
 
                                     <div className="mt-2 lg:mt-0 flex w-full lg:w-auto">
-                                        <span className="w-full lg:w-auto bg-brand-background text-brand-text border border-brand-border group-hover:bg-brand-neon group-hover:text-black group-hover:border-brand-neon px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm" aria-hidden="true">
+                                        <span className="w-full lg:w-auto bg-brand-background text-brand-text border border-brand-border group-hover:bg-brand-neon group-hover:text-black group-hover:border-brand-neon px-5 py-2.5 rounded-xl text-[11px] font-semibold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm" aria-hidden="true">
                                             Analisar Proposta <ArrowRight className="w-4 h-4" />
                                         </span>
                                     </div>
@@ -216,7 +209,7 @@ export function CrmOverview() {
                 <div className="lg:col-span-1 bg-brand-surface rounded-none border border-brand-border shadow-sm flex flex-col transition-colors h-[500px]">
                     <div className="p-5 lg:p-6 border-b border-brand-border flex justify-between items-center bg-brand-background/50 shrink-0">
                         <h2 className="text-[15px] lg:text-lg font-bold text-brand-text">Próximos Passos</h2>
-                        <span className="bg-brand-neon/10 text-brand-neon text-[9px] lg:text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-widest border border-brand-neon/20">Hoje</span>
+                        <span className="bg-brand-neon/10 text-brand-neon text-[9px] lg:text-[10px] font-semibold px-2.5 py-1 rounded uppercase tracking-widest border border-brand-neon/20">Hoje</span>
                     </div>
                     <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-8 text-center bg-brand-background/30">
                         <CheckCircle2 className="w-10 h-10 lg:w-12 lg:h-12 text-brand-muted opacity-30 mb-3 lg:mb-4" />

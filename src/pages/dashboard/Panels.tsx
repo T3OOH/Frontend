@@ -59,11 +59,11 @@ export function Panels() {
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'AVAILABLE':
-                return { bg: 'bg-[#25D366]/10', border: 'border-[#25D366]/20', text: 'text-[#25D366]', dot: 'bg-[#25D366]', label: 'Disponível' };
+                return { bg: 'bg-[#FF5E00]/10', border: 'border-[#FF5E00]/20', text: 'text-[#FF5E00]', dot: 'bg-[#FF5E00]', label: 'Disponível' };
             case 'OCCUPIED':
                 return { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500', dot: 'bg-red-500', label: 'Ocupado' };
             case 'MAINTENANCE':
-                return { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-500', dot: 'bg-yellow-500', label: 'Manutenção' };
+                return { bg: 'bg-brand-text/5', border: 'border-brand-border', text: 'text-brand-text', dot: 'bg-brand-text/5', label: 'Manutenção' };
             default:
                 return { bg: 'bg-brand-muted/10', border: 'border-brand-muted/20', text: 'text-brand-muted', dot: 'bg-brand-muted', label: 'Desconhecido' };
         }

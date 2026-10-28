@@ -329,7 +329,7 @@ export function Solution() {
             >
                 <div className="bg-[#111113] border border-white/5 p-10 md:p-16 text-center rounded-sm">
                     <Target className="w-12 h-12 text-[#FF5E00] mx-auto mb-6" />
-                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                    <h2 className="text-3xl md:text-5xl font-light uppercase text-white mb-6 tracking-tight">
                         Tem Um Espaço Para Transformar?
                     </h2>
                     <p className="text-[#8F8F91] text-sm md:text-base max-w-2xl mx-auto mb-10">

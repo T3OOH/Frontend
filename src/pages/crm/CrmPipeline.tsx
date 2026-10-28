@@ -161,13 +161,14 @@ export function CrmPipeline() {
         }
     };
 
+    // Progressão visual do funil: neutro nas etapas iniciais, laranja perto do fechamento
     const stages: { id: DealStage; title: string; color: string; border: string }[] = [
-        { id: 'NEW_LEAD', title: 'Novos Leads', color: 'text-blue-500', border: 'border-blue-500/50' },
-        { id: 'FIRST_CONTACT', title: 'Primeiro Contato', color: 'text-purple-500', border: 'border-purple-500/50' },
-        { id: 'NEGOTIATION', title: 'Em Negociação', color: 'text-yellow-500', border: 'border-yellow-500/50' },
-        { id: 'WAITING_REPLY', title: 'Aguardando Retorno', color: 'text-orange-500', border: 'border-orange-500/50' },
-        { id: 'PROPOSAL_SENT', title: 'Proposta Enviada', color: 'text-brand-neon', border: 'border-brand-neon/50' },
-        { id: 'POST_SALES', title: 'Pós-Venda', color: 'text-[#25D366]', border: 'border-[#25D366]/50' },
+        { id: 'NEW_LEAD', title: 'Novos leads', color: 'text-brand-muted', border: 'border-brand-border' },
+        { id: 'FIRST_CONTACT', title: 'Primeiro contato', color: 'text-brand-muted', border: 'border-brand-muted/50' },
+        { id: 'NEGOTIATION', title: 'Em negociação', color: 'text-brand-text', border: 'border-brand-text/40' },
+        { id: 'WAITING_REPLY', title: 'Aguardando retorno', color: 'text-brand-text', border: 'border-brand-text/70' },
+        { id: 'PROPOSAL_SENT', title: 'Proposta enviada', color: 'text-brand-neon', border: 'border-brand-neon/60' },
+        { id: 'POST_SALES', title: 'Pós-venda', color: 'text-brand-neon', border: 'border-brand-neon' },
     ];
 
     const formatCurrency = (value: number) => {
@@ -260,7 +261,7 @@ export function CrmPipeline() {
                                                         </h4>
                                                         <button 
                                                             onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
-                                                            className="text-[#25D366] hover:text-white bg-[#25D366]/10 hover:bg-[#25D366] p-2 rounded-full transition-colors shrink-0 shadow-sm"
+                                                            className="text-[#FF5E00] hover:text-white bg-[#FF5E00]/10 hover:bg-[#FF5E00] p-2 rounded-full transition-colors shrink-0 shadow-sm"
                                                             title="Chamar no WhatsApp"
                                                         >
                                                             <MessageCircle className="w-4 h-4" />
@@ -275,9 +276,9 @@ export function CrmPipeline() {
                                                                 <DollarSign className="w-3.5 h-3.5 text-brand-neon" />
                                                                 {formatCurrency(Number(deal.expectedValue))}
                                                             </span>
-                                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                                                                deal.probability > 70 ? 'bg-[#25D366]/10 text-[#25D366]' : 
-                                                                deal.probability > 30 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
+                                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                                                deal.probability > 70 ? 'bg-[#FF5E00]/10 text-[#FF5E00]' : 
+                                                                deal.probability > 30 ? 'bg-brand-text/5 text-brand-text' : 'bg-red-500/10 text-red-500'
                                                             }`}>
                                                                 {deal.probability}%
                                                             </span>
@@ -341,7 +342,7 @@ export function CrmPipeline() {
                         return (
                             <div key={stage.id} className="flex flex-col">
                                 <div className={`flex items-center justify-between border-b-2 ${stage.border} pb-3 mb-4 px-2`}>
-                                    <h3 className={`font-black text-[12px] uppercase tracking-widest ${stage.color}`}>{stage.title}</h3>
+                                    <h3 className={`font-semibold text-[12px] uppercase tracking-widest ${stage.color}`}>{stage.title}</h3>
                                     <span className="bg-brand-surface border border-brand-border text-brand-text text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
                                         {stageDeals.length}
                                     </span>
@@ -359,7 +360,7 @@ export function CrmPipeline() {
                                                     </h4>
                                                     <button 
                                                         onClick={(e) => handleOpenWhatsApp(e, deal.client?.name, (deal.client as any)?.whatsapp || (deal.client as any)?.phone)}
-                                                        className="text-[#25D366] hover:text-white bg-[#25D366]/10 hover:bg-[#25D366] p-2 rounded-full transition-colors shrink-0 shadow-sm"
+                                                        className="text-[#FF5E00] hover:text-white bg-[#FF5E00]/10 hover:bg-[#FF5E00] p-2 rounded-full transition-colors shrink-0 shadow-sm"
                                                         title="Chamar no WhatsApp"
                                                     >
                                                         <MessageCircle className="w-4 h-4" />
@@ -372,9 +373,9 @@ export function CrmPipeline() {
                                                         <DollarSign className="w-4 h-4 text-brand-neon" />
                                                         {formatCurrency(Number(deal.expectedValue))}
                                                     </span>
-                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black ${
-                                                        deal.probability > 70 ? 'bg-[#25D366]/10 text-[#25D366]' : 
-                                                        deal.probability > 30 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
+                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold ${
+                                                        deal.probability > 70 ? 'bg-[#FF5E00]/10 text-[#FF5E00]' : 
+                                                        deal.probability > 30 ? 'bg-brand-text/5 text-brand-text' : 'bg-red-500/10 text-red-500'
                                                     }`}>
                                                         {deal.probability}% Prob.
                                                     </span>

@@ -111,21 +111,21 @@ export function Overview() {
                 <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Painéis</span>
-                        <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                        <div className="p-2 rounded-xl bg-brand-text/5 text-brand-text">
                             <MonitorPlay className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{totalPanels}</h3>
+                    <h3 className="text-3xl md:text-4xl font-semibold text-brand-text tracking-tight">{totalPanels}</h3>
                 </div>
 
                 <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
                     <div className="flex justify-between items-start">
                         <span className="text-[10px] md:text-xs font-bold text-brand-muted uppercase tracking-widest">Livres</span>
-                        <div className="p-2 rounded-xl bg-[#25D366]/10 text-[#25D366]">
+                        <div className="p-2 rounded-xl bg-[#FF5E00]/10 text-[#FF5E00]">
                             <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{availablePanels}</h3>
+                    <h3 className="text-3xl md:text-4xl font-semibold text-brand-text tracking-tight">{availablePanels}</h3>
                 </div>
 
                 <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
@@ -135,7 +135,7 @@ export function Overview() {
                             <XCircle className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{occupiedPanels}</h3>
+                    <h3 className="text-3xl md:text-4xl font-semibold text-brand-text tracking-tight">{occupiedPanels}</h3>
                 </div>
 
                 <div className="bg-brand-surface p-5 md:p-6 rounded-none border border-brand-border shadow-sm flex flex-col justify-between h-36 md:h-40 transition-shadow hover:shadow-md">
@@ -145,7 +145,7 @@ export function Overview() {
                             <TrendingUp className="w-4 h-4 md:w-5 md:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-3xl md:text-4xl font-black text-brand-text tracking-tight">{formatImpacts(totalImpacts)}</h3>
+                    <h3 className="text-3xl md:text-4xl font-semibold text-brand-text tracking-tight">{formatImpacts(totalImpacts)}</h3>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@ export function Overview() {
                             <BarChart2 className="w-5 h-5 text-brand-neon" />
                             Faturamento e Vendas (Status: Concluído)
                         </h2>
-                        <span className="text-xs font-bold text-[#25D366] bg-[#25D366]/10 px-3 py-1.5 rounded-lg border border-[#25D366]/20 self-start sm:self-auto shrink-0">
+                        <span className="text-xs font-bold text-[#FF5E00] bg-[#FF5E00]/10 px-3 py-1.5 rounded-lg border border-[#FF5E00]/20 self-start sm:self-auto shrink-0">
                             Total: {formatCurrency(totalRevenue)}
                         </span>
                     </div>
@@ -176,11 +176,11 @@ export function Overview() {
                                     <div key={index} className="flex flex-col gap-2.5">
                                         <div className="flex justify-between items-end">
                                             <span className="text-sm font-bold text-brand-text flex items-center gap-2">
-                                                {index === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
-                                                {index > 0 && <span className="text-brand-muted font-black w-4 text-center">{index + 1}º</span>}
+                                                {index === 0 && <Trophy className="w-4 h-4 text-brand-text" />}
+                                                {index > 0 && <span className="text-brand-muted font-semibold w-4 text-center">{index + 1}º</span>}
                                                 {seller.name}
                                             </span>
-                                            <span className="text-sm font-black text-brand-text">{formatCurrency(seller.total)}</span>
+                                            <span className="text-sm font-semibold text-brand-text">{formatCurrency(seller.total)}</span>
                                         </div>
                                         <div className="w-full bg-brand-background rounded-full h-2.5 overflow-hidden border border-brand-border/50">
                                             <div
@@ -225,18 +225,18 @@ export function Overview() {
                                             <span className="text-[10px] text-brand-muted">ID: PKG-{order.id.substring(0, 6)}</span>
                                         </div>
                                         {order.status === 'PENDING' ? (
-                                            <span className="text-[9px] font-black uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-1 rounded shrink-0">Novo</span>
+                                            <span className="text-[9px] font-semibold uppercase bg-brand-text/5 text-brand-text border border-brand-border px-2 py-1 rounded shrink-0">Novo</span>
                                         ) : !order.sellerId ? (
-                                            <span className="text-[9px] font-black uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-1 rounded shrink-0">Aguardando</span>
+                                            <span className="text-[9px] font-semibold uppercase bg-brand-text/5 text-brand-text border border-brand-border px-2 py-1 rounded shrink-0">Aguardando</span>
                                         ) : (
-                                            <span className="text-[9px] font-black uppercase text-brand-neon flex items-center gap-1 shrink-0">
+                                            <span className="text-[9px] font-semibold uppercase text-brand-neon flex items-center gap-1 shrink-0">
                                                 <UserCircle2 className="w-3 h-3"/> {order.seller?.name?.split(' ')[0]}
                                             </span>
                                         )}
                                     </div>
                                     <div className="flex justify-between items-end mt-1">
                                         <span className="text-xs text-brand-muted">{order.items?.length || 0} painéis</span>
-                                        <span className="text-sm font-black text-[#25D366]">{formatCurrency(order.totalValue)}</span>
+                                        <span className="text-sm font-semibold text-[#FF5E00]">{formatCurrency(order.totalValue)}</span>
                                     </div>
                                 </Link>
                             ))

@@ -100,9 +100,9 @@ export function CrmAgenda() {
 
     const getIconForType = (type: string) => {
         switch(type) {
-            case 'call': return <PhoneCall className="w-4 h-4 text-blue-500" />;
-            case 'meeting': return <Users className="w-4 h-4 text-purple-500" />;
-            case 'message': return <MessageSquare className="w-4 h-4 text-[#25D366]" />;
+            case 'call': return <PhoneCall className="w-4 h-4 text-brand-text" />;
+            case 'meeting': return <Users className="w-4 h-4 text-brand-text" />;
+            case 'message': return <MessageSquare className="w-4 h-4 text-[#FF5E00]" />;
             default: return <Clock className="w-4 h-4 text-brand-muted" />;
         }
     };
@@ -225,7 +225,7 @@ export function CrmAgenda() {
                                             <div key={task.id} className="flex gap-4 sm:gap-6 group">
                                                 
                                                 <div className="flex flex-col items-end w-12 sm:w-16 flex-shrink-0 pt-3">
-                                                    <span className={`text-sm font-black tracking-tight ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
+                                                    <span className={`text-sm font-semibold tracking-tight ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
                                                         {task.time}
                                                     </span>
                                                 </div>
@@ -258,7 +258,7 @@ export function CrmAgenda() {
                                                             onClick={() => toggleTaskStatus(task.id, task.status)}
                                                             className={`p-2.5 rounded-full transition-all border ${
                                                                 task.status === 'completed' 
-                                                                    ? 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20' 
+                                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
                                                                     : 'text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 border-transparent hover:border-brand-neon/20 bg-brand-surface shadow-sm'
                                                             }`} 
                                                             title={task.status === 'completed' ? "Marcar como pendente" : "Concluir tarefa"}
@@ -378,7 +378,7 @@ export function CrmAgenda() {
                                     task.status === 'completed' ? 'border-brand-border/50 opacity-70 bg-brand-background/50' : 'border-brand-border'
                                 }`}>
                                     <div className="flex flex-col items-center min-w-[45px] shrink-0 pt-0.5">
-                                        <span className={`text-[13px] font-black ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
+                                        <span className={`text-[13px] font-semibold ${task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'}`}>
                                             {task.time}
                                         </span>
                                         <div className="mt-2 flex items-center justify-center w-8 h-8 rounded-full bg-brand-background border border-brand-border shadow-sm">
@@ -400,7 +400,7 @@ export function CrmAgenda() {
                                             onClick={() => toggleTaskStatus(task.id, task.status)}
                                             className={`p-2.5 rounded-full transition-colors border shadow-sm ${
                                                 task.status === 'completed' 
-                                                    ? 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20' 
+                                                    ? 'text-[#FF5E00] bg-[#FF5E00]/10 border-[#FF5E00]/20' 
                                                     : 'text-brand-muted bg-brand-background border-brand-border active:scale-95'
                                             }`} 
                                         >

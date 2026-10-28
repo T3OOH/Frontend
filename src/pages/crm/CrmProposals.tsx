@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     totalValue: { fontSize: 10, color: '#111113', fontWeight: 'bold' },
     grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid #DDDDDD' },
     grandTotalText: { fontSize: 12, color: '#111113', fontWeight: 'bold' },
-    grandTotalValue: { fontSize: 14, color: '#25D366', fontWeight: 'bold' },
+    grandTotalValue: { fontSize: 14, color: '#FF5E00', fontWeight: 'bold' },
     
     imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 15 },
     imageCard: { width: '48%', marginBottom: 10 },
@@ -440,7 +440,7 @@ export function CrmProposals() {
                 <Button 
                     onClick={handleDownloadPDF} 
                     disabled={!currentClient || calculatedPanels.length === 0}
-                    className="bg-[#25D366] hover:brightness-110 text-[#0A0A0B] border-none font-black uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 md:h-12 px-4 md:px-6 rounded-xl"
+                    className="bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] border-none font-semibold uppercase tracking-widest text-[10px] md:text-[11px] flex items-center gap-2 shadow-[0_0_15px_rgba(37,211,102,0.3)] shrink-0 h-10 md:h-12 px-4 md:px-6 rounded-xl"
                 >
                     <Download className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">Baixar </span>PDF
                 </Button>
@@ -584,7 +584,7 @@ export function CrmProposals() {
                                                                 {panel.name}
                                                             </h4>
                                                             <p className="text-[10px] md:text-[11px] text-brand-muted font-medium truncate mt-0.5">{panel.city} - {panel.state}</p>
-                                                            <span className="text-[11px] md:text-[12px] font-black text-[#25D366] mt-1.5">
+                                                            <span className="text-[11px] md:text-[12px] font-semibold text-[#FF5E00] mt-1.5">
                                                                 {formatCurrency(currentPrice)} {currentDiscount > 0 && <span className="text-[9px] md:text-[10px] text-brand-muted line-through ml-1">{formatCurrency(originalPrice)}</span>}
                                                             </span>
                                                         </div>
@@ -646,7 +646,7 @@ export function CrmProposals() {
                                                 placeholder="0"
                                                 value={globalDiscount}
                                                 onChange={(e) => setGlobalDiscount(e.target.value === '' ? '' : Math.min(100, Math.max(0, Number(e.target.value))))}
-                                                className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 text-base font-black text-brand-neon focus:outline-none focus:border-brand-neon transition-colors shadow-sm text-center"
+                                                className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 text-base font-semibold text-brand-neon focus:outline-none focus:border-brand-neon transition-colors shadow-sm text-center"
                                             />
                                         </div>
                                         {Number(globalDiscount) > 0 && <div className="absolute right-0 bottom-0 w-32 h-32 bg-brand-neon/10 rounded-full blur-3xl pointer-events-none" />}
@@ -654,7 +654,7 @@ export function CrmProposals() {
 
                                     <div className="bg-brand-surface border border-brand-neon/30 p-6 rounded-none shadow-[0_0_20px_rgba(255,94,0,0.05)] shrink-0 transition-colors">
                                         <h2 className="text-[11px] font-bold text-brand-muted uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-brand-border pb-3">
-                                            <CreditCard className="w-4 h-4 text-[#25D366]" /> Resumo Rápido Mensal
+                                            <CreditCard className="w-4 h-4 text-[#FF5E00]" /> Resumo Rápido Mensal
                                         </h2>
                                         <div className="flex flex-col gap-3.5 text-xs md:text-sm">
                                             <div className="flex justify-between items-center text-brand-muted font-medium">
@@ -675,7 +675,7 @@ export function CrmProposals() {
                                             )}
                                             <div className="border-t border-brand-border mt-3 pt-5 flex justify-between items-center">
                                                 <span className="font-bold text-brand-text uppercase tracking-widest text-[10px] md:text-[11px]">Final Mensal:</span>
-                                                <span className="font-black text-xl md:text-2xl text-[#25D366] tracking-tight">{formatCurrency(totals.finalMonthlyValue)}</span>
+                                                <span className="font-semibold text-xl md:text-2xl text-[#FF5E00] tracking-tight">{formatCurrency(totals.finalMonthlyValue)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -685,7 +685,7 @@ export function CrmProposals() {
                                         <Button 
                                             onClick={handleSendWhatsApp} 
                                             disabled={!currentClient || calculatedPanels.length === 0}
-                                            className="w-full bg-[#25D366] hover:brightness-110 text-[#0A0A0B] h-14 uppercase tracking-widest text-[12px] font-black border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
+                                            className="w-full bg-[#FF5E00] hover:brightness-110 text-[#0A0A0B] h-14 uppercase tracking-widest text-[12px] font-semibold border-none shadow-[0_0_15px_rgba(37,211,102,0.3)]"
                                         >
                                             Enviar Proposta
                                         </Button>
