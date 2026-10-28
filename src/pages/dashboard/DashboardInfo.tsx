@@ -1,282 +1,180 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Building2, Users, Image as ImageIcon, Loader2, Target, X } from 'lucide-react';
-import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
-import { useToast } from '@/contexts/ToastContext';
-import { uploadImage } from '@/services/panels.service';
+import { ChangeEvent, useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, ExternalLink, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/axios';
+import { uploadImage } from '@/services/panels.service';
+import { useToast } from '@/contexts/ToastContext';
+import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
+import { CrmPage, EmptyState, Field, Panel, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput } from '@/components/app/tokens';
 
-interface TeamMember {
-    id: string;
-    name: string;
-    role: string;
-    bio: string;
-    image: string;
-    _file?: File | null;
-    _preview?: string;
-}
+interface TeamMember { id: string; name: string; role: string; bio: string; image: string; _file?: File | null; _preview?: string }
+interface Brand { id: string; name: string; logo: string; _file?: File | null; _preview?: string }
 
-interface PartnerBrand {
-    id: string;
-    name: string;
-    logo: string;
-    _file?: File | null;
-    _preview?: string;
-}
+const parseList = <T,>(value: unknown): T[] => {
+    if (Array.isArray(value)) return value as T[];
+    if (typeof value === 'string') { try { const v = JSON.parse(value); return Array.isArray(v) ? v : []; } catch { return []; } }
+    return [];
+};
+
+const move = <T,>(list: T[], from: number, to: number) => {
+    if (to < 0 || to >= list.length) return list;
+    const next = [...list];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+};
 
 export function DashboardInfo() {
     const toast = useToast();
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [saving, setSaving] = useState(false);
+    const [dirty, setDirty] = useState(false);
     const [team, setTeam] = useState<TeamMember[]>([]);
-    const [brands, setBrands] = useState<PartnerBrand[]>([]);
+    const [brands, setBrands] = useState<Brand[]>([]);
 
-    useEffect(() => {
-        const fetchInfoData = async () => {
-            setIsLoading(true);
-            try {
-                const res = await api.get('/institutional');
-                
-                let fetchedTeam = res.data?.team || [];
-                let fetchedBrands = res.data?.brands || [];
-
-                if (typeof fetchedTeam === 'string') {
-                    try { fetchedTeam = JSON.parse(fetchedTeam); } catch (e) {}
-                }
-                if (typeof fetchedBrands === 'string') {
-                    try { fetchedBrands = JSON.parse(fetchedBrands); } catch (e) {}
-                }
-
-                setTeam(fetchedTeam);
-                setBrands(fetchedBrands);
-            } catch (error) {
-                console.error("Erro ao carregar dados no painel:", error);
-                toast.error("Erro ao carregar os dados atuais.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchInfoData();
-    }, []);
-
-    const addTeamMember = () => {
-        setTeam([...team, { id: window.crypto.randomUUID(), name: '', role: '', bio: '', image: '' }]);
-    };
-
-    const removeTeamMember = (id: string) => {
-        setTeam(team.filter(m => m.id !== id));
-    };
-
-    const updateTeamMember = (id: string, field: keyof TeamMember, value: string) => {
-        setTeam(team.map(m => m.id === id ? { ...m, [field]: value } : m));
-    };
-
-    const handleTeamImageSelect = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setTeam(team.map(m => m.id === id ? { ...m, _file: file, _preview: URL.createObjectURL(file) } : m));
-        }
-    };
-
-    const addBrand = () => {
-        setBrands([...brands, { id: window.crypto.randomUUID(), name: '', logo: '' }]);
-    };
-
-    const removeBrand = (id: string) => {
-        setBrands(brands.filter(b => b.id !== id));
-    };
-
-    const updateBrand = (id: string, field: keyof PartnerBrand, value: string) => {
-        setBrands(brands.map(b => b.id === id ? { ...b, [field]: value } : b));
-    };
-
-    const handleBrandImageSelect = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setBrands(brands.map(b => b.id === id ? { ...b, _file: file, _preview: URL.createObjectURL(file) } : b));
-        }
-    };
-
-    const handleSave = async () => {
-        setIsSaving(true);
+    const load = async () => {
         try {
-            const processedTeam = await Promise.all(team.map(async (member) => {
-                let finalImageUrl = member.image;
-                if (member._file) {
-                    finalImageUrl = await uploadImage(member._file, 'team');
-                }
-                return {
-                    id: member.id,
-                    name: member.name,
-                    role: member.role,
-                    bio: member.bio,
-                    image: finalImageUrl
-                };
-            }));
-
-            const processedBrands = await Promise.all(brands.map(async (brand) => {
-                let finalLogoUrl = brand.logo;
-                if (brand._file) {
-                    finalLogoUrl = await uploadImage(brand._file, 'Brands');
-                }
-                return {
-                    id: brand.id,
-                    name: brand.name,
-                    logo: finalLogoUrl
-                };
-            }));
-
-            const payload = {
-                team: processedTeam,
-                brands: processedBrands
-            };
-
-            await api.put('/institutional', payload);
-            
-            toast.success("Informações e fotos salvas com sucesso!");
-
-            setTeam(processedTeam);
-            setBrands(processedBrands);
-
-        } catch (error) {
-            console.error("Erro ao salvar:", error);
-            toast.error("Ocorreu um erro ao salvar. Tente novamente.");
-        } finally {
-            setIsSaving(false);
+            setStatus('loading');
+            const { data } = await api.get('/institutional');
+            setTeam(parseList<TeamMember>(data?.team));
+            setBrands(parseList<Brand>(data?.brands));
+            setDirty(false);
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="w-8 h-8 text-[#FF5E00] animate-spin" />
-            </div>
-        );
-    }
+    useEffect(() => { load(); }, []);
+
+    // Avisa antes de sair da página com alterações não salvas
+    useEffect(() => {
+        if (!dirty) return;
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener('beforeunload', warn);
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [dirty]);
+
+    const edit = <T,>(setter: (fn: (prev: T[]) => T[]) => void) => (fn: (prev: T[]) => T[]) => { setter(fn); setDirty(true); };
+    const editTeam = edit<TeamMember>(setTeam);
+    const editBrands = edit<Brand>(setBrands);
+
+    const pickFile = (e: ChangeEvent<HTMLInputElement>, apply: (file: File, preview: string) => void) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        const error = validateImageFile(file);
+        if (error) { toast.error(error); return; }
+        apply(file, URL.createObjectURL(file));
+    };
+
+    const onSave = async () => {
+        const invalid = team.find((m) => !m.name.trim() || !m.role.trim());
+        if (invalid) { toast.error('Preencha nome e cargo de todas as pessoas da equipe.'); return; }
+        setSaving(true);
+        try {
+            // Envio em sequência: uma falha para o processo antes de salvar dados parciais
+            const savedTeam = [];
+            for (const m of team) {
+                const image = m._file ? await uploadImage(m._file, 'team') : m.image;
+                savedTeam.push({ id: m.id, name: m.name.trim(), role: m.role.trim(), bio: m.bio.trim(), image });
+            }
+            const savedBrands = [];
+            for (const b of brands) {
+                const logo = b._file ? await uploadImage(b._file, 'Brands') : b.logo;
+                if (b.name.trim() || logo) savedBrands.push({ id: b.id, name: b.name.trim(), logo });
+            }
+            await api.put('/institutional', { team: savedTeam, brands: savedBrands });
+            setTeam(savedTeam);
+            setBrands(savedBrands);
+            setDirty(false);
+            toast.success('Página Sobre atualizada.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Não foi possível salvar. Nada foi publicado.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const saveBar = (
+        <div className="flex items-center gap-3">
+            {dirty && <span className="text-sm text-brand-neon">Alterações não salvas</span>}
+            <button type="button" onClick={onSave} disabled={saving || !dirty} className={crmBtn.primary}>{saving ? 'Salvando…' : 'Salvar e publicar'}</button>
+        </div>
+    );
 
     return (
-        <div className="w-full h-full flex flex-col relative max-w-7xl mx-auto pb-12">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
-                <div>
-                    <h1 className="text-2xl font-semibold text-white tracking-tight uppercase flex items-center gap-2">
-                        <Building2 className="w-6 h-6 text-[#FF5E00]" />
-                        Gestão Institucional
-                    </h1>
-                    <p className="text-xs text-[#8F8F91] uppercase tracking-widest mt-1">Gerencie a diretoria e as marcas parceiras da Home.</p>
-                </div>
-                
-                <Button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="bg-[#FF5E00] text-[#0A0A0B] hover:bg-[#FF7A29] border-none font-semibold uppercase tracking-widest text-xs px-8 py-3.5 rounded-sm flex items-center gap-2 transition-colors"
-                >
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-                </Button>
-            </div>
+        <CrmPage
+            eyebrow="Conteúdo do site"
+            title="Página Sobre"
+            description="Equipe e marcas exibidas em /sobre. As mudanças só aparecem no site depois de salvar."
+            actions={<>
+                <a href="/sobre" target="_blank" rel="noopener noreferrer" className={crmBtn.secondary}><ExternalLink className="h-4 w-4" aria-hidden="true" /> Ver página</a>
+                {saveBar}
+            </>}
+        >
+            {status === 'loading' && <div className="flex flex-col gap-4"><Skeleton className="h-64" /><Skeleton className="h-40" /></div>}
+            {status === 'error' && <EmptyState title="Não foi possível carregar o conteúdo" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />}
 
-            <div className="flex flex-col gap-8">
-                
-                {/* GESTORES / EQUIPE */}
-                <div className="bg-[#111113] border border-white/5 rounded-md flex flex-col overflow-hidden shadow-xl">
-                    <div className="bg-[#0A0A0B] border-b border-white/5 p-5 flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                            <Users className="w-4 h-4 text-[#FF5E00]" /> Gestores e Liderança
-                        </h2>
-                        <button onClick={addTeamMember} className="text-[#FF5E00] hover:text-[#e05300] flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> Adicionar Gestor
-                        </button>
-                    </div>
-                    
-                    <div className="p-6 flex flex-col gap-6">
-                        {team.length === 0 ? (
-                            <p className="text-xs text-[#8F8F91] uppercase tracking-widest text-center py-6">Nenhum gestor cadastrado.</p>
-                        ) : (
-                            team.map((member) => (
-                                <div key={member.id} className="flex flex-col md:flex-row gap-6 p-5 border border-white/5 rounded-sm bg-[#0A0A0B] relative group">
-                                    <button aria-label="Excluir" onClick={() => removeTeamMember(member.id)} className="absolute top-4 right-4 text-[#8F8F91] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-
-                                    <label className="flex flex-col items-center justify-center w-full md:w-40 h-48 border border-white/10 border-dashed rounded-sm cursor-pointer bg-[#111113] hover:border-[#FF5E00]/50 transition-colors relative overflow-hidden shrink-0">
-                                        {member._preview || member.image ? (
-                                            // REMOVIDO o filter grayscale
-                                            <img src={member._preview || member.image} alt={member.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center px-4 text-center">
-                                                <ImageIcon className="w-6 h-6 text-[#8F8F91] mb-2" />
-                                                <span className="text-[10px] text-[#8F8F91] uppercase tracking-wider font-bold">Enviar Foto</span>
-                                            </div>
-                                        )}
-                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleTeamImageSelect(member.id, e)} />
-                                    </label>
-
-                                    <div className="flex flex-col gap-4 flex-1 mt-2">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <Input label="Nome do Gestor *" value={member.name} onChange={(e) => updateTeamMember(member.id, 'name', e.target.value)} placeholder="Ex: Victor Silva" className="bg-[#111113]" />
-                                            <Input label="Cargo *" value={member.role} onChange={(e) => updateTeamMember(member.id, 'role', e.target.value)} placeholder="Ex: Diretor Comercial" className="bg-[#111113]" />
+            {status === 'ready' && (
+                <>
+                    {/* ============================ EQUIPE ============================ */}
+                    <Panel
+                        title={`Equipe (${team.length})`}
+                        action={<button type="button" onClick={() => editTeam((p) => [...p, { id: crypto.randomUUID(), name: '', role: '', bio: '', image: '' }])} className={crmBtn.ghost}><Plus className="h-4 w-4" aria-hidden="true" /> Adicionar pessoa</button>}
+                    >
+                        {team.length === 0 ? <p className="p-5 text-sm text-brand-muted">Sem equipe cadastrada, o site mostra os sócios com as iniciais.</p> : (
+                            <ul className="divide-y divide-brand-border">
+                                {team.map((m, i) => (
+                                    <li key={m.id} className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-[140px_minmax(0,1fr)_auto]">
+                                        <label className="relative flex aspect-[4/5] cursor-pointer items-center justify-center overflow-hidden border border-dashed border-brand-border text-xs text-brand-muted hover:border-brand-neon sm:w-[140px]">
+                                            {m._preview || m.image ? <img src={m._preview || m.image} alt={`Foto de ${m.name || 'membro da equipe'}`} className="absolute inset-0 h-full w-full object-cover" /> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" aria-hidden="true" /> Foto</span>}
+                                            <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(e) => pickFile(e, (file, preview) => editTeam((p) => p.map((x) => (x.id === m.id ? { ...x, _file: file, _preview: preview } : x))))} />
+                                        </label>
+                                        <div className="grid grid-cols-1 content-start gap-4 sm:grid-cols-2">
+                                            <Field label="Nome" htmlFor={`t-name-${m.id}`}><input id={`t-name-${m.id}`} value={m.name} onChange={(e) => editTeam((p) => p.map((x) => (x.id === m.id ? { ...x, name: e.target.value } : x)))} className={crmInput} /></Field>
+                                            <Field label="Cargo" htmlFor={`t-role-${m.id}`}><input id={`t-role-${m.id}`} value={m.role} onChange={(e) => editTeam((p) => p.map((x) => (x.id === m.id ? { ...x, role: e.target.value } : x)))} className={crmInput} placeholder="Sócio-fundador" /></Field>
+                                            <Field label="Resumo" htmlFor={`t-bio-${m.id}`} className="sm:col-span-2" hint="Uma ou duas frases, em frase normal (sem Iniciais Maiúsculas).">
+                                                <textarea id={`t-bio-${m.id}`} rows={2} maxLength={280} value={m.bio} onChange={(e) => editTeam((p) => p.map((x) => (x.id === m.id ? { ...x, bio: e.target.value } : x)))} className={`${crmInput} resize-y`} />
+                                            </Field>
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-[10px] text-[#8F8F91] font-bold uppercase tracking-widest">Resumo Profissional</label>
-                                            <textarea 
-                                                rows={2} value={member.bio} onChange={(e) => updateTeamMember(member.id, 'bio', e.target.value)} 
-                                                className="bg-[#111113] border border-white/10 rounded-sm px-4 py-2.5 text-white focus:border-[#FF5E00] outline-none resize-none text-sm transition-colors custom-scrollbar" 
-                                                placeholder="Descreva a função dele na empresa..." 
-                                            />
+                                        <div className="flex gap-1 sm:flex-col">
+                                            <button type="button" onClick={() => editTeam((p) => move(p, i, i - 1))} disabled={i === 0} className={crmBtn.icon} aria-label="Mover para cima"><ArrowUp className="h-4 w-4" /></button>
+                                            <button type="button" onClick={() => editTeam((p) => move(p, i, i + 1))} disabled={i === team.length - 1} className={crmBtn.icon} aria-label="Mover para baixo"><ArrowDown className="h-4 w-4" /></button>
+                                            <button type="button" onClick={() => editTeam((p) => p.filter((x) => x.id !== m.id))} className={crmBtn.icon} aria-label={`Remover ${m.name || 'pessoa'}`}><Trash2 className="h-4 w-4" /></button>
                                         </div>
-                                    </div>
-                                </div>
-                            ))
+                                    </li>
+                                ))}
+                            </ul>
                         )}
-                    </div>
-                </div>
+                    </Panel>
 
-                {/* PARCEIROS / MARCAS */}
-                <div className="bg-[#111113] border border-white/5 rounded-md flex flex-col overflow-hidden shadow-xl">
-                    <div className="bg-[#0A0A0B] border-b border-white/5 p-5 flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                            <Target className="w-4 h-4 text-[#FF5E00]" /> Parceiros Comerciais
-                        </h2>
-                        <button onClick={addBrand} className="text-[#FF5E00] hover:text-[#e05300] flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> Adicionar Parceiro
-                        </button>
-                    </div>
-                    
-                    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {brands.length === 0 ? (
-                            <div className="col-span-full text-center py-6">
-                                <p className="text-xs text-[#8F8F91] uppercase tracking-widest">Nenhum parceiro cadastrado.</p>
-                            </div>
-                        ) : (
-                            brands.map((brand) => (
-                                <div key={brand.id} className="flex flex-col gap-3 p-3 border border-white/5 rounded-sm bg-[#0A0A0B] relative group">
-                                    <button aria-label="Fechar" onClick={() => removeBrand(brand.id)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-sm shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 z-10">
-                                        <X className="w-3 h-3" />
-                                    </button>
-
-                                    <label className="flex flex-col items-center justify-center w-full h-24 border border-white/10 border-dashed rounded-sm cursor-pointer bg-[#111113] hover:border-[#FF5E00]/50 transition-colors relative overflow-hidden">
-                                        {brand._preview || brand.logo ? (
-                                            <img src={brand._preview || brand.logo} alt="Logo" className="max-w-[80%] max-h-[80%] object-contain" />
-                                        ) : (
-                                            <ImageIcon className="w-5 h-5 text-[#8F8F91]" />
-                                        )}
-                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBrandImageSelect(brand.id, e)} />
-                                    </label>
-                                    
-                                    <input 
-                                        type="text" value={brand.name} onChange={(e) => updateBrand(brand.id, 'name', e.target.value)} 
-                                        placeholder="Nome da Marca" 
-                                        className="bg-[#111113] border border-white/10 rounded-sm px-3 py-2 text-xs text-white focus:border-[#FF5E00] outline-none transition-colors text-center w-full"
-                                    />
-                                </div>
-                            ))
+                    {/* ============================ MARCAS ============================ */}
+                    <Panel
+                        title={`Marcas (${brands.length})`}
+                        action={<button type="button" onClick={() => editBrands((p) => [...p, { id: crypto.randomUUID(), name: '', logo: '' }])} className={crmBtn.ghost}><Plus className="h-4 w-4" aria-hidden="true" /> Adicionar marca</button>}
+                        bodyClassName="p-5"
+                    >
+                        {brands.length === 0 ? <p className="text-sm text-brand-muted">Sem marcas, a seção "Marcas na rede T3" não aparece no site.</p> : (
+                            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                                {brands.map((b) => (
+                                    <li key={b.id} className="flex flex-col gap-2 border border-brand-border p-3">
+                                        <label className="relative flex h-24 cursor-pointer items-center justify-center border border-dashed border-brand-border text-xs text-brand-muted hover:border-brand-neon">
+                                            {b._preview || b.logo ? <img src={b._preview || b.logo} alt={b.name || 'Logo'} className="max-h-[80%] max-w-[80%] object-contain" /> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" aria-hidden="true" /> Logo</span>}
+                                            <input type="file" accept={IMAGE_ACCEPT} className="sr-only" onChange={(e) => pickFile(e, (file, preview) => editBrands((p) => p.map((x) => (x.id === b.id ? { ...x, _file: file, _preview: preview } : x))))} />
+                                        </label>
+                                        <label htmlFor={`b-${b.id}`} className="sr-only">Nome da marca</label>
+                                        <input id={`b-${b.id}`} value={b.name} onChange={(e) => editBrands((p) => p.map((x) => (x.id === b.id ? { ...x, name: e.target.value } : x)))} placeholder="Nome da marca" className={`${crmInput} py-2 text-center`} />
+                                        <button type="button" onClick={() => editBrands((p) => p.filter((x) => x.id !== b.id))} className={`${crmBtn.ghost} justify-center`}><Trash2 className="h-4 w-4" aria-hidden="true" /> Remover</button>
+                                    </li>
+                                ))}
+                            </ul>
                         )}
-                    </div>
-                </div>
+                    </Panel>
 
-            </div>
-        </div>
+                    <div className="flex justify-end">{saveBar}</div>
+                </>
+            )}
+        </CrmPage>
     );
 }

@@ -1,580 +1,233 @@
-import { COMPANY_FOOTER } from '@/lib/company';
-import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Search, ShoppingCart, Loader2, Calendar, ReceiptText, 
-    FileDown, MessageSquare, ChevronDown, ChevronUp, MapPin, MonitorPlay
-} from 'lucide-react';
-import { useToast } from '@/contexts/ToastContext';
-import { CustomSelect } from '@/components/CustomSelect';
-import { Button } from '@/components/Button';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FileDown, FileText, Search } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { usersService } from '@/services/users.service';
-import { crmService } from '@/services/crm.service';
+import type { CrmDeal } from '@/services/crm.service';
+import { useToast } from '@/contexts/ToastContext';
+import { downloadDealContract } from '@/lib/pdf/contract';
+import { apiErrorMessage } from '@/lib/upload';
+import { Badge, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/app/tokens';
 
-// Dependências de exportação de documentos
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+type OrderStatus = 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED';
 
-// Funções utilitárias globais
-const formatCurrency = (value: number | string) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+interface Order {
+    id: string;
+    createdAt: string;
+    status: OrderStatus;
+    totalValue: number;
+    notes?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    sellerId?: string | null;
+    seller?: { id: string; name: string } | null;
+    user?: { name?: string; email?: string; phone?: string; document?: string; companyName?: string; company?: { corporateName?: string } | null } | null;
+    items?: { id?: string; panelId: string; priceSnapshot?: number; panel?: { name?: string; city?: string; state?: string; images?: string[]; price?: number } }[];
+}
+
+const STATUS: Record<OrderStatus, { label: string; tone: 'neutral' | 'accent' | 'muted' | 'success' }> = {
+    PENDING: { label: 'Novo', tone: 'neutral' },
+    APPROVED: { label: 'Proposta enviada', tone: 'accent' },
+    COMPLETED: { label: 'Fechado', tone: 'success' },
+    REJECTED: { label: 'Perdido', tone: 'muted' },
 };
+type Filter = 'ALL' | 'UNASSIGNED' | OrderStatus;
 
-const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('pt-BR', { 
-        day: '2-digit', month: '2-digit', year: 'numeric', 
-        hour: '2-digit', minute: '2-digit' 
-    }).format(new Date(dateString));
+const monthsOf = (o: Order) => {
+    if (!o.startDate || !o.endDate) return 1;
+    return Math.max(1, Math.round(Math.abs(new Date(o.endDate).getTime() - new Date(o.startDate).getTime()) / 86_400_000 / 30));
 };
+const companyOf = (o: Order) => o.user?.company?.corporateName || o.user?.companyName || '';
+
+/** Adapta o pedido ao formato do contrato (o mesmo usado pelos negócios do CRM). */
+const toContract = (o: Order) => ({
+    id: o.id,
+    createdAt: o.createdAt,
+    expectedValue: o.totalValue,
+    contractMonths: monthsOf(o),
+    seller: o.seller,
+    client: { name: o.user?.name || 'Cliente', company: companyOf(o), email: o.user?.email, phone: o.user?.phone, document: o.user?.document },
+    items: (o.items || []).map((i, n) => ({ id: i.id || String(n), panelId: i.panelId, priceSnapshot: Number(i.priceSnapshot ?? 0), panel: { name: i.panel?.name || 'Painel', city: i.panel?.city, state: i.panel?.state } })),
+}) as unknown as CrmDeal;
 
 export function Orders() {
-    const [orders, setOrders] = useState<any[]>([]);
-    const [sellers, setSellers] = useState<{id: string, name: string}[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-    const [updatingId, setUpdatingId] = useState<string | null>(null);
-    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-    
     const { addToast } = useToast();
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState<Filter>('ALL');
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
 
-    // Carrega os pedidos do Banco de Dados (Agora eles já vêm agrupados como pacotes nativamente)
-    useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                const [ordersRes, usersData] = await Promise.all([
-                    api.get('/orders').catch(() => ({ data: [] })),
-                    usersService.getAllUsers().catch(() => [])
-                ]);
-
-                // 1. Filtra a equipe comercial/gestores
-                const commercialTeam = usersData
-                    .filter((u: any) => ['COMERCIAL', 'MANAGER', 'ADMIN'].includes(u.role))
-                    .map((u: any) => ({ id: u.id, name: u.name }));
-                setSellers(commercialTeam);
-
-                // 2. Mapeamento direto (o Backend já retorna o Order com seus Items)
-                const formattedOrders = ordersRes.data.map((order: any) => {
-                    const startDate = order.startDate ? new Date(order.startDate) : new Date();
-                    const endDate = order.endDate ? new Date(order.endDate) : new Date();
-                    const diffDays = Math.ceil(Math.abs(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)); 
-                    const months = Math.max(1, Math.round(diffDays / 30));
-
-                    return {
-                        id: order.id, 
-                        createdAt: order.createdAt,
-                        clientName: order.user?.name || 'Cliente Sem Nome',
-                        clientPhone: order.user?.phone || 'Não informado',
-                        clientEmail: order.user?.email || '',
-                        company: order.company?.corporateName || order.user?.companyName || '',
-                        status: order.status, 
-                        expectedValue: order.totalValue,
-                        formattedValue: formatCurrency(order.totalValue),
-                        months: months,
-                        message: order.notes,
-                        assignedTo: order.seller ? { id: order.seller.id, name: order.seller.name } : null,
-                        items: order.items || [] // O array de painéis já vem pronto do backend!
-                    };
-                });
-
-                formattedOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                setOrders(formattedOrders);
-
-            } catch (error) {
-                console.error("Erro ao buscar dados do banco:", error);
-                addToast("Erro ao carregar a lista de pedidos.", "error");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadData();
-    }, [addToast]);
-
-    const sellerOptions = useMemo(() => {
-        return [
-            { value: '', label: 'Novo (Aguardando)' },
-            ...sellers.map(s => ({ value: s.id, label: s.name.split(' ')[0] }))
-        ];
-    }, [sellers]);
-
-    const assignSeller = async (orderId: string, sellerId: string) => {
+    const load = async () => {
         try {
-            const seller = sellers.find(s => s.id === sellerId);
-            
-            // Agora atualizamos 1 único ID no banco, pois a tabela foi corrigida
-            await api.patch(`/orders/${orderId}`, { sellerId: sellerId || null });
-            
-            const updatedOrders = orders.map(order => 
-                order.id === orderId ? { ...order, assignedTo: seller || null } : order
-            );
-            
-            setOrders(updatedOrders);
-            
-            if (seller) addToast(`Pacote atribuído para ${seller.name}`, 'success');
-            else addToast(`Atribuição removida do pacote`, 'info');
-        } catch (error) {
-            addToast("Falha ao atribuir vendedor.", "error");
+            setStatus('loading');
+            const [o, u] = await Promise.all([api.get<Order[]>('/orders').then((r) => r.data), usersService.getAllUsers().catch(() => [])]);
+            setOrders([...o].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
+            setTeam(u.filter((x) => ['ADMIN', 'MANAGER', 'COMERCIAL'].includes(x.role)).map((x) => ({ id: x.id, name: x.name })));
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
     };
 
-    const handleStatusChange = async (orderId: string, newStatus: string) => {
+    useEffect(() => { load(); }, []);
+
+    const counts = useMemo(() => {
+        const c: Record<Filter, number> = { ALL: orders.length, UNASSIGNED: 0, PENDING: 0, APPROVED: 0, COMPLETED: 0, REJECTED: 0 };
+        orders.forEach((o) => { c[o.status] += 1; if (!o.sellerId && (o.status === 'PENDING' || o.status === 'APPROVED')) c.UNASSIGNED += 1; });
+        return c;
+    }, [orders]);
+
+    const visible = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return orders.filter((o) => {
+            const byFilter = filter === 'ALL' || (filter === 'UNASSIGNED' ? !o.sellerId && (o.status === 'PENDING' || o.status === 'APPROVED') : o.status === filter);
+            const byQuery = !q || [o.user?.name, o.user?.email, companyOf(o), o.seller?.name, o.id].some((v) => v?.toLowerCase().includes(q));
+            return byFilter && byQuery;
+        });
+    }, [orders, query, filter]);
+
+    const selected = orders.find((o) => o.id === selectedId) ?? null;
+
+    const patch = async (order: Order, data: { status?: OrderStatus; sellerId?: string | null }, success: string) => {
+        const before = orders;
+        const seller = data.sellerId !== undefined ? team.find((t) => t.id === data.sellerId) ?? null : order.seller;
+        setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...data, seller } : o)));
         try {
-            setUpdatingId(orderId);
-            
-            await api.patch(`/orders/${orderId}`, { status: newStatus });
-            
-            const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
-            setOrders(updatedOrders);
-            addToast("Status do pacote atualizado com sucesso!", "success");
+            setSaving(true);
+            await api.patch(`/orders/${order.id}`, data);
+            addToast(success, 'success');
         } catch (error) {
-            addToast("Falha ao atualizar o status do pacote.", "error");
+            setOrders(before);
+            addToast(apiErrorMessage(error, 'Não foi possível atualizar o pedido.'), 'error');
         } finally {
-            setUpdatingId(null);
+            setSaving(false);
         }
     };
 
-    const handleExportChat = async (order: any) => {
-        try {
-            setActionLoadingId(`chat-${order.id}`);
-            const history = await crmService.getChatHistory(order.id).catch(() => []);
-            
-            if (!history || history.length === 0) {
-                addToast("Não há mensagens cadastradas na API para exportar.", "info");
-                setActionLoadingId(null);
-                return;
-            }
-
-            const clientName = order.clientName || 'Cliente';
-            const sellerName = order.assignedTo?.name || 'Comercial T3';
-            
-            let textContent = `======================================================\n`;
-            textContent += `HISTÓRICO DE ATENDIMENTO - T3 MÍDIA E TECNOLOGIA\n`;
-            textContent += `======================================================\n`;
-            textContent += `PACOTE ID: ${order.id}\n`;
-            textContent += `CLIENTE: ${clientName}\n`;
-            textContent += `ATENDENTE: ${sellerName}\n`;
-            textContent += `STATUS: ${order.status === 'COMPLETED' ? 'Concluído' : order.status}\n`;
-            textContent += `DATA DE EXPORTAÇÃO: ${new Date().toLocaleString('pt-BR')}\n`;
-            textContent += `======================================================\n\n`;
-
-            history.forEach((msg: any) => {
-                const date = new Date(msg.createdAt).toLocaleString('pt-BR');
-                const isClient = msg.senderId === order.clientId;
-                const sender = isClient ? clientName : (msg.isInternal ? '[NOTA INTERNA] ' + sellerName : sellerName);
-                
-                textContent += `[${date}] ${sender}:\n`;
-                if (msg.content) textContent += `${msg.content}\n`;
-                if (msg.mediaUrl) textContent += `[ANEXO ENVIADO]: ${msg.mediaUrl}\n`;
-                textContent += `------------------------------------------------------\n`;
-            });
-
-            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Historico_Atendimento_${clientName.replace(/\s+/g, '_')}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            addToast("Histórico exportado com sucesso!", "success");
-        } catch (error) {
-            console.error("Erro ao exportar chat:", error);
-            addToast("Falha ao exportar as conversas.", "error");
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
-
-    const handleGenerateContract = async (deal: any) => {
-        try {
-            setActionLoadingId(`pdf-${deal.id}`);
-            const doc = new jsPDF();
-            const pageWidth = doc.internal.pageSize.width;
-            const pageHeight = doc.internal.pageSize.height;
-            const marginLeft = 20; 
-            const marginRight = 20;
-            const contentWidth = pageWidth - marginLeft - marginRight;
-            let currentY = 0;
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(28);
-            doc.setTextColor(255, 94, 0);
-            doc.text("t3", pageWidth / 2, 25, { align: "center" });
-
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("T3 LED MÍDIA E TECNOLOGIA LTDA", pageWidth / 2, 32, { align: "center" });
-
-            currentY = 50;
-
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("CONTRATO DE VEICULAÇÃO OOH", pageWidth / 2, currentY, { align: "center" });
-            currentY += 15;
-
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            
-            const clientName = deal.clientName || "Cliente Não Informado";
-            const clientCompany = deal.company || "Não Informada";
-            const clientEmail = deal.clientEmail || "Não Informado";
-            const clientPhone = deal.clientPhone || "Não Informado";
-            const orderDate = new Date(deal.createdAt).toLocaleDateString('pt-BR');
-
-            const clientData = [
-                `CONTRATANTE: ${clientName}`,
-                `EMPRESA / AGÊNCIA: ${clientCompany}`,
-                `E-MAIL: ${clientEmail}`,
-                `TELEFONE: ${clientPhone}`,
-                `DATA DO PEDIDO: ${orderDate}`,
-            ];
-
-            clientData.forEach((text: string) => {
-                doc.text(text, marginLeft, currentY);
-                currentY += 6;
-            });
-            currentY += 10;
-
-            let finalTotalContract = Number(deal.expectedValue || 0);
-
-            doc.setFont("helvetica", "bold");
-            doc.text("1. ESCOPO DOS SERVIÇOS E INVESTIMENTO", marginLeft, currentY);
-            currentY += 5;
-
-            const tableRows = (deal.items || []).map((item: any) => {
-                const p = item.panel || item;
-                const city = p.city ? String(p.city).toUpperCase() : 'CIDADE';
-                const state = p.state ? String(p.state).toUpperCase() : 'UF';
-                return [
-                    `(${city} - ${state}) ${p.name || 'Painel'}`,
-                    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.priceSnapshot || item.price || 0))
-                ];
-            });
-
-            if (tableRows.length === 0) {
-                tableRows.push(["Pacote Customizado", new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalTotalContract)]);
-            }
-
-            autoTable(doc, {
-                startY: currentY,
-                head: [['Painéis Solicitados', 'Valor Negociado']],
-                body: [
-                    ...tableRows,
-                    [{ content: 'VALOR TOTAL DO PEDIDO:', styles: { fontStyle: 'bold', halign: 'right', fillColor: [255, 94, 0], textColor: [255, 255, 255] } }, new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalTotalContract)]
-                ],
-                theme: 'striped',
-                headStyles: { fillColor: [17, 17, 19], textColor: [255, 255, 255], fontStyle: 'bold' },
-                alternateRowStyles: { fillColor: [245, 245, 245] },
-                margin: { left: marginLeft, right: marginRight },
-                styles: { font: 'helvetica', fontSize: 9 }
-            });
-
-            currentY = (doc as any).lastAutoTable.finalY + 15;
-
-            doc.setFont("helvetica", "bold");
-            doc.text("2. TERMOS DE CONTRATAÇÃO", marginLeft, currentY);
-            currentY += 6;
-
-            doc.setFont("helvetica", "normal");
-            const paragraphs = [
-                "Pelo presente instrumento, a T3 LED MÍDIA compromete-se a realizar a veiculação de mídia digital outdoor (DOOH) nas localizações e faces especificadas na planilha de custos acima.",
-                "O presente pedido consolida a intenção de contratação. É de inteira responsabilidade da CONTRATANTE o envio dos arquivos digitais nas especificações técnicas exigidas."
-            ];
-
-            paragraphs.forEach(text => {
-                const lines = doc.splitTextToSize(text, contentWidth);
-                if (currentY + (lines.length * 5) > pageHeight - 40) {
-                    doc.addPage();
-                    currentY = 20;
-                }
-                doc.text(text, marginLeft, currentY, { align: "justify", maxWidth: contentWidth }); 
-                currentY += (lines.length * 5) + 4;
-            });
-
-            currentY += 20;
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.5);
-            doc.line(marginLeft, currentY, marginLeft + 60, currentY); 
-            doc.line(pageWidth - marginRight - 60, currentY, pageWidth - marginRight, currentY); 
-            currentY += 5;
-            doc.setFontSize(9);
-            doc.text(`T3 LED Mídia / ${deal.assignedTo?.name || 'Comercial'}`, marginLeft, currentY);
-            const clientSigName = doc.splitTextToSize(clientName, 60);
-            doc.text(clientSigName, pageWidth - marginRight - 60, currentY);
-
-            const pageCount = (doc.internal as any).getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                const footerY = pageHeight - 15;
-                doc.text(COMPANY_FOOTER, pageWidth / 2, footerY, { align: "center" });
-            }
-
-            doc.save(`Contrato_${clientName.replace(/\s+/g, '_')}.pdf`);
-            addToast("Documento gerado com sucesso!", "success");
-
-        } catch (error) {
-            console.error("Erro ao gerar PDF:", error);
-            addToast("Ocorreu um erro ao gerar o documento.", "error");
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
-
-    const statusOptions = [
-        { value: 'PENDING', label: 'Novo' },
-        { value: 'APPROVED', label: 'Em venda' },
-        { value: 'COMPLETED', label: 'Ganho' },
-        { value: 'REJECTED', label: 'Perdido' }
-    ];
-
-    const filterOptions = [
-        { value: '', label: 'Todos os Status' },
-        ...statusOptions
-    ];
-
-    const filteredOrders = orders.filter((order) => {
-        const searchTarget = searchTerm.toLowerCase();
-        const matchesSearch = 
-            (order.clientName || '').toLowerCase().includes(searchTarget) || 
-            (order.assignedTo?.name || '').toLowerCase().includes(searchTarget) ||
-            (order.id || '').toLowerCase().includes(searchTarget);
-        
-        const matchesStatus = statusFilter === '' || order.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    const tabs: Filter[] = ['ALL', 'UNASSIGNED', 'PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'];
+    const tabLabel = (t: Filter) => (t === 'ALL' ? 'Todos' : t === 'UNASSIGNED' ? 'Sem responsável' : STATUS[t].label);
 
     return (
-        <div className="h-full flex flex-col gap-6 max-w-7xl mx-auto w-full pb-10">
-            {/* Header Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
-                <div>
-                    <h1 className="text-2xl font-semibold text-brand-text flex items-center gap-2">
-                        <ShoppingCart className="w-6 h-6 text-brand-neon" /> Gestão de Pacotes
-                    </h1>
-                    <p className="text-sm text-brand-muted mt-1">Acompanhe pacotes de orçamentos gerados pelos clientes na plataforma.</p>
+        <CrmPage eyebrow="Vendas" title="Pedidos" description="Pacotes montados pelos clientes no catálogo do site. Defina o responsável e acompanhe até o fechamento.">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="relative flex-1 lg:max-w-md">
+                    <label htmlFor="order-search" className="sr-only">Buscar pedidos</label>
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" aria-hidden="true" />
+                    <input id="order-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cliente, empresa, e-mail ou responsável" className={`${crmInput} pl-10`} />
                 </div>
-
-                <div className="flex w-full md:w-auto items-center gap-3">
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar cliente, ID..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text focus:border-brand-neon outline-none"
-                        />
-                    </div>
-                    <div className="w-48 hidden md:block">
-                        <CustomSelect
-                            options={filterOptions}
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            placeholder="Status"
-                        />
-                    </div>
+                <div role="tablist" aria-label="Filtrar por situação" className="flex gap-px overflow-x-auto border border-brand-border bg-brand-border">
+                    {tabs.map((t) => (
+                        <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)}
+                            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 text-sm ${filter === t ? 'bg-brand-surface text-brand-text' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                            {tabLabel(t)} <span className={`font-mono text-xs ${t === 'UNASSIGNED' && counts.UNASSIGNED ? 'text-brand-neon' : 'text-brand-muted'}`}>{counts[t]}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Lista de Pedidos (PACOTES) */}
-            <div className="flex-1 bg-brand-surface border border-brand-border rounded-none overflow-hidden flex flex-col shadow-sm">
-                
-                {/* Tabela Header (Desktop) */}
-                <div className="hidden md:grid grid-cols-12 gap-4 p-5 border-b border-brand-border bg-brand-background/50 items-center">
-                    <div className="col-span-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest">ID Pacote / Data</div>
-                    <div className="col-span-3 text-[10px] font-bold text-brand-muted uppercase tracking-widest">Cliente</div>
-                    <div className="col-span-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest">Valor do Pacote</div>
-                    <div className="col-span-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest">Status Geral</div>
-                    <div className="col-span-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest">Responsável</div>
-                    <div className="col-span-1"></div>
-                </div>
+            {status === 'loading' && <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>}
+            {status === 'error' && <EmptyState title="Não foi possível carregar os pedidos" text="Os dados não chegaram do servidor. Nada foi zerado." action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />}
+            {status === 'ready' && visible.length === 0 && <EmptyState title={orders.length ? 'Nenhum pedido com esse filtro' : 'Nenhum pedido ainda'} text={orders.length ? undefined : 'Os pacotes montados no catálogo do site aparecem aqui.'} />}
 
-                {/* Conteúdo */}
-                {isLoading ? (
-                    <div className="flex-1 flex items-center justify-center p-10"><Loader2 className="w-8 h-8 text-brand-neon animate-spin" /></div>
-                ) : filteredOrders.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-16 text-center">
-                        <ReceiptText className="w-12 h-12 text-brand-muted/30 mb-4" />
-                        <h3 className="text-lg font-bold text-brand-text mb-1">Nenhum pacote encontrado.</h3>
-                        <p className="text-sm text-brand-muted font-medium">Os orçamentos gerados no site aparecerão aqui.</p>
+            {status === 'ready' && visible.length > 0 && (
+                <div className="border border-brand-border bg-brand-surface">
+                    <div className="hidden grid-cols-[1.6fr_1fr_1fr_1fr_1fr] gap-4 border-b border-brand-border px-5 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-brand-muted md:grid">
+                        <span>Cliente</span><span>Valor</span><span>Situação</span><span>Responsável</span><span>Data</span>
                     </div>
-                ) : (
-                    <div className="flex flex-col divide-y divide-brand-border overflow-y-auto custom-scrollbar">
-                        {filteredOrders.map(order => {
-                            const isExpanded = expandedOrderId === order.id;
-                            const currentStatus = order.status || 'PENDING';
+                    <ul className="divide-y divide-brand-border">
+                        {visible.map((o) => (
+                            <li key={o.id}>
+                                <button type="button" onClick={() => setSelectedId(o.id)} className="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 px-5 py-3.5 text-left hover:bg-brand-background md:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm font-medium text-brand-text">{o.user?.name || 'Cliente'}</span>
+                                        <span className="block truncate text-xs text-brand-muted">{companyOf(o) || o.user?.email || '—'} · {o.items?.length ?? 0} {o.items?.length === 1 ? 'painel' : 'painéis'}</span>
+                                    </span>
+                                    <span className="text-right font-mono text-sm text-brand-text md:text-left">{formatBRL(o.totalValue)}<span className="block text-xs text-brand-muted">{monthsOf(o)} {monthsOf(o) === 1 ? 'mês' : 'meses'}</span></span>
+                                    <span><Badge tone={STATUS[o.status].tone}>{STATUS[o.status].label}</Badge></span>
+                                    <span className={`truncate text-sm ${o.seller ? 'text-brand-text' : 'text-brand-neon'}`}>{o.seller?.name || 'Sem responsável'}</span>
+                                    <span className="hidden font-mono text-sm text-brand-muted md:block">{formatDate(o.createdAt)}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
-                            return (
-                                <div key={order.id} className="flex flex-col hover:bg-brand-background/30 transition-colors">
-                                    {/* Linha Visível Sempre */}
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 items-center cursor-pointer md:cursor-auto" onClick={() => window.innerWidth < 768 && setExpandedOrderId(isExpanded ? null : order.id)}>
-                                        
-                                        <div className="col-span-1 md:col-span-2 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start gap-1">
-                                            <span className="text-xs font-semibold text-brand-text bg-brand-background border border-brand-border px-2 py-1 rounded" title={order.id}>
-                                                PKG-{order.id.substring(0, 6)}
-                                            </span>
-                                            <span className="text-[10px] text-brand-muted flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" /> {formatDate(order.createdAt)}
-                                            </span>
-                                        </div>
+            {/* ============================ DETALHES ============================ */}
+            <Sheet
+                open={Boolean(selected)}
+                onClose={() => setSelectedId(null)}
+                eyebrow={selected ? `Pedido de ${formatDate(selected.createdAt)}` : undefined}
+                title={selected?.user?.name || 'Pedido'}
+                size="lg"
+                footer={selected && <>
+                    <Link to={`/crm/proposta/${selected.id}`} className={`${crmBtn.secondary} sm:mr-auto`}><FileText className="h-4 w-4" aria-hidden="true" /> Montar proposta no CRM</Link>
+                    <button type="button" onClick={() => { try { downloadDealContract(toContract(selected)); } catch { addToast('Não foi possível gerar o contrato.', 'error'); } }} className={crmBtn.primary}>
+                        <FileDown className="h-4 w-4" aria-hidden="true" /> Contrato em PDF
+                    </button>
+                </>}
+            >
+                {selected && (
+                    <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <Field label="Situação" htmlFor="o-status">
+                                <select id="o-status" value={selected.status} disabled={saving} onChange={(e) => patch(selected, { status: e.target.value as OrderStatus }, 'Situação atualizada.')} className={crmInput}>
+                                    {(Object.keys(STATUS) as OrderStatus[]).map((s) => <option key={s} value={s}>{STATUS[s].label}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Responsável" htmlFor="o-seller">
+                                <select id="o-seller" value={selected.sellerId || ''} disabled={saving} onChange={(e) => patch(selected, { sellerId: e.target.value || null }, e.target.value ? 'Responsável definido.' : 'Pedido voltou para a fila.')} className={crmInput}>
+                                    <option value="">Sem responsável (fila)</option>
+                                    {team.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
+                            </Field>
+                        </div>
 
-                                        <div className="col-span-1 md:col-span-3 flex flex-col min-w-0">
-                                            <span className="text-sm font-bold text-brand-text truncate">{order.clientName}</span>
-                                            <span className="text-[11px] text-brand-muted truncate">{order.clientPhone} {order.company && `• ${order.company}`}</span>
-                                        </div>
-
-                                        <div className="col-span-1 md:col-span-2 flex flex-row md:flex-col justify-between md:justify-start items-center md:items-start">
-                                            <span className="md:hidden text-[10px] text-brand-muted uppercase font-bold">Investimento</span>
-                                            <span className="text-sm md:text-base font-semibold text-[#FF5E00]">{order.formattedValue}</span>
-                                            <span className="hidden md:block text-[10px] text-brand-muted uppercase tracking-wider mt-0.5">{order.months} Meses</span>
-                                        </div>
-
-                                        <div className="flex col-span-1 md:col-span-2 flex-col items-start justify-center">
-                                            {updatingId === order.id ? (
-                                                <Loader2 className="w-4 h-4 text-brand-neon animate-spin" />
-                                            ) : (
-                                                <div className="w-full pr-4">
-                                                    <CustomSelect
-                                                        options={statusOptions}
-                                                        value={currentStatus}
-                                                        onChange={(val) => handleStatusChange(order.id, val)}
-                                                        placeholder="Status"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Select de Atribuição */}
-                                        <div className="col-span-1 md:col-span-2 z-10" onClick={e => e.stopPropagation()}>
-                                            <label className="md:hidden text-[10px] text-brand-muted uppercase font-bold mb-1 block">Atribuir Pacote</label>
-                                            <div className="w-full relative pr-4">
-                                                <CustomSelect 
-                                                    options={sellerOptions}
-                                                    value={order.assignedTo?.id || ""}
-                                                    onChange={(val) => assignSeller(order.id, val)}
-                                                    placeholder="Atribuir Vendedor"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="hidden md:flex col-span-1 justify-end items-center">
-                                            <button 
-                                                onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                                                className={`p-2 border rounded-full transition-colors flex items-center justify-center gap-2 px-4 ${isExpanded ? 'bg-brand-neon text-brand-surface border-brand-neon' : 'bg-brand-background text-brand-muted border-brand-border hover:text-brand-text'}`}
-                                            >
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">Info</span>
-                                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                        
-                                        <div className="md:hidden flex justify-center pt-2">
-                                            <span className="text-xs text-brand-muted font-bold uppercase tracking-widest flex items-center gap-1">
-                                                {isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes'} {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* ÁREA EXPANDIDA: Pré-Visualização e Ações */}
-                                    <AnimatePresence>
-                                        {isExpanded && (
-                                            <motion.div 
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden bg-brand-background/50 border-t border-brand-border shadow-inner"
-                                            >
-                                                <div className="p-5 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                                    
-                                                    {/* Painéis do Pedido */}
-                                                    <div className="flex flex-col gap-3">
-                                                        <h4 className="text-xs font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2">
-                                                            <MonitorPlay className="w-4 h-4 text-brand-neon" /> Itens Agrupados no Pacote ({order.items?.length || 0})
-                                                        </h4>
-                                                        <div className="flex flex-col gap-2 mt-2">
-                                                            {(order.items || []).map((item: any, i: number) => {
-                                                                const panel = item.panel || item;
-                                                                if (!panel) return null; // Prevenção de erro caso falte dado
-
-                                                                return (
-                                                                    <div key={i} className="flex items-center gap-4 bg-brand-surface p-3 rounded-xl border border-brand-border">
-                                                                        <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0">
-                                                                            <img src={panel.images?.[0] || '/placeholder.svg'} className="w-full h-full object-cover opacity-80" />
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-sm font-bold text-brand-text truncate">{panel.name || 'Painel sem nome'}</p>
-                                                                            <p className="text-[10px] text-brand-muted truncate flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" /> {panel.city || 'Cidade N/A'}</p>
-                                                                        </div>
-                                                                        <div className="shrink-0 flex flex-col items-end">
-                                                                            <span className="text-xs font-semibold text-brand-text">{formatCurrency(item.priceSnapshot || panel.price || 0)}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Informações Extras e Ações PDF */}
-                                                    <div className="flex flex-col gap-5">
-                                                        {order.message && (
-                                                            <div className="bg-brand-surface p-4 rounded-xl border border-brand-border">
-                                                                <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-2 mb-2">
-                                                                    <ReceiptText className="w-3.5 h-3.5" /> Notas Internas do Sistema / Lead
-                                                                </h4>
-                                                                <p className="text-sm text-brand-text italic whitespace-pre-wrap leading-relaxed">
-                                                                    "{order.message}"
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="mt-auto flex flex-col gap-3">
-                                                            <h4 className="text-xs font-bold text-brand-muted uppercase tracking-widest mb-1">Ações do Pacote</h4>
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <Button 
-                                                                    variant="secondary"
-                                                                    disabled={actionLoadingId === `pdf-${order.id}`}
-                                                                    onClick={() => handleGenerateContract(order)}
-                                                                    className="bg-brand-surface border-brand-border text-brand-text w-full py-4 text-[11px]"
-                                                                >
-                                                                    {actionLoadingId === `pdf-${order.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} 
-                                                                    Gerar Contrato (PDF)
-                                                                </Button>
-                                                                <Button 
-                                                                    disabled={currentStatus !== 'COMPLETED' || actionLoadingId === `chat-${order.id}`}
-                                                                    onClick={() => handleExportChat(order)}
-                                                                    className={`w-full py-4 text-[11px] border ${
-                                                                        currentStatus === 'COMPLETED' 
-                                                                        ? 'bg-[#FF5E00]/10 text-[#FF5E00] border-[#FF5E00]/30 hover:bg-[#FF5E00]/20' 
-                                                                        : 'bg-brand-surface text-brand-muted border-brand-border opacity-50'
-                                                                    }`}
-                                                                >
-                                                                    {actionLoadingId === `chat-${order.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />} 
-                                                                    Exportar Chat
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                        <dl className="grid grid-cols-1 gap-px border border-brand-border bg-brand-border sm:grid-cols-2">
+                            {[
+                                ['Empresa', companyOf(selected)],
+                                ['CPF / CNPJ', selected.user?.document],
+                                ['E-mail', selected.user?.email],
+                                ['Telefone', selected.user?.phone],
+                                ['Prazo', `${monthsOf(selected)} ${monthsOf(selected) === 1 ? 'mês' : 'meses'}`],
+                                ['Valor do contrato', formatBRL(selected.totalValue)],
+                            ].map(([k, v]) => (
+                                <div key={k} className="bg-brand-surface p-3">
+                                    <dt className="text-xs text-brand-muted">{k}</dt>
+                                    <dd className="mt-1 truncate text-sm text-brand-text">{v || '—'}</dd>
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </dl>
+
+                        <div>
+                            <p className="mb-2 text-sm text-brand-muted">Painéis ({selected.items?.length ?? 0}) · valores mensais</p>
+                            <ul className="divide-y divide-brand-border border border-brand-border">
+                                {(selected.items || []).map((item, i) => (
+                                    <li key={item.id || i} className="flex items-center gap-3 px-4 py-2.5">
+                                        <img src={item.panel?.images?.[0] || '/placeholder.svg'} alt="" className="h-10 w-14 shrink-0 bg-brand-background object-cover" />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm text-brand-text">{item.panel?.name || 'Painel'}</span>
+                                            <span className="block truncate text-xs text-brand-muted">{[item.panel?.city, item.panel?.state].filter(Boolean).join(' - ')}</span>
+                                        </span>
+                                        <span className="shrink-0 font-mono text-sm text-brand-text">{formatBRL(Number(item.priceSnapshot ?? 0))}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {selected.notes && (
+                            <div>
+                                <p className="mb-2 text-sm text-brand-muted">Observações do cliente</p>
+                                <p className="whitespace-pre-wrap border border-brand-border p-4 text-sm leading-relaxed text-brand-text">{selected.notes}</p>
+                            </div>
+                        )}
                     </div>
                 )}
-            </div>
-
-        </div>
+            </Sheet>
+        </CrmPage>
     );
 }

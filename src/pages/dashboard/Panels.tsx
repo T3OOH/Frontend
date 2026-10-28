@@ -1,307 +1,145 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, Loader2, MapPin, LayoutGrid, Zap, Image as ImageIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/Button';
-import { panelsService, PanelData } from '@/services/panels.service';
-import { CustomSelect } from '@/components/CustomSelect';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
+import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { Badge, ConfirmSheet, CrmPage, EmptyState, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
+
+type Filter = 'ALL' | PanelStatus;
+
+const STATUS: Record<PanelStatus, { label: string; tone: 'accent' | 'neutral' | 'muted' | 'danger' }> = {
+    AVAILABLE: { label: 'Disponível', tone: 'accent' },
+    OCCUPIED: { label: 'Ocupado', tone: 'neutral' },
+    RESERVED: { label: 'Reservado', tone: 'neutral' },
+    MAINTENANCE: { label: 'Manutenção', tone: 'muted' },
+};
 
 export function Panels() {
-    const [panelsList, setPanelsList] = useState<PanelData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-
     const toast = useToast();
+    const [panels, setPanels] = useState<PanelData[]>([]);
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState<Filter>('ALL');
+    const [toDelete, setToDelete] = useState<PanelData | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
-    useEffect(() => {
-        async function fetchPanels() {
-            try {
-                const data = await panelsService.getAllPanels();
-                setPanelsList(data);
-            } catch (error) {
-                console.error("Erro ao buscar painéis:", error);
-                toast.error("Erro ao buscar painéis do servidor.");
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchPanels();
-    }, [toast]);
-
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este painel permanentemente?')) {
-            try {
-                await panelsService.deletePanel(id);
-                setPanelsList(panelsList.filter(p => p.id !== id));
-                toast.success("Painel deletado com sucesso!");
-            } catch (error) {
-                console.error("Erro ao deletar:", error);
-                toast.error("Falha ao deletar o painel.");
-            }
+    const load = async () => {
+        try {
+            setStatus('loading');
+            setPanels(await panelsService.getAllPanels());
+            setStatus('ready');
+        } catch {
+            setStatus('error');
         }
     };
 
-    const filteredPanels = panelsList.filter((panel) => {
-        const matchBusca = panel.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchStatus = statusFilter === '' || panel.status === statusFilter;
-        return matchBusca && matchStatus;
-    });
+    useEffect(() => { load(); }, []);
 
-    const statusOptions = [
-        { value: '', label: 'Todos os Status' },
-        { value: 'AVAILABLE', label: 'Disponível' },
-        { value: 'OCCUPIED', label: 'Ocupado' },
-        { value: 'MAINTENANCE', label: 'Manutenção' }
-    ];
+    const counts = useMemo(() => {
+        const c: Record<Filter, number> = { ALL: panels.length, AVAILABLE: 0, OCCUPIED: 0, RESERVED: 0, MAINTENANCE: 0 };
+        panels.forEach((p) => { c[p.status] = (c[p.status] ?? 0) + 1; });
+        return c;
+    }, [panels]);
 
-    // Helpers para estilizar os status
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'AVAILABLE':
-                return { bg: 'bg-[#FF5E00]/10', border: 'border-[#FF5E00]/20', text: 'text-[#FF5E00]', dot: 'bg-[#FF5E00]', label: 'Disponível' };
-            case 'OCCUPIED':
-                return { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500', dot: 'bg-red-500', label: 'Ocupado' };
-            case 'MAINTENANCE':
-                return { bg: 'bg-brand-text/5', border: 'border-brand-border', text: 'text-brand-text', dot: 'bg-brand-text/5', label: 'Manutenção' };
-            default:
-                return { bg: 'bg-brand-muted/10', border: 'border-brand-muted/20', text: 'text-brand-muted', dot: 'bg-brand-muted', label: 'Desconhecido' };
+    const visible = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return panels.filter((p) =>
+            (filter === 'ALL' || p.status === filter) &&
+            (!q || [p.name, p.city, p.state, p.address].some((v) => v?.toLowerCase().includes(q))),
+        );
+    }, [panels, query, filter]);
+
+    const onDelete = async () => {
+        if (!toDelete) return;
+        try {
+            setDeleting(true);
+            await panelsService.deletePanel(toDelete.id);
+            setPanels((prev) => prev.filter((p) => p.id !== toDelete.id));
+            toast.success('Painel excluído.');
+            setToDelete(null);
+        } catch (error) {
+            toast.error((error as { response?: { data?: { error?: string } } }).response?.data?.error || 'Não foi possível excluir o painel. Ele pode estar em pedidos ou negócios.');
+        } finally {
+            setDeleting(false);
         }
     };
+
+    const tabs: Filter[] = ['ALL', 'AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE'];
 
     return (
-        <div className="w-full h-full flex flex-col gap-6">
-
-            {/* ========================================================= */}
-            {/* DESKTOP LAYOUT (ESTILO XENITH)                              */}
-            {/* ========================================================= */}
-            <div className="hidden lg:flex flex-col h-full max-w-7xl mx-auto w-full gap-6">
-
-                {/* HEADER */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight mb-1">Meus Painéis</h1>
-                        <p className="text-sm text-brand-muted">Gerencie o circuito, altere status e visualize o impacto de cada local.</p>
-                    </div>
-
-                    <Link to="/dashboard/paineis/novo">
-                        <Button as="span" leftIcon={<Plus className="w-4 h-4" />} className="bg-brand-neon hover:bg-brand-neonHover text-white shadow-lg font-bold rounded-xl px-6">
-                            Novo Painel
-                        </Button>
-                    </Link>
+        <CrmPage
+            eyebrow="Inventário"
+            title="Painéis"
+            description="Pontos da rede, situação de cada tela e o preço base mensal usado no site e nas propostas."
+            actions={<Link to="/dashboard/paineis/novo" className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo painel</Link>}
+        >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="relative flex-1 lg:max-w-md">
+                    <label htmlFor="panel-search" className="sr-only">Buscar painéis</label>
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" aria-hidden="true" />
+                    <input id="panel-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nome, cidade ou endereço" className={`${crmInput} pl-10`} />
                 </div>
-
-                {/* FILTROS E BUSCA */}
-                <div className="bg-brand-surface p-4 rounded-none flex flex-col sm:flex-row gap-4 items-center justify-between flex-shrink-0 border border-brand-border shadow-sm relative z-20">
-                    <div className="w-full sm:w-[450px] relative">
-                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted" />
-                        <input
-                            placeholder="Buscar por avenida ou setor..."
-                            className="w-full bg-brand-background border border-brand-border rounded-xl pl-11 pr-4 py-3 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full sm:w-72 relative">
-                        <CustomSelect
-                            options={statusOptions}
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            placeholder="Todos os Status"
-                        />
-                    </div>
-                </div>
-
-                {/* TABELA DE PAINÉIS */}
-                <div className="flex-1 min-h-0 bg-brand-surface rounded-none overflow-hidden flex flex-col relative border border-brand-border shadow-sm z-10">
-                    {isLoading && (
-                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-background/50 backdrop-blur-sm">
-                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin" />
-                        </div>
-                    )}
-
-                    <div className="flex-1 overflow-auto custom-scrollbar">
-                        <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead className="sticky top-0 bg-brand-background/90 backdrop-blur-md z-40">
-                                <tr>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Localização</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Status</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Impacto Diário</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest border-b border-brand-border">Formato</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-brand-muted uppercase tracking-widest text-right border-b border-brand-border">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border relative z-0">
-                                {!isLoading && filteredPanels.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-16 text-center">
-                                            <div className="flex flex-col items-center justify-center gap-2 text-brand-muted">
-                                                <LayoutGrid className="w-8 h-8 mb-2 opacity-50" />
-                                                <span className="text-sm font-medium">Nenhum painel encontrado.</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredPanels.map((panel) => {
-                                        const status = getStatusStyle(panel.status);
-                                        return (
-                                            <tr key={panel.id} className="hover:bg-brand-background/50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-sm text-brand-text mb-0.5">{panel.name}</div>
-                                                    <div className="text-xs text-brand-muted font-medium">{panel.city || 'Goiânia'} - {panel.state || 'GO'}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${status.bg} ${status.text} ${status.border}`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                                                        {status.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-brand-text">
-                                                    {panel.impacts}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-bold text-brand-text">{panel.size}</div>
-                                                    <div className="text-xs text-brand-muted font-medium mt-0.5">{panel.px}</div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Link aria-label="Editar" to={`/dashboard/paineis/editar/${panel.id}`}>
-                                                            <span className="inline-flex p-2 text-brand-muted hover:text-brand-neon hover:bg-brand-neon/10 rounded-lg border border-transparent hover:border-brand-neon/20 transition-all" aria-hidden="true">
-                                                                <Edit2 className="w-4 h-4" />
-                                                            </span>
-                                                        </Link>
-                                                        <button
-                                                            className="p-2 text-brand-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all"
-                                                            title="Excluir"
-                                                            onClick={() => handleDelete(panel.id)}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                <div role="tablist" aria-label="Filtrar por situação" className="flex gap-px overflow-x-auto border border-brand-border bg-brand-border">
+                    {tabs.filter((t) => t === 'ALL' || counts[t] > 0 || t === 'AVAILABLE').map((t) => (
+                        <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)}
+                            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 text-sm ${filter === t ? 'bg-brand-surface text-brand-text' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                            {t === 'ALL' ? 'Todos' : STATUS[t].label} <span className="font-mono text-xs text-brand-muted">{counts[t]}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* ========================================================= */}
-            {/* MOBILE LAYOUT (CARDS REDESENHADOS PARA ADAPTAR AO TEMA)   */}
-            {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col w-full pb-[100px] gap-4">
+            {status === 'loading' && <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}</div>}
+            {status === 'error' && <EmptyState title="Não foi possível carregar os painéis" action={<button type="button" onClick={load} className={crmBtn.secondary}>Tentar de novo</button>} />}
+            {status === 'ready' && visible.length === 0 && (
+                panels.length === 0
+                    ? <EmptyState title="Nenhum painel cadastrado" text="Cadastre o primeiro ponto da rede para ele aparecer no site e no mapa." action={<Link to="/dashboard/paineis/novo" className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo painel</Link>} />
+                    : <EmptyState title="Nenhum painel encontrado" text="Ajuste a busca ou o filtro." action={<button type="button" onClick={() => { setQuery(''); setFilter('ALL'); }} className={crmBtn.secondary}>Limpar filtros</button>} />
+            )}
 
-                <div className="flex items-center justify-between mb-2">
-                    <div>
-                        <h1 className="text-2xl font-bold text-brand-text tracking-tight">Meus Painéis</h1>
-                        <p className="text-[11px] text-brand-muted mt-0.5 font-medium">Gerencie seu circuito</p>
+            {status === 'ready' && visible.length > 0 && (
+                <div className="border border-brand-border bg-brand-surface">
+                    <div className="hidden grid-cols-[2.4fr_1fr_1fr_1fr_1fr_auto] gap-4 border-b border-brand-border px-5 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-brand-muted md:grid">
+                        <span>Painel</span><span>Situação</span><span>Impactos/dia</span><span>Formato</span><span>Preço base</span><span className="w-[88px]" />
                     </div>
-                    <Link aria-label="Adicionar" to="/dashboard/paineis/novo">
-                        <span className="w-12 h-12 bg-brand-neon text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform" aria-hidden="true">
-                            <Plus className="w-6 h-6" />
-                        </span>
-                    </Link>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
-                        <input
-                            placeholder="Buscar painel..."
-                            className="w-full bg-brand-surface border border-brand-border rounded-none pl-11 pr-4 py-3.5 text-sm text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full bg-brand-surface rounded-none shadow-sm border border-brand-border">
-                        <CustomSelect
-                            options={statusOptions}
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            placeholder="Filtrar por Status"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-4 mt-2">
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-10">
-                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-3" />
-                            <span className="text-xs text-brand-muted uppercase font-bold tracking-widest">Carregando...</span>
-                        </div>
-                    ) : filteredPanels.length === 0 ? (
-                        <div className="bg-brand-surface border border-brand-border rounded-none p-8 flex flex-col items-center text-center shadow-sm">
-                            <LayoutGrid className="w-10 h-10 text-brand-muted mb-3 opacity-50" />
-                            <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum painel</h3>
-                            <p className="text-xs text-brand-muted">Não encontramos painéis para esta busca.</p>
-                        </div>
-                    ) : (
-                        filteredPanels.map((panel) => {
-                            const status = getStatusStyle(panel.status);
+                    <ul className="divide-y divide-brand-border">
+                        {visible.map((panel) => {
+                            const s = STATUS[panel.status] ?? STATUS.MAINTENANCE;
+                            const impacts = parseImpacts(panel.impacts);
                             return (
-                                <div key={panel.id} className="bg-brand-surface border border-brand-border rounded-none overflow-hidden flex flex-col shadow-sm">
-
-                                    {/* Área da Imagem */}
-                                    <div className="w-full h-36 bg-brand-background relative shrink-0">
-                                        {panel.images?.[0] ? (
-                                            <img src={panel.images[0]} alt={panel.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <ImageIcon className="w-8 h-8 text-brand-muted/30" />
-                                            </div>
-                                        )}
-
-                                        <div className="absolute top-3 right-3">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider border backdrop-blur-md ${status.bg} ${status.text} ${status.border}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                                                {status.label}
-                                            </span>
+                                <li key={panel.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[2.4fr_1fr_1fr_1fr_1fr_auto]">
+                                    <div className="col-span-2 flex min-w-0 items-center gap-3 md:col-span-1">
+                                        <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-medium text-brand-text">{panel.name}</p>
+                                            <p className="truncate text-xs text-brand-muted">{[panel.city, panel.state].filter(Boolean).join(' - ') || 'Sem cidade'}</p>
                                         </div>
                                     </div>
-
-                                    {/* Informações */}
-                                    <div className="p-5 flex flex-col">
-                                        <h3 className="font-bold text-brand-text text-[15px] leading-tight line-clamp-2">{panel.name}</h3>
-                                        <span className="text-[11px] text-brand-muted font-medium mt-1 flex items-center gap-1.5 mb-4">
-                                            <MapPin className="w-3.5 h-3.5 text-brand-muted" /> {panel.city || 'Goiânia'} - {panel.state || 'GO'}
-                                        </span>
-
-                                        <div className="grid grid-cols-2 gap-3 mb-5">
-                                            <div className="bg-brand-background border border-brand-border rounded-xl p-3 flex flex-col justify-center">
-                                                <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest flex items-center gap-1 mb-1"><Zap className="w-3.5 h-3.5 text-brand-neon" /> Impacto</span>
-                                                <span className="text-sm font-bold text-brand-text">{panel.impacts}</span>
-                                            </div>
-                                            <div className="bg-brand-background border border-brand-border rounded-xl p-3 flex flex-col justify-center">
-                                                <span className="text-[9px] text-brand-muted uppercase font-bold tracking-widest flex items-center gap-1 mb-1"><LayoutGrid className="w-3.5 h-3.5 text-brand-neon" /> Formato</span>
-                                                <span className="text-sm font-bold text-brand-text truncate">{panel.size}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 pt-4 border-t border-brand-border">
-                                            <Link to={`/dashboard/paineis/editar/${panel.id}`} className="flex-1">
-                                                <Button as="span" variant="secondary" className="w-full h-11 text-xs font-bold bg-brand-background border-brand-border text-brand-text hover:border-brand-neon hover:text-brand-neon transition-colors" leftIcon={<Edit2 className="w-4 h-4" />}>
-                                                    Editar
-                                                </Button>
-                                            </Link>
-                                            <Button aria-label="Excluir"
-                                                variant="secondary"
-                                                className="w-12 h-11 px-0 flex items-center justify-center border-red-500/20 text-red-500 bg-red-500/10 active:bg-red-500/20 shrink-0 transition-colors"
-                                                onClick={() => handleDelete(panel.id)}
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </Button>
-                                        </div>
+                                    <span><Badge tone={s.tone}>{s.label}</Badge></span>
+                                    <span className="font-mono text-sm text-brand-text">{impacts ? formatImpacts(impacts) : '—'}</span>
+                                    <span className="text-sm text-brand-muted">{[panel.size, panel.px].filter(Boolean).join(' · ') || '—'}</span>
+                                    <span className="font-mono text-sm text-brand-text">{Number(panel.price) > 0 ? formatBRL(Number(panel.price)) : '—'}</span>
+                                    <div className="col-span-2 flex justify-end gap-1 md:col-span-1">
+                                        <Link to={`/dashboard/paineis/editar/${panel.id}`} className={crmBtn.ghost} aria-label={`Editar ${panel.name}`}><Pencil className="h-4 w-4" strokeWidth={1.75} /> <span className="md:sr-only">Editar</span></Link>
+                                        <button type="button" onClick={() => setToDelete(panel)} className={crmBtn.ghost} aria-label={`Excluir ${panel.name}`}><Trash2 className="h-4 w-4" strokeWidth={1.75} /> <span className="md:sr-only">Excluir</span></button>
                                     </div>
-                                </div>
-                            )
-                        })
-                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
                 </div>
-            </div>
+            )}
 
-        </div>
+            <ConfirmSheet
+                open={Boolean(toDelete)}
+                title={`Excluir ${toDelete?.name ?? 'painel'}?`}
+                text="O ponto sai do site, do mapa e das propostas. Prefira mudar para Manutenção se for algo temporário."
+                busy={deleting}
+                onConfirm={onDelete}
+                onClose={() => setToDelete(null)}
+            />
+        </CrmPage>
     );
 }

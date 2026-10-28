@@ -2,8 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Check, Copy, Plus, Shuffle, Trash2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
-import { Badge, ConfirmSheet, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/crm/ui';
-import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/crm/tokens';
+import { Badge, ConfirmSheet, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
+import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/app/tokens';
 
 interface Coupon {
     id: string;
