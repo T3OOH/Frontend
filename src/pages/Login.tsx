@@ -12,6 +12,7 @@ import ReCAPTCHA from 'react-google-recaptcha';
 import { Captcha, RECAPTCHA_SITE_KEY } from '@/components/Captcha';
 import { Seo } from '@/components/Seo';
 import { AuthShell, authInput } from '@/components/AuthShell';
+import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { btnPrimary } from '@/lib/ui';
 
 export function Login() {
@@ -65,6 +66,7 @@ export function Login() {
                 subtitle="Acompanhe seus orçamentos, pedidos e campanhas nos telões da T3."
                 footer={<>Ainda não tem conta? <Link to="/cadastro" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Criar conta</Link></>}
             >
+                <GoogleSignIn mode="signin" />
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
                     <Input
                         id="login-email"

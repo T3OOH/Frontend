@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Briefcase, LayoutDashboard, LogOut, Menu, User as UserIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAvatarClass } from '@/contexts/ThemeContext';
 import { panelsService } from '@/services/panels.service';
 
 const NAV_LINKS = [
@@ -33,6 +34,7 @@ export function Header() {
     const userMenuRef = useRef<HTMLDivElement>(null);
     const { isAuthenticated, user, signOut } = useAuth();
     const role = user?.role as string | undefined;
+    const avatarClass = useAvatarClass();
 
     // Fundo sólido só depois de rolar: no topo o header deixa o hero respirar
     useEffect(() => {
@@ -70,7 +72,8 @@ export function Header() {
     const accountLinks = [
         ...(role === 'ADMIN' || role === 'MANAGER' ? [{ label: 'Gestão T3', path: '/dashboard', icon: LayoutDashboard }] : []),
         ...(role === 'ADMIN' || role === 'MANAGER' || role === 'COMERCIAL' ? [{ label: 'CRM comercial', path: '/crm', icon: Briefcase }] : []),
-        ...(role === 'USER' || role === 'COMPANY' ? [{ label: 'Meu perfil', path: '/perfil', icon: UserIcon }] : []),
+        // Todo perfil de acesso tem a própria página: dados e aparência do site
+        { label: 'Meu perfil', path: '/perfil', icon: UserIcon },
     ];
     const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '';
     const prefetchMap = (path: string) => { if (path === '/mapa') panelsService.getMapMarkers().catch(() => {}); };
@@ -127,7 +130,7 @@ export function Header() {
                                 aria-expanded={isUserMenuOpen}
                                 className="flex items-center gap-2.5 border border-white/10 py-1 pl-1 pr-3 text-sm text-ink-300 transition-colors hover:border-white/20 hover:text-ink-100"
                             >
-                                <span className="grid h-7 w-7 place-items-center bg-brand-neon font-mono text-xs font-semibold text-ink-950">{initial}</span>
+                                <span className={cn('grid h-7 w-7 place-items-center font-mono text-xs font-semibold', avatarClass)}>{initial}</span>
                                 <span className="max-w-[9rem] truncate">{user?.name?.split(' ')[0]}</span>
                             </button>
                             <AnimatePresence>
