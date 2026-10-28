@@ -2,16 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { LedScreen, LedScene } from '@/components/led/LedScreen';
 
 type Side = 'ooh' | 'solution';
-
-const SOLUTION_SCENES: LedScene[] = [
-    { type: 'logo', hold: 3000 },
-    { type: 'ad', lines: ['SUA TELA', 'SOB MEDIDA'], bg: '#FF5E00', fg: '#0B0B0C', stripe: '#0B0B0C', hold: 3200 },
-    { type: 'bars', hold: 2200 },
-    { type: 'text', lines: ['INDOOR', 'OUTDOOR'], hold: 2600 },
-];
 
 const SIDES: Record<Side, { to: string; logo: string; logoAlt: string; eyebrow: string; title: string; text: string; cta: string }> = {
     ooh: {
@@ -117,15 +109,16 @@ export function Gateway({ onDone }: { onDone: () => void }) {
                                 transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
                             />
                         ) : (
-                            <div className="absolute inset-0 -z-10 flex items-center justify-center bg-[#0E0E10]" aria-hidden="true">
-                                <motion.div
-                                    className="w-[115%] md:w-[95%]"
-                                    animate={{ scale: active ? 1.04 : 0.96 }}
-                                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                                >
-                                    <LedScreen scenes={SOLUTION_SCENES} cols={96} rows={54} className="block aspect-video w-full" label="Telão de LED" />
-                                </motion.div>
-                            </div>
+                            // Avenida de Goiânia com o letreiro "T3 Solution" à direita: o enquadramento
+                            // puxa para a direita para o letreiro aparecer mesmo com o lado recolhido
+                            <motion.img
+                                src="/solution-cidade.webp"
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 -z-10 h-full w-full object-cover object-[82%_60%]"
+                                animate={{ scale: active ? 1.08 : 1.02 }}
+                                transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+                            />
                         )}
                         <div
                             className={`absolute inset-0 -z-10 transition-opacity duration-500 ${active ? 'opacity-70' : 'opacity-90'}`}
