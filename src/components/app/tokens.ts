@@ -6,9 +6,9 @@ export const crmInput =
 export const crmBtn = {
     primary: 'inline-flex items-center justify-center gap-2 bg-brand-neon px-4 py-2.5 text-sm font-semibold text-ink-950 transition-colors hover:bg-brand-neonHover active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50',
     secondary: 'inline-flex items-center justify-center gap-2 border border-brand-border bg-brand-surface px-4 py-2.5 text-sm font-medium text-brand-text transition-colors hover:border-brand-muted active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50',
-    ghost: 'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm text-brand-muted transition-colors hover:bg-brand-background hover:text-brand-text disabled:opacity-50',
+    ghost: 'inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 md:min-h-0 text-sm text-brand-muted transition-colors hover:bg-brand-background hover:text-brand-text disabled:opacity-50',
     danger: 'inline-flex items-center justify-center gap-2 bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 active:translate-y-px disabled:opacity-50',
-    icon: 'inline-flex h-9 w-9 items-center justify-center text-brand-muted transition-colors hover:bg-brand-background hover:text-brand-text',
+    icon: 'inline-flex h-11 w-11 shrink-0 items-center md:h-9 md:w-9 justify-center text-brand-muted transition-colors hover:bg-brand-background hover:text-brand-text',
 };
 
 export const eyebrowCrm = 'font-mono text-[11px] uppercase tracking-[0.2em] text-brand-muted';

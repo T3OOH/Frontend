@@ -122,7 +122,7 @@ export function SolutionManager() {
                                     <img src={img.url} alt={img.alt} loading="lazy" className="h-full w-full object-cover" />
                                     <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/70 px-3 py-2">
                                         <span className="truncate text-xs text-white">{img.alt}</span>
-                                        <button type="button" onClick={() => setToDelete(img)} className="shrink-0 text-white/80 hover:text-red-400" aria-label={`Remover ${img.alt}`}><Trash2 className="h-4 w-4" /></button>
+                                        <button type="button" onClick={() => setToDelete(img)} className="-m-2.5 shrink-0 p-2.5 text-white/80 hover:text-red-400" aria-label={`Remover ${img.alt}`}><Trash2 className="h-4 w-4" /></button>
                                     </div>
                                 </li>
                             ))}

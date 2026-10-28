@@ -25,9 +25,17 @@ const BACKGROUND_VIDEO: { mp4: string; webm?: string; poster: string } | null = 
     poster: '/video/t3-cidade-poster.webp',
 };
 
-const prefersStill = () =>
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-    Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+/**
+ * Mantém a foto animada (sem baixar o vídeo de 4,3 MB) em: reduzir movimento, economia
+ * de dados, conexões lentas e telas de celular (dados móveis e bateria).
+ */
+const prefersStill = () => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        window.matchMedia('(max-width: 767px)').matches ||
+        Boolean(connection?.saveData) ||
+        /(^|-)(2g|3g)$/.test(connection?.effectiveType ?? '');
+};
 
 // Curvas da avenida na foto (pontos de controle de Bézier cúbica, em pixels da foto)
 type Curve = [number, number, number, number, number, number, number, number];
@@ -62,7 +70,10 @@ interface Cover { scale: number; x: number; y: number }
 
 function coverFor(w: number, h: number): Cover {
     const scale = Math.max(w / PHOTO.w, h / PHOTO.h);
-    return { scale, x: (w - PHOTO.w * scale) / 2, y: (h - PHOTO.h * scale) / 2 };
+    // Em tela vertical o centro da foto é o "3" laranja gigante, atrás do título laranja.
+    // Ali o enquadramento vai para a esquerda (skyline e rastros de faróis).
+    const focusX = w < h ? 0.12 : 0.5;
+    return { scale, x: (w - PHOTO.w * scale) * focusX, y: (h - PHOTO.h * scale) / 2 };
 }
 
 interface PhotoCityProps {

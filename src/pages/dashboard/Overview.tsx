@@ -129,7 +129,7 @@ export function Overview() {
                     )}
                 </Panel>
 
-                <Panel title="Pedidos recentes" action={<Link to="/dashboard/pedidos" className="text-sm text-brand-muted hover:text-brand-text">Ver todos</Link>}>
+                <Panel title="Pedidos recentes" action={<Link to="/dashboard/pedidos" className="-my-2.5 py-2.5 text-sm text-brand-muted hover:text-brand-text">Ver todos</Link>}>
                     {loading ? <div className="p-5"><Skeleton className="h-40" /></div> : recent.length === 0 ? (
                         <p className="p-5 text-sm text-brand-muted">Nenhum pedido recebido ainda.</p>
                     ) : (
