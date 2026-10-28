@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ export function Login() {
     const toast = useToast();
 
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const captchaRef = useRef<ReCAPTCHA>(null);
 
     // Redireciona se já estiver logado
     useEffect(() => {
@@ -38,6 +39,9 @@ export function Login() {
             signIn(response.token, response.user);
             toast.success('Login realizado com sucesso!');
         } catch (error: any) {
+            // O token do reCAPTCHA é de uso único: exige nova verificação
+            captchaRef.current?.reset();
+            setCaptchaToken(null);
             const backendError = error.response?.data;
             if (backendError?.details) {
                 toast.error(`Erro: ${backendError.details[0].message}`);
@@ -117,12 +121,12 @@ export function Login() {
                                 autoComplete="current-password"
                             />
                             <div className="flex justify-end pt-1">
-                                <Link to="#" className="text-[11px] font-bold text-[#8F8F91] hover:text-white transition-all uppercase tracking-widest">Esqueceu a senha?</Link>
+                                <Link to="/recuperar-senha" className="text-[11px] font-bold text-[#8F8F91] hover:text-white transition-all uppercase tracking-widest">Esqueceu a senha?</Link>
                             </div>
                         </div>
 
                         <div className="rounded-xl overflow-hidden mt-2 w-fit">
-                            <ReCAPTCHA sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""} onChange={(token) => setCaptchaToken(token)} theme="dark" />
+                            <ReCAPTCHA ref={captchaRef} sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""} onChange={(token) => setCaptchaToken(token)} theme="dark" />
                         </div>
 
                         <button 

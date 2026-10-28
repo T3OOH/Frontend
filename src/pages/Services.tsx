@@ -12,17 +12,14 @@ import { CustomSelect } from '@/components/CustomSelect';
 import { Button } from '@/components/Button';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams, Link } from 'react-router-dom';
+import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 
 const formatCurrency = (value: number | string) => {
     const numericValue = Number(value) || 0;
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numericValue);
 };
 
-// Mock de cupons para simulação
-const MOCK_COUPONS: { [key: string]: number } = {
-    'T3OOH10': 0.10, // 10% de desconto adicional
-    'VICTOR20': 0.20, // 20% de desconto adicional
-};
 
 // Interface estendida para o Carrinho local
 interface CartPanel extends Panel {
@@ -53,7 +50,9 @@ export function Services() {
 
     // Estados para Cupom
     const [couponInput, setCouponInput] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; label: string } | null>(null);
+    const [couponQuote, setCouponQuote] = useState<Quote | null>(null);
+    const [searchParams] = useSearchParams();
 
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', company: '', message: '' });
 
@@ -112,14 +111,23 @@ export function Services() {
         return () => controller.abort();
     }, []);
 
+    // Links como /servicos?panelId=... abrem o painel indicado
+    useEffect(() => {
+        const panelId = searchParams.get('panelId');
+        if (!panelId || panels.length === 0) return;
+        const target = panels.find(p => p.id === panelId);
+        if (target) setSelectedPanel(target);
+    }, [searchParams, panels]);
+
     // Reseta o passo do checkout e cupom ao fechar a sidebar
     useEffect(() => {
         if (!isSidebarOpen) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 setCheckoutStep('cart');
                 setCouponInput('');
                 setAppliedCoupon(null);
             }, 300);
+            return () => clearTimeout(timer);
         }
     }, [isSidebarOpen]);
 
@@ -137,7 +145,7 @@ export function Services() {
 
     const filteredPanels = useMemo(() => {
         return panels.filter(panel => {
-            const safeSearch = searchTerm.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const safeSearch = searchTerm.trim().toLowerCase();
             const matchesSearch = panel.name?.toLowerCase().includes(safeSearch) || panel.city?.toLowerCase().includes(safeSearch);
             const matchesState = selectedState ? panel.state === selectedState : true;
             const matchesCity = selectedCity ? panel.city === selectedCity : true;
@@ -174,18 +182,40 @@ export function Services() {
     const baseCartMonthlyValue = cart.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
     const discountedCartMonthlyValue = baseCartMonthlyValue * (1 - cartDiscount);
     
-    const couponDiscountPercent = appliedCoupon ? appliedCoupon.discount : 0;
-    const finalCartMonthlyValue = discountedCartMonthlyValue * (1 - couponDiscountPercent);
+    // Com cupom, o valor oficial vem do servidor
+    const finalCartMonthlyValue = appliedCoupon && couponQuote ? couponQuote.monthlyValue : discountedCartMonthlyValue;
+    const cartKey = cart.map(p => p.id).join(',');
 
-    const handleApplyCoupon = () => {
+    // Revalida o cupom no servidor quando carrinho ou prazo mudam
+    useEffect(() => {
+        if (!appliedCoupon || cart.length === 0) {
+            setCouponQuote(null);
+            return;
+        }
+        let cancelled = false;
+        pricingService.quote(cart.map(p => p.id), numericMonths, appliedCoupon.code)
+            .then(quote => { if (!cancelled) setCouponQuote(quote); })
+            .catch((err) => {
+                if (cancelled) return;
+                setAppliedCoupon(null);
+                setCouponQuote(null);
+                addToast(err.response?.data?.error || 'Cupom inválido ou expirado.', 'error');
+            });
+        return () => { cancelled = true; };
+    }, [appliedCoupon?.code, cartKey, numericMonths]);
+
+    const handleApplyCoupon = async () => {
         const code = couponInput.trim().toUpperCase();
-        if (!code) return;
+        if (!code || cart.length === 0) return;
 
-        if (MOCK_COUPONS[code]) {
-            setAppliedCoupon({ code: code, discount: MOCK_COUPONS[code] });
-            addToast(`Cupom ${code} aplicado com sucesso!`, 'success');
-        } else {
-            addToast('Cupom inválido ou expirado.', 'error');
+        try {
+            const quote = await pricingService.quote(cart.map(p => p.id), numericMonths, code);
+            if (!quote.coupon) throw new Error('Cupom inválido.');
+            setCouponQuote(quote);
+            setAppliedCoupon({ code: quote.coupon.code, label: describeCoupon(quote.coupon) });
+            addToast(`Cupom ${quote.coupon.code} aplicado com sucesso!`, 'success');
+        } catch (err: any) {
+            addToast(err.response?.data?.error || 'Cupom inválido ou expirado.', 'error');
             setAppliedCoupon(null);
         }
     };
@@ -218,37 +248,16 @@ export function Services() {
         setIsSubmitting(true);
         try {
             const maxMonths = Number(cartMonths);
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setMonth(endDate.getMonth() + maxMonths);
-
-            let totalContractValue = 0;
-            const structuredItems = cart.map((panel) => {
-                const monthlyFinal = (Number(panel.price) || 0) * (1 - cartDiscount) * (1 - couponDiscountPercent);
-                const totalItemValue = monthlyFinal * maxMonths;
-                
-                totalContractValue += totalItemValue;
-
-                return {
-                    panelId: panel.id,
-                    priceSnapshot: totalItemValue
-                };
-            });
 
             let extraNotes = formData.message;
-            extraNotes += `\n[Prazo da Campanha]: ${maxMonths} meses (${cartDiscount * 100}% de desconto de prazo).`;
-            if (appliedCoupon) extraNotes += `\n[Cupom Aplicado]: ${appliedCoupon.code} (${appliedCoupon.discount * 100}% extra).`;
             extraNotes += `\nCliente: ${formData.name} | Tel: ${formData.phone} | Agência/Empresa: ${formData.company}`;
 
+            // Valores, descontos e cupom são calculados pelo servidor; o usuário vem do token
             await api.post('/orders', {
-                userId: user.id,
-                companyId: (user as any).companyId || null,
-                status: 'PENDING',
-                totalValue: totalContractValue,
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
+                months: maxMonths,
+                couponCode: appliedCoupon?.code,
                 notes: extraNotes.trim(),
-                items: structuredItems
+                items: cart.map((panel) => ({ panelId: panel.id }))
             });
 
             setCheckoutStep('success');
@@ -257,7 +266,7 @@ export function Services() {
 
         } catch (err: any) {
             console.error("Erro ao salvar pacote de pedidos no banco de dados:", err);
-            addToast('Ocorreu um erro ao processar seu pedido. Tente novamente.', 'error');
+            addToast(err.response?.data?.error || 'Ocorreu um erro ao processar seu pedido. Tente novamente.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -518,7 +527,7 @@ export function Services() {
                                                 <div className="flex items-center justify-between gap-3 bg-[#25D366]/5 border border-[#25D366]/20 p-3 rounded-md text-[#25D366]">
                                                     <div className="flex items-center gap-2.5 truncate">
                                                         <Tag className="w-4 h-4 shrink-0" />
-                                                        <span className="text-xs font-bold truncate">{appliedCoupon.code} ({appliedCoupon.discount * 100}% OFF extra)</span>
+                                                        <span className="text-xs font-bold truncate">{appliedCoupon.code} ({appliedCoupon.label})</span>
                                                     </div>
                                                     <button onClick={handleRemoveCoupon} className="text-[10px] font-bold uppercase text-[#8F8F91] hover:text-white">Remover</button>
                                                 </div>
@@ -548,6 +557,11 @@ export function Services() {
                                 </div>
                             ) : checkoutStep === 'crm' ? (
                                 <div className="bg-[#111113] p-6 border-t border-white/10">
+                                    {!user?.id && (
+                                        <p role="alert" className="mb-4 text-xs text-center text-[#8F8F91]">
+                                            Para finalizar o pedido, <Link to="/login" className="text-white underline">entre na sua conta</Link> ou <Link to="/cadastro" className="text-white underline">cadastre-se</Link>.
+                                        </p>
+                                    )}
                                     <Button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className="w-full bg-[#25D366] py-4 rounded-md font-black text-[#0A0A0B] hover:bg-[#1eb858] text-xs uppercase tracking-widest">
                                         {isSubmitting ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : 'Finalizar Pedido'}
                                     </Button>

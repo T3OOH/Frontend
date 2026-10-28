@@ -183,7 +183,7 @@ export function CrmOverview() {
                         ) : (
                             myDeals.map(deal => (
                                 <Link 
-                                    to={`/dashboard/crm/proposta/${deal.id}`} 
+                                    to={`/crm/proposta/${deal.id}`} 
                                     key={deal.id} 
                                     className="p-5 rounded-2xl border bg-brand-surface border-brand-border hover:border-brand-neon/60 transition-all shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 group"
                                 >

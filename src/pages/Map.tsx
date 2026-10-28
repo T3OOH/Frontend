@@ -14,7 +14,9 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { CustomSelect } from '@/components/CustomSelect';
 import { useToast } from '@/contexts/ToastContext';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
+import { nextSellerPhone } from '@/lib/contacts';
+import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 
 /**
  * Interface Component: Map Integration & Interactive Catalog
@@ -29,7 +31,8 @@ export function Map() {
 
     const [panels, setPanels] = useState<Panel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+    // A busca da Home chega como /mapa?q=...
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') ?? '');
     const [selectedState, setSelectedState] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
@@ -44,7 +47,8 @@ export function Map() {
     const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm'>('cart');
     const [months, setMonths] = useState(1);
     const [couponInput, setCouponInput] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, discount: number } | null>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, label: string } | null>(null);
+    const [couponQuote, setCouponQuote] = useState<Quote | null>(null);
     const [checkoutForm, setCheckoutForm] = useState({ 
         name: '', email: '', phone: '', company: '', message: '' 
     });
@@ -54,12 +58,17 @@ export function Map() {
      * Hydrates checkout state across component mounts and routing boundaries.
      */
     useEffect(() => {
-        const savedData = localStorage.getItem('@t3:checkoutSync');
+        let savedData: string | null = null;
+        try {
+            // Dados pessoais ficam só na aba atual (sessionStorage), nunca persistidos no navegador
+            localStorage.removeItem('@t3:checkoutSync');
+            savedData = sessionStorage.getItem('@t3:checkoutSync');
+        } catch { /* storage indisponível */ }
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
                 if (parsed.months) setMonths(parsed.months);
-                if (parsed.appliedCoupon !== undefined) setAppliedCoupon(parsed.appliedCoupon);
+                if (parsed.appliedCoupon?.code && parsed.appliedCoupon?.label) setAppliedCoupon(parsed.appliedCoupon);
                 if (parsed.checkoutForm) setCheckoutForm(prev => ({ ...prev, ...parsed.checkoutForm }));
             } catch (e) {
                 console.error("State Hydration Error (Checkout):", e);
@@ -72,9 +81,11 @@ export function Map() {
      * Serializes checkout state to prevent data loss.
      */
     useEffect(() => {
-        localStorage.setItem('@t3:checkoutSync', JSON.stringify({
-            months, appliedCoupon, checkoutForm
-        }));
+        try {
+            sessionStorage.setItem('@t3:checkoutSync', JSON.stringify({
+                months, appliedCoupon, checkoutForm
+            }));
+        } catch { /* storage indisponível */ }
     }, [months, appliedCoupon, checkoutForm]);
 
     /**
@@ -82,7 +93,7 @@ export function Map() {
      * Prevents underlying document scrolling when modals or fullscreen mode are active.
      */
     useEffect(() => {
-        if (isFullscreen || isCheckoutOpen || !!selectedPanelId) {
+        if (isFullscreen || isCheckoutOpen) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
@@ -90,7 +101,7 @@ export function Map() {
         return () => {
             document.body.style.overflow = '';
         };
-    }, [isFullscreen, isCheckoutOpen, selectedPanelId]);
+    }, [isFullscreen, isCheckoutOpen]);
 
     /**
      * User Authentication Hydration.
@@ -227,23 +238,50 @@ export function Map() {
     const totalTermDiscount = totalWithoutAnyDiscount * termDiscountPercent;
     const subtotalAfterTerm = totalWithoutAnyDiscount - totalTermDiscount;
 
-    const couponDiscount = appliedCoupon ? subtotalAfterTerm * appliedCoupon.discount : 0;
+    // Desconto do cupom vem sempre do servidor (cotação oficial)
+    const couponDiscount = appliedCoupon && couponQuote ? couponQuote.couponDiscount : 0;
     const finalTotalValue = subtotalAfterTerm - couponDiscount;
     const finalMonthlyValue = finalTotalValue / months;
     const totalEconomy = totalWithoutAnyDiscount - finalTotalValue;
 
-    const handleApplyCoupon = () => {
-        if (!couponInput) return;
-        if (couponInput.toUpperCase() === 'T3PRO') {
-            setAppliedCoupon({ code: 'T3PRO', discount: 0.15 });
-            addToast('Cupom Especial aplicado com sucesso! (15% OFF)', 'success');
-        } else {
-            addToast('Cupom inválido ou expirado.', 'error');
+    const cartKey = cart.map(p => p.id).join(',');
+
+    /**
+     * Revalida o cupom no servidor sempre que carrinho ou prazo mudam
+     * (valor mínimo e descontos fixos dependem do total).
+     */
+    useEffect(() => {
+        if (!appliedCoupon || cart.length === 0) {
+            setCouponQuote(null);
+            return;
+        }
+        let cancelled = false;
+        pricingService.quote(cart.map(p => p.id), months, appliedCoupon.code)
+            .then(quote => { if (!cancelled) setCouponQuote(quote); })
+            .catch((err) => {
+                if (cancelled) return;
+                setAppliedCoupon(null);
+                setCouponQuote(null);
+                addToast(err.response?.data?.error || 'Cupom inválido ou expirado.', 'error');
+            });
+        return () => { cancelled = true; };
+    }, [appliedCoupon?.code, cartKey, months]);
+
+    const handleApplyCoupon = async () => {
+        const code = couponInput.trim().toUpperCase();
+        if (!code || cart.length === 0) return;
+        try {
+            const quote = await pricingService.quote(cart.map(p => p.id), months, code);
+            if (!quote.coupon) throw new Error('Cupom inválido.');
+            setCouponQuote(quote);
+            setAppliedCoupon({ code: quote.coupon.code, label: describeCoupon(quote.coupon) });
+            addToast(`Cupom ${quote.coupon.code} aplicado! (${describeCoupon(quote.coupon)})`, 'success');
+        } catch (err: any) {
+            addToast(err.response?.data?.error || 'Cupom inválido ou expirado.', 'error');
             setAppliedCoupon(null);
         }
     };
 
-    const SELLERS_PHONES = ['5562999999999', '5562888888888']; 
 
     /**
      * Transaction Submission Handler.
@@ -254,40 +292,33 @@ export function Map() {
         setIsSubmitting(true);
 
         try {
-            const totalOriginalCartValue = cart.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
-            const discountRatio = totalOriginalCartValue > 0 ? (finalMonthlyValue / totalOriginalCartValue) : 1;
+            // Valores são recalculados no servidor; enviamos apenas as escolhas do cliente
+            const structuredItems = cart.map(p => ({ panelId: p.id }));
 
-            const structuredItems = cart.map(p => ({
-                panelId: p.id,
-                priceSnapshot: Number(p.price || 0) * discountRatio
-            }));
+            // Abre a aba antes do await para não ser bloqueada como pop-up
+            const waWindow = window.open('', '_blank');
 
-            let extraNotes = checkoutForm.message;
-            if (appliedCoupon || termDiscountPercent > 0) {
-                extraNotes += `\n\n[Descontos Aplicados]:\n`;
-                if (appliedCoupon) extraNotes += `- Cupom ${appliedCoupon.code} (${appliedCoupon.discount * 100}% OFF).\n`;
-                if (termDiscountPercent > 0) extraNotes += `- Plano de ${months}x (${termDiscountPercent * 100}% OFF).`;
-            }
-
-            api.post('/crm/deals/checkout', {
+            const { data: createdDeal } = await api.post('/crm/deals/checkout', {
                 clientDetails: {
                     name: checkoutForm.name,
                     email: checkoutForm.email,
                     phone: checkoutForm.phone,
                     company: checkoutForm.company,
-                    message: extraNotes.trim()
+                    message: checkoutForm.message.trim()
                 },
                 contractMonths: months,
-                originalValue: totalWithoutAnyDiscount,
-                expectedValue: finalTotalValue,
+                couponCode: appliedCoupon?.code,
                 items: structuredItems,
                 source: 'INTERACTIVE_MAP_WA'
-            }).catch(e => console.error("API POST Error (CRM Integration):", e));
+            }).catch((err) => {
+                waWindow?.close();
+                throw err;
+            });
 
-            const lastIndex = parseInt(localStorage.getItem('@t3:lastSeller') || '0', 10);
-            const nextIndex = (lastIndex + 1) % SELLERS_PHONES.length;
-            localStorage.setItem('@t3:lastSeller', nextIndex.toString());
-            const targetPhone = SELLERS_PHONES[nextIndex];
+            const official: Quote | undefined = createdDeal?.quote;
+            const officialMonthly = official?.monthlyValue ?? finalMonthlyValue;
+            const officialTotal = official?.finalValue ?? finalTotalValue;
+            const targetPhone = nextSellerPhone();
 
             let text = `*Novo Pedido de Orçamento - T3 OOH*\n\n`;
             text += `*Cliente:* ${checkoutForm.name}\n`;
@@ -295,8 +326,8 @@ export function Map() {
             text += `*Painéis Selecionados (${cart.length}):*\n`;
             cart.forEach(p => { text += `- ${p.name} (${p.city})\n`; });
             text += `\n*Duração:* ${months} meses\n`;
-            text += `*Investimento Mensal:* ${formatCurrency(finalMonthlyValue)}\n`;
-            text += `*Valor Total da Campanha:* ${formatCurrency(finalTotalValue)}\n`;
+            text += `*Investimento Mensal:* ${formatCurrency(officialMonthly)}\n`;
+            text += `*Valor Total da Campanha:* ${formatCurrency(officialTotal)}\n`;
             
             if (checkoutForm.message) text += `\n*Observações:* ${checkoutForm.message}\n`;
 
@@ -304,14 +335,17 @@ export function Map() {
             
             addToast('Redirecionando para o WhatsApp comercial...', 'success');
             clearCart();
+            setAppliedCoupon(null);
+            setCouponInput('');
             setIsCheckoutOpen(false);
             setCheckoutStep('cart');
             setCheckoutForm({ name: '', email: '', phone: '', company: '', message: '' });
             
-            window.open(waUrl, '_blank');
+            if (waWindow) waWindow.location.href = waUrl;
+            else window.open(waUrl, '_blank');
         } catch (err: any) {
             console.error("Checkout Exception:", err);
-            addToast('Erro ao processar pedido. Verifique os dados e tente novamente.', 'error');
+            addToast(err.response?.data?.error || 'Erro ao processar pedido. Verifique os dados e tente novamente.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -332,7 +366,7 @@ export function Map() {
                         <p className="text-xs font-bold tracking-widest text-[#8F8F91] uppercase">Sincronizando Circuito...</p>
                     </div>
                 ) : (
-                    <InteractiveMap panels={panels as any[]} selectedPanelId={selectedPanelId} />
+                    <InteractiveMap panels={filteredPanels as any[]} selectedPanelId={selectedPanelId} />
                 )}
             </div>
 
@@ -741,15 +775,15 @@ export function Map() {
                                                         disabled={appliedCoupon !== null}
                                                     />
                                                     {appliedCoupon ? (
-                                                        <Button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="px-3 h-[42px] bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-sm transition-colors"><X className="w-4 h-4" /></Button>
+                                                        <Button type="button" aria-label="Remover cupom" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="px-3 h-[42px] bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-sm transition-colors"><X className="w-4 h-4" /></Button>
                                                     ) : (
-                                                        <Button type="button" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/5 text-[#8F8F91] hover:text-white border border-white/10 hover:border-white/20 rounded-sm transition-colors"><Tag className="w-4 h-4" /></Button>
+                                                        <Button type="button" aria-label="Aplicar cupom" onClick={handleApplyCoupon} className="px-3 h-[42px] bg-white/5 text-[#8F8F91] hover:text-white border border-white/10 hover:border-white/20 rounded-sm transition-colors"><Tag className="w-4 h-4" /></Button>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
                                         {termDiscountPercent > 0 && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Bonificação de {termDiscountPercent * 100}% aplicada</p>}
-                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Voucher ativo</p>}
+                                        {appliedCoupon && <p className="text-[10px] text-[#25D366] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Cupom {appliedCoupon.code} ativo ({appliedCoupon.label})</p>}
                                     </div>
 
                                     <div className="flex items-center justify-between">

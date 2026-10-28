@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Search, ShoppingCart, Loader2, Calendar, ReceiptText, 
-    FileDown, MessageSquare, ChevronDown, ChevronUp, MapPin, MonitorPlay,
-    CheckCircle2, XCircle, AlertCircle
+    FileDown, MessageSquare, ChevronDown, ChevronUp, MapPin, MonitorPlay
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -353,20 +352,6 @@ export function Orders() {
         return matchesSearch && matchesStatus;
     });
 
-    const getStatusStyles = (status: string) => {
-        if (status === 'COMPLETED') return 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20';
-        if (status === 'REJECTED') return 'bg-red-500/10 text-red-500 border-red-500/20';
-        if (status === 'APPROVED') return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-    };
-
-    const getStatusIcon = (status: string) => {
-        if (status === 'COMPLETED') return <CheckCircle2 className="w-3.5 h-3.5" />;
-        if (status === 'REJECTED') return <XCircle className="w-3.5 h-3.5" />;
-        if (status === 'APPROVED') return <MonitorPlay className="w-3.5 h-3.5" />;
-        return <AlertCircle className="w-3.5 h-3.5" />;
-    };
-
     return (
         <div className="h-full flex flex-col gap-6 max-w-7xl mx-auto w-full pb-10">
             {/* Header Actions */}
@@ -453,7 +438,7 @@ export function Orders() {
                                             <span className="hidden md:block text-[10px] text-brand-muted uppercase tracking-wider mt-0.5">{order.months} Meses</span>
                                         </div>
 
-                                        <div className="hidden md:flex col-span-2 flex-col items-start justify-center">
+                                        <div className="flex col-span-1 md:col-span-2 flex-col items-start justify-center">
                                             {updatingId === order.id ? (
                                                 <Loader2 className="w-4 h-4 text-brand-neon animate-spin" />
                                             ) : (
@@ -587,150 +572,6 @@ export function Orders() {
                         })}
                     </div>
                 )}
-            </div>
-
-            {/* ========================================================= */}
-            {/* MOBILE LAYOUT                                             */}
-            {/* ========================================================= */}
-            <div className="flex lg:hidden flex-col w-full relative gap-4 pb-[100px]">
-                
-                <div className="flex items-center justify-between mt-2 px-4">
-                    <div>
-                        <h1 className="text-xl font-bold text-brand-text tracking-tight flex items-center gap-2">
-                            <ShoppingCart className="w-5 h-5 text-brand-neon" /> Pacotes
-                        </h1>
-                        <p className="text-[11px] text-brand-muted mt-0.5 font-medium">Gestão de orçamentos e contratos</p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-3 px-4 relative z-50">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" />
-                        <input
-                            placeholder="Buscar pacote..."
-                            className="w-full bg-brand-surface border border-brand-border rounded-[16px] pl-11 pr-4 py-3.5 text-[13px] text-brand-text focus:outline-none focus:border-brand-neon transition-colors shadow-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full bg-brand-surface rounded-[16px] shadow-sm border border-brand-border">
-                        <CustomSelect
-                            options={filterOptions}
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            placeholder="Filtrar por Status"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-4 px-4 mt-2">
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-10">
-                            <Loader2 className="w-8 h-8 text-brand-neon animate-spin mb-3" />
-                        </div>
-                    ) : filteredOrders.length === 0 ? (
-                        <div className="bg-brand-surface border border-brand-border rounded-[24px] p-8 flex flex-col items-center text-center shadow-sm">
-                            <ReceiptText className="w-10 h-10 text-brand-muted mb-3 opacity-50" />
-                            <h3 className="text-sm font-bold text-brand-text mb-1">Nenhum pacote</h3>
-                        </div>
-                    ) : (
-                        filteredOrders.map((order, index) => {
-                            const isExpanded = expandedOrderId === order.id;
-                            const currentStatus = order.status || 'PENDING';
-                            const statusLabel = statusOptions.find(o => o.value === currentStatus)?.label || currentStatus;
-
-                            return (
-                                <div key={order.id} style={{ zIndex: filteredOrders.length - index }} className="bg-brand-surface border border-brand-border rounded-[24px] p-5 flex flex-col shadow-sm relative transition-colors">
-                                    <div className="flex justify-between items-start border-b border-brand-border pb-4 mb-4" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
-                                        <div className="flex items-center gap-3 w-full">
-                                            <div className="flex flex-col flex-1 min-w-0 gap-0.5">
-                                                <div className="font-bold text-brand-text text-[15px] truncate">{order.clientName}</div>
-                                                <div className="text-xs text-brand-muted font-medium truncate">{order.clientPhone || order.company}</div>
-                                            </div>
-                                            <div className="flex flex-col items-end shrink-0">
-                                                <span className="font-black text-[#25D366]">{order.formattedValue}</span>
-                                                <span className="text-[9px] text-brand-muted uppercase font-bold">{order.months}x</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-4 flex justify-between items-center">
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Status</span>
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm ${getStatusStyles(currentStatus)}`}>
-                                            {getStatusIcon(currentStatus)} {statusLabel}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2 relative z-50">
-                                        <label className="text-[10px] font-bold uppercase tracking-wider text-brand-muted ml-1">Atribuir Pacote</label>
-                                        <div className="w-full relative">
-                                            <CustomSelect 
-                                                options={sellerOptions}
-                                                value={order.assignedTo?.id || ""}
-                                                onChange={(val) => assignSeller(order.id, val)}
-                                                placeholder="Atribuir Vendedor"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <button 
-                                        onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                                        className="mt-4 text-xs font-bold uppercase text-brand-muted w-full text-center flex items-center justify-center gap-1"
-                                    >
-                                        {isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes'} {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {isExpanded && (
-                                            <motion.div 
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden border-t border-brand-border mt-3 pt-3"
-                                            >
-                                                <div className="flex flex-col gap-3">
-                                                    <h4 className="text-[10px] font-bold text-brand-muted uppercase tracking-widest flex items-center gap-1">
-                                                        <MonitorPlay className="w-3 h-3 text-brand-neon" /> Painéis Agrupados ({order.items?.length || 0})
-                                                    </h4>
-                                                    <div className="flex flex-col gap-2">
-                                                        {(order.items || []).map((item: any, i: number) => {
-                                                            const panel = item.panel || item;
-                                                            if (!panel) return null;
-
-                                                            return (
-                                                                <div key={i} className="flex items-center gap-3 bg-brand-background p-2 rounded-xl border border-brand-border">
-                                                                    <div className="w-10 h-10 bg-black rounded-lg overflow-hidden shrink-0">
-                                                                        <img src={panel.images?.[0] || '/placeholder.jpg'} className="w-full h-full object-cover opacity-80" />
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="text-[11px] font-bold text-brand-text truncate">{panel.name || 'Painel sem nome'}</p>
-                                                                        <p className="text-[9px] text-brand-muted truncate">{panel.city || 'Cidade N/A'}</p>
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                    
-                                                    <Button 
-                                                        disabled={actionLoadingId === `pdf-${order.id}`}
-                                                        onClick={() => handleGenerateContract(order)}
-                                                        className="w-full bg-brand-background border border-brand-border text-brand-text mt-2 text-xs py-3"
-                                                    >
-                                                        {actionLoadingId === `pdf-${order.id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} 
-                                                        Gerar Contrato (PDF)
-                                                    </Button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-                
-                <div className="h-[50px] w-full shrink-0 pointer-events-none" />
             </div>
 
         </div>

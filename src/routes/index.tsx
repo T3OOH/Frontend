@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { CartProvider } from '@/contexts/CartContext'; 
@@ -44,6 +44,9 @@ const CrmProposals = lazy(() => import('@/pages/crm/CrmProposals').then(m => ({ 
 const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ default: m.CrmAgenda })));
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
 
+// Auth Views
+const UpdatePassword = lazy(() => import('@/pages/UpdatePassword').then(m => ({ default: m.UpdatePassword })));
+
 // User Views
 const UserProfile = lazy(() => import('@/pages/UserProfile').then(m => ({ default: m.UserProfile })));
 
@@ -74,11 +77,22 @@ function PrivateRoute({ allowedRoles }: { allowedRoles?: string[] }) {
         return <Navigate to="/login" replace />;
     }
 
-    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
         return <Navigate to="/" replace />;
     }
 
     return <Outlet />;
+}
+
+function NotFound() {
+    return (
+        <div className="w-full min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <span className="text-6xl font-black text-[#FF5E00]">404</span>
+            <h1 className="text-2xl font-bold text-white">Página não encontrada</h1>
+            <p className="text-[#8F8F91] max-w-md">O endereço acessado não existe ou foi removido.</p>
+            <Link to="/" className="mt-2 px-6 py-3 bg-white text-[#0A0A0B] font-black uppercase tracking-widest text-xs">Voltar ao início</Link>
+        </div>
+    );
 }
 
 export function AppRoutes() {
@@ -103,11 +117,14 @@ export function AppRoutes() {
                                     <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
                                     <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} />
                                     <Route path="solution" element={<Suspense fallback={<PageLoader />}><Solution /></Suspense>} />
+                                    <Route path="*" element={<NotFound />} />
                                 </Route>
 
                                 {/* ROTAS DE AUTENTICAÇÃO */}
                                 <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
                                 <Route path="/cadastro" element={<Suspense fallback={<PageLoader />}><Register /></Suspense>} />
+                                <Route path="/recuperar-senha" element={<Suspense fallback={<PageLoader />}><UpdatePassword /></Suspense>} />
+                                <Route path="/atualizar-senha" element={<Suspense fallback={<PageLoader />}><UpdatePassword /></Suspense>} />
 
                                 {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>

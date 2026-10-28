@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -70,6 +70,7 @@ export function Register() {
 
     const [documentType, setDocumentType] = useState<'PF' | 'PJ'>('PF');
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const captchaRef = useRef<ReCAPTCHA>(null);
 
     // Redireciona se já estiver logado
     useEffect(() => {
@@ -129,7 +130,6 @@ export function Register() {
                 document: cleanDocument,
                 personType: data.personType,
                 companyName: documentType === 'PJ' ? data.companyName?.trim() : undefined,
-                role: documentType === 'PJ' ? 'COMPANY' : 'USER',
                 captchaToken
             };
 
@@ -139,6 +139,9 @@ export function Register() {
             toast.success("Cadastro realizado com sucesso! Aguarde a liberação.");
             setTimeout(() => { navigate('/login'); }, 3000);
         } catch (error: any) {
+            // O token do reCAPTCHA é de uso único: exige nova verificação
+            captchaRef.current?.reset();
+            setCaptchaToken(null);
             const backendError = error.response?.data;
             if (backendError?.details) toast.error(`Erro: ${backendError.details[0].message}`);
             else if (backendError?.error) toast.error(`Erro: ${backendError.error}`);
@@ -324,6 +327,7 @@ export function Register() {
                             <div className="flex flex-col sm:flex-row items-center gap-5 pt-4 mt-2">
                                 <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0 bg-[#0A0A0B]">
                                     <ReCAPTCHA
+                                        ref={captchaRef}
                                         sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ""}
                                         onChange={(token) => setCaptchaToken(token)}
                                         theme="dark"

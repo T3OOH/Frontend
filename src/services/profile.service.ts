@@ -5,7 +5,7 @@ export const profileService = {
         const response = await api.get('/profile');
         return response.data;
     },
-    async updateProfile(data: { name: string; phone: string; company: string }) {
+    async updateProfile(data: { name?: string; phone?: string; companyName?: string }) {
         const response = await api.put('/profile', data);
         return response.data;
     },

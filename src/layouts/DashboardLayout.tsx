@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -13,6 +14,7 @@ export function DashboardLayout() {
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
+    const isDesktop = useIsDesktop();
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -141,7 +143,7 @@ export function DashboardLayout() {
             {/* ========================================================= */}
             <main className="hidden lg:flex flex-1 flex-col h-screen overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <Outlet />
+                    {isDesktop && <Outlet />}
                 </div>
             </main>
 
@@ -163,7 +165,7 @@ export function DashboardLayout() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar pb-[100px]">
-                    <Outlet />
+                    {!isDesktop && <Outlet />}
                 </div>
 
                 <div className="fixed bottom-0 left-0 right-0 bg-brand-surface/95 backdrop-blur-2xl border-t border-brand-border z-[100] px-4 sm:px-6 py-3 flex justify-between items-center pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.05)] transition-colors duration-300">

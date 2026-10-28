@@ -1,3 +1,4 @@
+import { DEFAULT_SALES_PHONE } from '@/lib/contacts';
 import { useState, useEffect, useCallback } from 'react';
 import { 
     User as UserIcon, 
@@ -103,7 +104,7 @@ export function UserProfile() {
     };
 
     const handleContactSupport = (order: any) => {
-        const sellerPhone = order.seller?.phone || order.seller?.whatsapp || '5562999999999';
+        const sellerPhone = order.seller?.phone || order.seller?.whatsapp || DEFAULT_SALES_PHONE;
         
         let cleanPhone = String(sellerPhone).replace(/\D/g, '');
         if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {

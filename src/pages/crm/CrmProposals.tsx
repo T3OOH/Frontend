@@ -211,15 +211,17 @@ export function CrmProposals() {
                 const [clientsData, panelsData, ordersRes] = await Promise.all([
                     crmService.getClients().catch(() => []),
                     panelsService.getAllPanels().catch(() => []),
-                    orderId ? api.get('/orders').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+                    orderId ? api.get(`/orders/${orderId}`).catch(() => ({ data: null })) : Promise.resolve({ data: null })
                 ]);
                 
                 setClients(clientsData);
-                setPanels(panelsData.filter(p => p.status === 'AVAILABLE') as PanelWithPrice[]);
+                // Painéis do pedido carregado continuam na proposta mesmo se já estiverem ocupados
+                const orderPanelIds = new Set<string>((ordersRes.data?.items ?? []).map((i: any) => i.panelId));
+                setPanels(panelsData.filter(p => p.status === 'AVAILABLE' || orderPanelIds.has(p.id)) as PanelWithPrice[]);
 
                 // Se viemos da tela de CRM Overview, carregamos os dados do Pacote (Order)
                 if (orderId && ordersRes.data) {
-                    const order = ordersRes.data.find((o: any) => o.id === orderId);
+                    const order = ordersRes.data;
                     if (order) {
                         setLoadedOrder(order);
                         
@@ -403,7 +405,7 @@ export function CrmProposals() {
                 window.open(waUrl, '_blank');
                 addToast('WhatsApp aberto! Agora é só anexar o PDF baixado na conversa.', 'success');
                 // Se finalizou com o pedido, volta pro CRM
-                if(loadedOrder) navigate('/dashboard/crm');
+                if(loadedOrder) navigate('/crm');
             }, 800);
         }
     };
@@ -423,7 +425,7 @@ export function CrmProposals() {
             <div className="flex flex-row items-center justify-between gap-4 shrink-0 px-4 lg:px-0">
                 <div className="flex items-center gap-3">
                     {loadedOrder && (
-                        <button onClick={() => navigate('/dashboard/crm')} className="p-2 bg-brand-surface/30 border border-brand-border/40 hover:bg-brand-surface rounded-full transition-colors text-brand-muted hover:text-white">
+                        <button onClick={() => navigate('/crm')} className="p-2 bg-brand-surface/30 border border-brand-border/40 hover:bg-brand-surface rounded-full transition-colors text-brand-muted hover:text-white">
                             <ArrowLeft className="w-5 h-5" />
                         </button>
                     )}
@@ -643,7 +645,7 @@ export function CrmProposals() {
                                                 max="100"
                                                 placeholder="0"
                                                 value={globalDiscount}
-                                                onChange={(e) => setGlobalDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+                                                onChange={(e) => setGlobalDiscount(e.target.value === '' ? '' : Math.min(100, Math.max(0, Number(e.target.value))))}
                                                 className="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-4 text-base font-black text-brand-neon focus:outline-none focus:border-brand-neon transition-colors shadow-sm text-center"
                                             />
                                         </div>
