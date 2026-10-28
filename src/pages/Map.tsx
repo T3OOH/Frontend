@@ -384,7 +384,7 @@ export function Map() {
                     <div className="mt-5 flex flex-col gap-2">
                         <div className="relative">
                             <label htmlFor="map-search" className="sr-only">Buscar painéis</label>
-                            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
                             <input id="map-search" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} pl-10`} autoComplete="off" />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -459,7 +459,7 @@ export function Map() {
                 <div className="absolute left-3 right-3 top-3 z-[400] flex gap-2 md:hidden">
                     <div className="relative flex-1">
                         <label htmlFor="map-search-m" className="sr-only">Buscar painéis</label>
-                        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
                         <input id="map-search-m" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} border-white/20 bg-ink-950/95 pl-10 backdrop-blur`} autoComplete="off" />
                     </div>
                     <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className="shrink-0 border border-white/20 bg-ink-950/95 px-3 text-ink-100" aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
