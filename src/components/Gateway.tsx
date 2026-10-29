@@ -35,9 +35,9 @@ const spring = { type: 'spring', stiffness: 170, damping: 26 } as const;
 const MEDIA: Record<Side, { video: string; poster: string; position: string }> = {
     // Goiânia em golden hour com a logo da T3 nos telões (mesmo vídeo do fundo do site)
     ooh: { video: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[30%_60%]' },
-    // Avenida com o letreiro "T3 Solution" à direita: o enquadramento puxa para a direita para
-    // o letreiro aparecer mesmo com o lado recolhido
-    solution: { video: '/video/t3-solution.mp4', poster: '/video/t3-solution-poster.webp', position: 'object-[82%_60%]' },
+    // Casa com piscina e o telão de LED da T3 Solution no terraço: o telão fica um pouco à direita
+    // do centro, e o enquadramento o mantém visível mesmo com o lado recolhido
+    solution: { video: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', position: 'object-[64%_55%]' },
 };
 
 /** Economia de dados, 2G ou "reduzir movimento": os vídeos não tocam (fica o quadro parado). */
