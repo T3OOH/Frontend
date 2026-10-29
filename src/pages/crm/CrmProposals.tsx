@@ -12,6 +12,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { CalculatedPanel, PanelWithPrice, ProposalClient, ProposalDocument } from '@/components/crm/ProposalDocument';
 import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface LoadedOrder {
     id: string;
@@ -203,18 +204,17 @@ export function CrmProposals() {
                             </div>
                         ) : (
                             <Field label="Cliente" htmlFor="p-client">
-                                <select id="p-client" value={clientId} onChange={(e) => setClientId(e.target.value)} className={crmInput}>
-                                    <option value="">Selecione um cliente da carteira</option>
-                                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>)}
-                                </select>
+                                <CustomSelect id="p-client" value={clientId} onChange={setClientId} placeholder="Selecione um cliente da carteira"
+                                    options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
                             </Field>
                         )}
                         <Field label="Prazo" htmlFor="p-months">
-                            <select id="p-months" value={months} onChange={(e) => setMonths(Number(e.target.value))} className={crmInput}>
-                                {[...new Set([...MONTHS, months])].sort((a, b) => a - b).map((m) => (
-                                    <option key={m} value={m}>{m} {m === 1 ? 'mês' : 'meses'}{termDiscountFor(m) ? ` · ${termDiscountFor(m) * 100}% de desconto` : ''}</option>
-                                ))}
-                            </select>
+                            <CustomSelect id="p-months" value={String(months)} onChange={(v) => setMonths(Number(v))}
+                                options={[...new Set([...MONTHS, months])].sort((a, b) => a - b).map((m) => ({
+                                    value: String(m),
+                                    label: `${m} ${m === 1 ? 'mês' : 'meses'}`,
+                                    hint: termDiscountFor(m) ? `${termDiscountFor(m) * 100}% de desconto` : undefined,
+                                }))} />
                         </Field>
                     </Panel>
 
@@ -252,9 +252,10 @@ export function CrmProposals() {
                                             {on && (
                                                 <div className="flex items-center justify-end gap-2 px-4 pb-3">
                                                     <label htmlFor={`d-${panel.id}`} className="text-xs text-brand-muted">Desconto neste painel</label>
-                                                    <select id={`d-${panel.id}`} value={pct} onChange={(e) => setPanelDiscounts((prev) => ({ ...prev, [panel.id]: Number(e.target.value) }))} className={`${crmInput} w-28 py-1.5 font-mono`}>
-                                                        {PANEL_DISCOUNTS.map((v) => <option key={v} value={v}>{v ? `${v}%` : 'Nenhum'}</option>)}
-                                                    </select>
+                                                    <div className="w-28">
+                                                        <CustomSelect id={`d-${panel.id}`} value={String(pct)} onChange={(v) => setPanelDiscounts((prev) => ({ ...prev, [panel.id]: Number(v) }))} className="py-1.5 font-mono"
+                                                            options={PANEL_DISCOUNTS.map((v) => ({ value: String(v), label: v ? `${v}%` : 'Nenhum' }))} />
+                                                    </div>
                                                 </div>
                                             )}
                                         </li>

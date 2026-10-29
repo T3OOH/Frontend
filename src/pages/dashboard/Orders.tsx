@@ -9,6 +9,7 @@ import { downloadDealContract } from '@/lib/pdf/contract';
 import { apiErrorMessage } from '@/lib/upload';
 import { Badge, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 type OrderStatus = 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED';
 
@@ -175,15 +176,12 @@ export function Orders() {
                     <div className="flex flex-col gap-6">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <Field label="Situação" htmlFor="o-status">
-                                <select id="o-status" value={selected.status} disabled={saving} onChange={(e) => patch(selected, { status: e.target.value as OrderStatus }, 'Situação atualizada.')} className={crmInput}>
-                                    {(Object.keys(STATUS) as OrderStatus[]).map((s) => <option key={s} value={s}>{STATUS[s].label}</option>)}
-                                </select>
+                                <CustomSelect id="o-status" value={selected.status} disabled={saving} onChange={(v) => patch(selected, { status: v as OrderStatus }, 'Situação atualizada.')}
+                                    options={(Object.keys(STATUS) as OrderStatus[]).map((s) => ({ value: s, label: STATUS[s].label }))} />
                             </Field>
                             <Field label="Responsável" htmlFor="o-seller">
-                                <select id="o-seller" value={selected.sellerId || ''} disabled={saving} onChange={(e) => patch(selected, { sellerId: e.target.value || null }, e.target.value ? 'Responsável definido.' : 'Pedido voltou para a fila.')} className={crmInput}>
-                                    <option value="">Sem responsável (fila)</option>
-                                    {team.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                </select>
+                                <CustomSelect id="o-seller" value={selected.sellerId || ''} disabled={saving} onChange={(v) => patch(selected, { sellerId: v || null }, v ? 'Responsável definido.' : 'Pedido voltou para a fila.')}
+                                    options={[{ value: '', label: 'Sem responsável (fila)' }, ...team.map((t) => ({ value: t.id, label: t.name }))]} />
                             </Field>
                         </div>
 

@@ -5,6 +5,7 @@ import { crmService, CrmClient, CrmDeal, DealStage, DealStatus } from '@/service
 import { useToast } from '@/contexts/ToastContext';
 import { CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, formatDate, whatsappUrl } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 const STAGES: { id: DealStage; title: string }[] = [
     { id: 'NEW_LEAD', title: 'Novos leads' },
@@ -286,9 +287,8 @@ export function CrmPipeline() {
 
                         {selected.status === 'OPEN' && (
                             <Field label="Etapa" htmlFor="deal-stage">
-                                <select id="deal-stage" value={selected.stage} onChange={(e) => moveTo(selected, e.target.value as DealStage)} className={crmInput}>
-                                    {STAGES.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
-                                </select>
+                                <CustomSelect id="deal-stage" value={selected.stage} onChange={(v) => moveTo(selected, v as DealStage)}
+                                    options={STAGES.map((s) => ({ value: s.id, label: s.title }))} />
                             </Field>
                         )}
 
@@ -329,10 +329,8 @@ export function CrmPipeline() {
                 ) : (
                     <form id="deal-form" onSubmit={onCreate} className="grid grid-cols-2 gap-4">
                         <Field label="Cliente" htmlFor="d-client" className="col-span-2">
-                            <select id="d-client" required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className={crmInput}>
-                                <option value="" disabled>Selecione</option>
-                                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>)}
-                            </select>
+                            <CustomSelect id="d-client" required value={form.clientId} onChange={(v) => setForm({ ...form, clientId: v })} placeholder="Selecione o cliente"
+                                options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
                         </Field>
                         <Field label="Título" htmlFor="d-title" className="col-span-2">
                             <input id="d-title" required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={crmInput} placeholder="Ex.: Pacote anual Av. T-63" />
