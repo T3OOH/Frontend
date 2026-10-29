@@ -35,6 +35,8 @@ export function Header() {
     const { isAuthenticated, user, signOut } = useAuth();
     const role = user?.role as string | undefined;
     const avatarClass = useAvatarClass();
+    // Header com degradê só no catálogo e no mapa (o mapa precisa de fundo: a página não rola)
+    const gradientHeader = /^\/(servicos|mapa)(\/|$)/.test(location.pathname);
 
     // Fundo sólido só depois de rolar: no topo o header deixa o hero respirar
     useEffect(() => {
@@ -82,11 +84,13 @@ export function Header() {
         <header
             className={cn(
                 'fixed inset-x-0 top-0 z-[500] h-20 transition-colors duration-300',
-                // No mapa (página sem rolagem) o header é sempre sólido; nas demais, no topo, um
-                // degradê preto mantém logo e links legíveis sobre o vídeo da cidade
-                scrolled || isOpen || location.pathname.startsWith('/mapa')
-                    ? 'border-b border-white/[0.08] bg-gradient-to-b from-ink-950 to-ink-900'
-                    : 'border-b border-transparent bg-gradient-to-b from-ink-950/95 via-ink-950/60 to-transparent'
+                gradientHeader
+                    // Catálogo e mapa: degradê preto (no mapa, sem rolagem, sempre sólido)
+                    ? scrolled || isOpen || location.pathname.startsWith('/mapa')
+                        ? 'border-b border-white/[0.08] bg-gradient-to-b from-ink-950 to-ink-900'
+                        : 'border-b border-transparent bg-gradient-to-b from-ink-950/95 via-ink-950/60 to-transparent'
+                    // Demais páginas: transparente no topo e preto ao rolar, sem linha embaixo
+                    : scrolled || isOpen ? 'bg-ink-950' : 'bg-transparent'
             )}
         >
             <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-6 px-4 md:px-8">
