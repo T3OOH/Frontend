@@ -24,9 +24,14 @@ export function CookieConsent() {
         return () => clearTimeout(t);
     }, []);
 
-    // Só há recursos essenciais: o aviso é informativo e registra apenas que foi lido
+    // "Entendi": essencial + estatísticas anônimas próprias. "Só o essencial": sem estatísticas.
     const accept = () => {
         saveConsent('acknowledged');
+        setVisible(false);
+    };
+    const essentialOnly = () => {
+        saveConsent('essential');
+        try { localStorage.removeItem('@t3:first-touch'); } catch { /* storage indisponível */ }
         setVisible(false);
     };
 
@@ -44,12 +49,17 @@ export function CookieConsent() {
                 >
                     <div className="flex items-center gap-4 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:p-4">
                         <p className="flex-1 text-xs leading-relaxed text-ink-300 md:text-sm">
-                            Usamos só o essencial (login, orçamento e reCAPTCHA). Sem cookies de publicidade.{' '}
+                            Usamos o essencial (login, orçamento e reCAPTCHA) e estatísticas de visita próprias e anônimas. Sem cookies de publicidade.{' '}
                             <Link to="/privacidade" className="text-ink-100 underline underline-offset-2 hover:text-brand-neon">Privacidade</Link>
                         </p>
-                        <button type="button" onClick={accept} className="min-h-[44px] shrink-0 bg-brand-neon px-5 text-sm font-semibold text-ink-950 hover:bg-brand-neonHover">
-                            Entendi
-                        </button>
+                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                            <button type="button" onClick={essentialOnly} className="min-h-[44px] border border-white/15 px-4 text-sm text-ink-300 hover:text-ink-100">
+                                Só o essencial
+                            </button>
+                            <button type="button" onClick={accept} className="min-h-[44px] bg-brand-neon px-5 text-sm font-semibold text-ink-950 hover:bg-brand-neonHover">
+                                Entendi
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             )}
