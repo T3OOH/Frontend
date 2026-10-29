@@ -11,6 +11,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 const marker = brandMarker('brand', true);
 
@@ -196,9 +197,8 @@ export function PanelForm() {
                             <input id="pn-name" required maxLength={160} value={form.name} onChange={set('name')} className={crmInput} placeholder="Ex.: Setor Bueno - Av. T-63" />
                         </Field>
                         <Field label="Situação" htmlFor="pn-status">
-                            <select id="pn-status" value={form.status} onChange={set('status')} className={crmInput}>
-                                {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
+                            <CustomSelect id="pn-status" value={form.status} onChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
+                                options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
                         </Field>
                         <Field label="Preço base mensal (R$)" htmlFor="pn-price" hint="Sem desconto. O site aplica os descontos de prazo.">
                             <input id="pn-price" inputMode="decimal" value={form.price} onChange={set('price')} className={`${crmInput} font-mono`} placeholder="2546,00" />
