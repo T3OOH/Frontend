@@ -7,6 +7,7 @@ import { roleLabel } from '@/lib/roles';
 import { apiErrorMessage } from '@/lib/upload';
 import { Badge, CrmPage, EmptyState, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, initials } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 type Filter = 'ALL' | 'TEAM' | UserRole;
 
@@ -119,16 +120,16 @@ export function Users() {
                                 <span className="hidden md:block"><Badge tone={u.role === 'ADMIN' || u.role === 'MANAGER' ? 'accent' : TEAM.includes(u.role) ? 'neutral' : 'muted'}>{roleLabel(u.role)}</Badge></span>
                                 <div>
                                     <label htmlFor={`role-${u.id}`} className="sr-only">Papel de {u.name}</label>
-                                    <select
-                                        id={`role-${u.id}`}
-                                        value={u.role}
-                                        disabled={locked(u) || savingId === u.id}
-                                        onChange={(e) => changeRole(u, e.target.value as UserRole)}
-                                        className={`${crmInput} py-2`}
-                                        title={locked(u) ? (u.id === me?.id ? 'Você não pode alterar o próprio papel.' : 'Só administradores alteram outro administrador.') : HINT[u.role]}
-                                    >
-                                        {(locked(u) ? [u.role] : options).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
-                                    </select>
+                                    <div title={locked(u) ? (u.id === me?.id ? 'Você não pode alterar o próprio papel.' : 'Só administradores alteram outro administrador.') : HINT[u.role]}>
+                                        <CustomSelect
+                                            id={`role-${u.id}`}
+                                            value={u.role}
+                                            disabled={locked(u) || savingId === u.id}
+                                            onChange={(v) => changeRole(u, v as UserRole)}
+                                            className="py-2"
+                                            options={(locked(u) ? [u.role] : options).map((r) => ({ value: r, label: roleLabel(r) }))}
+                                        />
+                                    </div>
                                 </div>
                             </li>
                         ))}

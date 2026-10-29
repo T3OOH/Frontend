@@ -1,10 +1,11 @@
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
 /**
  * Vídeo de fundo: Goiânia em golden hour, com a logo da T3 nos telões (1280×720, 10 s,
- * H.264 com índice no início). Toca uma vez e para no último quadro.
+ * H.264 com índice no início). Toca em loop: perto do fim, uma segunda cópia começa do início
+ * e as duas se cruzam em fade, então a volta ao começo não aparece como corte.
  * O pôster é um quadro do próprio vídeo: aparece enquanto ele carrega e no lugar dele
  * quando o vídeo não deve tocar.
  */
@@ -17,6 +18,9 @@ const BACKGROUND_VIDEO = {
  * Economia de dados, conexão 2G ou "reduzir movimento" do sistema: fica a imagem parada.
  * (3G não entra: a estimativa do navegador marca muita conexão boa como 3G.)
  */
+/** Duração do cruzamento entre o fim do vídeo e o começo da próxima volta. */
+const CROSSFADE_S = 1.2;
+
 const deviceWantsStill = () => {
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
@@ -37,6 +41,25 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     const [deviceStill] = useState(deviceWantsStill);
     const playVideo = !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
     const [videoReady, setVideoReady] = useState(false);
+    // Duas cópias do vídeo se revezam; "front" é a que está visível
+    const videos = useRef<(HTMLVideoElement | null)[]>([null, null]);
+    const [front, setFront] = useState(0);
+    const swapping = useRef(false);
+
+    /** A cópia visível perto do fim: a outra começa do início e as duas se cruzam em fade. */
+    const onTime = (i: number) => {
+        const current = videos.current[i];
+        const next = videos.current[1 - i];
+        if (i !== front || !current || !next || swapping.current || !current.duration) return;
+        if (current.duration - current.currentTime > CROSSFADE_S) return;
+        swapping.current = true;
+        next.currentTime = 0;
+        next.play()
+            .then(() => setFront(1 - i))
+            // Navegador recusou a segunda cópia: volta a mesma ao início (sem fade, mas sem parar)
+            .catch(() => { current.currentTime = 0; current.play().catch(() => {}); })
+            .finally(() => { swapping.current = false; });
+    };
 
     // Rolagem: aproximação lenta da câmera (zoom) e leve subida
     const { scrollY } = useScroll();
@@ -59,21 +82,26 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
                 fetchPriority="high"
             />
 
-            {playVideo && (
+            {playVideo && [0, 1].map((i) => (
                 <motion.video
-                    style={{ scale, y }}
-                    // Entra suave sobre o pôster; sem "loop": no fim fica parado no último quadro
-                    className={`${media} transition-opacity duration-1000 ease-out ${videoReady ? 'opacity-100' : 'opacity-0'}`}
-                    autoPlay
+                    key={i}
+                    ref={(el: HTMLVideoElement | null) => { videos.current[i] = el; }}
+                    style={{ scale, y, transitionDuration: `${CROSSFADE_S}s` }}
+                    // Entra suave sobre o pôster; depois as duas cópias se alternam em fade
+                    className={`${media} transition-opacity ease-in-out ${videoReady && front === i ? 'opacity-100' : 'opacity-0'}`}
+                    autoPlay={i === 0}
                     muted
                     playsInline
-                    preload="auto"
+                    preload={i === 0 ? 'auto' : 'metadata'}
                     poster={BACKGROUND_VIDEO.poster}
-                    onPlaying={() => setVideoReady(true)}
+                    onPlaying={() => { if (i === 0) setVideoReady(true); }}
+                    onTimeUpdate={() => onTime(i)}
+                    // A cópia que saiu termina escondida e volta ao início para a próxima vez
+                    onEnded={(e) => { if (front !== i) e.currentTarget.currentTime = 0; }}
                 >
                     <source src={BACKGROUND_VIDEO.mp4} type="video/mp4" />
                 </motion.video>
-            )}
+            ))}
 
             {/* Véu de leitura: textos legíveis sobre a cidade */}
             <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, rgba(11,11,12,${Math.min(1, veil + 0.3)}) 0%, rgba(11,11,12,${veil}) 45%, rgba(11,11,12,${veil * 0.35}) 100%)` }} />

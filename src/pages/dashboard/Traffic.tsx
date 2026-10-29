@@ -4,6 +4,7 @@ import { api } from '@/lib/axios';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CrmPage, Panel, Stat, Badge, EmptyState, Skeleton, Field } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 type LeadKind = 'CONTACT' | 'QUOTE' | 'ORDER' | 'SIGNUP';
 
@@ -209,14 +210,10 @@ function CampaignLink() {
             <p className="text-sm text-brand-muted">Use este link em posts, anúncios, bio do Instagram e listas de WhatsApp. As visitas e os leads aparecem aqui com o nome da campanha.</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field label="Página" htmlFor="utm-page">
-                    <select id="utm-page" value={page} onChange={(e) => setPage(e.target.value)} className={crmInput}>
-                        {CAMPAIGN_PAGES.map(([p, l]) => <option key={p} value={p}>{l}</option>)}
-                    </select>
+                    <CustomSelect id="utm-page" value={page} onChange={setPage} options={CAMPAIGN_PAGES.map(([p, l]) => ({ value: p, label: l }))} />
                 </Field>
                 <Field label="Onde o link vai ser postado" htmlFor="utm-source">
-                    <select id="utm-source" value={source} onChange={(e) => setSource(e.target.value)} className={crmInput}>
-                        {CAMPAIGN_SOURCES.map(([s]) => <option key={s} value={s}>{sourceName(s)}</option>)}
-                    </select>
+                    <CustomSelect id="utm-source" value={source} onChange={setSource} options={CAMPAIGN_SOURCES.map(([s]) => ({ value: s, label: sourceName(s) }))} />
                 </Field>
                 <Field label="Nome da campanha" htmlFor="utm-campaign" hint="Ex.: black friday 2026">
                     <input id="utm-campaign" value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder="lancamento-painel-t63" className={crmInput} maxLength={60} />

@@ -15,6 +15,7 @@ import { Seo } from '@/components/Seo';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+import { CustomSelect } from '@/components/CustomSelect';
 
 /** Desconto do plano anual exibido nos cards (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
@@ -390,15 +391,13 @@ export function Map() {
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label htmlFor="map-state" className="sr-only">Estado</label>
-                                <select id="map-state" value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity(''); }} className={field}>
-                                    {stateOptions.map((o) => <option key={o.value} value={o.value}>{o.value ? o.label : 'Todos os estados'}</option>)}
-                                </select>
+                                <CustomSelect tone="site" id="map-state" value={selectedState} onChange={(v) => { setSelectedState(v); setSelectedCity(''); }} className="px-3.5 py-3"
+                                    options={stateOptions.map((o) => ({ value: o.value, label: o.value ? o.label : 'Todos os estados' }))} />
                             </div>
                             <div>
                                 <label htmlFor="map-city" className="sr-only">Cidade</label>
-                                <select id="map-city" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} disabled={cityOptions.length <= 1} className={field}>
-                                    {cityOptions.map((o) => <option key={o.value} value={o.value}>{o.value ? o.label : 'Todas as cidades'}</option>)}
-                                </select>
+                                <CustomSelect tone="site" id="map-city" value={selectedCity} onChange={setSelectedCity} disabled={cityOptions.length <= 1} className="px-3.5 py-3"
+                                    options={cityOptions.map((o) => ({ value: o.value, label: o.value ? o.label : 'Todas as cidades' }))} />
                             </div>
                         </div>
                         {hasFilters && <button type="button" onClick={clearFilters} className="self-start text-sm text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Limpar filtros</button>}
@@ -557,9 +556,8 @@ export function Map() {
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label htmlFor="mc-months" className="mb-2 block text-sm text-ink-300">Prazo</label>
-                                            <select id="mc-months" value={months} onChange={(e) => setMonths(Number(e.target.value))} className={field}>
-                                                {MONTHS.map((m) => <option key={m} value={m}>{m} {m === 1 ? 'mês' : 'meses'}{m >= 12 ? ' · 30%' : m >= 6 ? ' · 20%' : m >= 3 ? ' · 15%' : ''}</option>)}
-                                            </select>
+                                            <CustomSelect tone="site" id="mc-months" value={String(months)} onChange={(v) => setMonths(Number(v))} className="px-3.5 py-3"
+                                                options={MONTHS.map((m) => ({ value: String(m), label: `${m} ${m === 1 ? 'mês' : 'meses'}`, hint: m >= 12 ? '30% de desconto' : m >= 6 ? '20% de desconto' : m >= 3 ? '15% de desconto' : undefined }))} />
                                         </div>
                                         <div>
                                             <label htmlFor="mc-coupon" className="mb-2 block text-sm text-ink-300">Cupom</label>

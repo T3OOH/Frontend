@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowDown, ArrowRight, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Loader2 } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
@@ -9,6 +9,7 @@ import { Seo } from '@/components/Seo';
 import { LedScreen, LedScene } from '@/components/led/LedScreen';
 import { CtaBand, btnOnOrange } from '@/components/CtaBand';
 import { btnDark, btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface PortfolioItem { image: string; alt: string }
 
@@ -270,11 +271,8 @@ export function Solution() {
                             <div className="md:col-span-2">
                                 <label htmlFor="sol-app" className={label}>Onde a tela vai ficar</label>
                                 <div className="relative">
-                                    <select id="sol-app" required value={form.application} onChange={set('application')} className={`${field} appearance-none pr-10`}>
-                                        <option value="" disabled>Selecione</option>
-                                        {APPLICATIONS.map((a) => <option key={a.title} value={a.title}>{a.title}</option>)}
-                                    </select>
-                                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" strokeWidth={1.75} aria-hidden="true" />
+                                    <CustomSelect tone="site" id="sol-app" required value={form.application} onChange={(v) => set('application')({ target: { value: v } })} placeholder="Selecione"
+                                        options={APPLICATIONS.map((a) => ({ value: a.title, label: a.title }))} />
                                 </div>
                             </div>
                             <div className="md:col-span-2">

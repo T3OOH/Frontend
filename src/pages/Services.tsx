@@ -13,6 +13,7 @@ import { Seo } from '@/components/Seo';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+import { CustomSelect } from '@/components/CustomSelect';
 
 /** Desconto do plano de 12 meses, usado nos preços de vitrine (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
@@ -298,15 +299,13 @@ export function Services() {
                 <div className="grid grid-cols-2 gap-3 md:w-[420px]">
                     <div>
                         <label htmlFor="catalog-state" className="sr-only">Estado</label>
-                        <select id="catalog-state" value={selectedState} onChange={(e) => { setSelectedState(e.target.value); setSelectedCity(''); }} className={field}>
-                            {stateOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        <CustomSelect tone="site" id="catalog-state" value={selectedState} onChange={(v) => { setSelectedState(v); setSelectedCity(''); }} className="py-3"
+                            options={stateOptions.map((o) => ({ value: o.value, label: o.label }))} />
                     </div>
                     <div>
                         <label htmlFor="catalog-city" className="sr-only">Cidade</label>
-                        <select id="catalog-city" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} disabled={cityOptions.length <= 1} className={`${field} disabled:opacity-50`}>
-                            {cityOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        <CustomSelect tone="site" id="catalog-city" value={selectedCity} onChange={setSelectedCity} disabled={cityOptions.length <= 1} className="py-3"
+                            options={cityOptions.map((o) => ({ value: o.value, label: o.label }))} />
                     </div>
                 </div>
                 {hasFilters && <button type="button" onClick={resetFilters} className="text-sm text-ink-400 underline-offset-4 hover:text-ink-100 hover:underline">Limpar</button>}
@@ -507,9 +506,8 @@ export function Services() {
                             <div className="flex shrink-0 flex-col gap-5 border-t border-white/[0.08] p-6">
                                 <div>
                                     <label htmlFor="catalog-months" className="mb-2 block text-sm text-ink-300">Duração da campanha</label>
-                                    <select id="catalog-months" value={cartMonths} onChange={(e) => setCartMonths(e.target.value)} className={field}>
-                                        {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
+                                    <CustomSelect tone="site" id="catalog-months" value={cartMonths} onChange={setCartMonths} className="py-3"
+                                        options={monthOptions.map((o) => ({ value: o.value, label: o.label }))} />
                                 </div>
 
                                 <div>

@@ -4,6 +4,7 @@ import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
 import { Badge, ConfirmSheet, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/app/tokens';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface Coupon {
     id: string;
@@ -211,10 +212,8 @@ export function CrmCoupons() {
                         </div>
                     </Field>
                     <Field label="Tipo" htmlFor="c-type">
-                        <select id="c-type" value={form.discountType} onChange={(e) => setForm({ ...form, discountType: e.target.value as Coupon['discountType'] })} className={crmInput}>
-                            <option value="PERCENTAGE">Porcentagem</option>
-                            <option value="FIXED_VALUE">Valor fixo (R$)</option>
-                        </select>
+                        <CustomSelect id="c-type" value={form.discountType} onChange={(v) => setForm({ ...form, discountType: v as Coupon['discountType'] })}
+                            options={[{ value: 'PERCENTAGE', label: 'Porcentagem' }, { value: 'FIXED_VALUE', label: 'Valor fixo (R$)' }]} />
                     </Field>
                     <Field label={form.discountType === 'PERCENTAGE' ? 'Desconto (%)' : 'Desconto (R$)'} htmlFor="c-value">
                         <input id="c-value" required type="number" inputMode="decimal" min="0.01" max={form.discountType === 'PERCENTAGE' ? 100 : undefined} step="0.01" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} className={`${crmInput} font-mono`} />
