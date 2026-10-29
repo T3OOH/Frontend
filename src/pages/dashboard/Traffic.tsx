@@ -6,7 +6,7 @@ import { CrmPage, Panel, Stat, Badge, EmptyState, Skeleton, Field } from '@/comp
 import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
 
-type LeadKind = 'CONTACT' | 'QUOTE' | 'ORDER' | 'SIGNUP';
+type LeadKind = 'CONTACT' | 'QUOTE' | 'SOLUTION' | 'ORDER' | 'SIGNUP';
 
 interface Summary {
     days: number;
@@ -265,7 +265,7 @@ export function Traffic() {
     useEffect(() => { load(); }, [load]);
 
     const kinds = useMemo(() => data ? ([
-        ['QUOTE', 'Orçamentos pelo mapa'], ['ORDER', 'Pedidos pelo catálogo'], ['CONTACT', 'Contatos'], ['SIGNUP', 'Cadastros'],
+        ['QUOTE', 'Orçamentos pelo mapa'], ['SOLUTION', 'Orçamentos T3 Solution'], ['ORDER', 'Pedidos pelo catálogo'], ['CONTACT', 'Contatos'], ['SIGNUP', 'Cadastros'],
     ] as const).map(([k, l]) => ({ label: l, value: data.totals.leadsByKind[k] ?? 0 })) : [], [data]);
 
     const noVisits = data && data.totals.sessions === 0;
@@ -401,7 +401,7 @@ export function Traffic() {
                                         {data.leads.map((l) => (
                                             <tr key={`${l.kind}-${l.id}`} className="hover:bg-brand-background">
                                                 <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-brand-muted">{dateTime(l.createdAt)}</td>
-                                                <td className="px-3 py-3"><Badge tone={l.kind === 'QUOTE' || l.kind === 'ORDER' ? 'accent' : 'neutral'}>{l.kindLabel}</Badge></td>
+                                                <td className="px-3 py-3"><Badge tone={l.kind === 'QUOTE' || l.kind === 'ORDER' || l.kind === 'SOLUTION' ? 'accent' : 'neutral'}>{l.kindLabel}</Badge></td>
                                                 <td className="max-w-[220px] px-3 py-3">
                                                     <p className="truncate text-brand-text">{l.name}</p>
                                                     <p className="truncate text-xs text-brand-muted">{[l.company, l.value != null ? formatBRL(l.value) : null].filter(Boolean).join(' · ') || l.email}</p>

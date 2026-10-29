@@ -1,4 +1,7 @@
 import { api } from '../lib/axios';
+import type { DealLine, SolutionDetails } from '../lib/solution';
+
+export type { DealLine, SolutionDetails };
 
 export type DealStage = 'NEW_LEAD' | 'FIRST_CONTACT' | 'NEGOTIATION' | 'WAITING_REPLY' | 'PROPOSAL_SENT' | 'POST_SALES';
 export type DealStatus = 'OPEN' | 'WON' | 'LOST';
@@ -8,6 +11,8 @@ export interface CrmMetrics {
     totalActiveDeals: number;
     totalClients: number;
     totalWonValue: number;
+    /** Separado por linha de negócio. */
+    byLine?: Record<DealLine, { activeDeals: number; expectedValue: number; wonDeals: number; wonValue: number }>;
 }
 
 export interface CrmClient {
@@ -43,6 +48,10 @@ export interface CrmDeal {
     updatedAt: string;
     contractMonths?: number;
     originalValue?: number;
+    /** T3 OOH (telões) ou T3 Solution (venda e instalação de painéis). */
+    line?: DealLine;
+    /** Projeto da Solution: aplicação, ambiente, medidas, pitch e serviços. */
+    solution?: SolutionDetails | null;
     client?: {
         name: string;
         avatarUrl?: string;
@@ -72,6 +81,15 @@ export interface CreateDealData {
     title: string;
     expectedValue: number;
     probability?: number;
+    line?: DealLine;
+    solution?: SolutionDetails | null;
+}
+
+export interface UpdateDealData {
+    title?: string;
+    expectedValue?: number;
+    probability?: number;
+    solution?: SolutionDetails | null;
 }
 
 export const crmService = {
@@ -97,6 +115,12 @@ export const crmService = {
 
     async deleteClient(id: string): Promise<void> {
         await api.delete(`/crm/clients/${id}`);
+    },
+
+    /** Edita valor, probabilidade, título e o projeto da Solution. */
+    async updateDeal(id: string, data: UpdateDealData): Promise<CrmDeal> {
+        const response = await api.patch(`/crm/deals/${id}`, data);
+        return response.data;
     },
 
     async getDeals(): Promise<CrmDeal[]> {
