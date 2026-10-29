@@ -77,7 +77,13 @@ export interface CreateClientData {
 }
 
 export interface CreateDealData {
-    clientId: string;
+    /** Cliente da carteira; sem cadastro, use newClient (o cliente é criado junto). */
+    clientId?: string;
+    newClient?: { name: string; company?: string | null; phone?: string | null; email?: string | null };
+    contractMonths?: number;
+    originalValue?: number;
+    stage?: DealStage;
+    items?: { panelId: string; priceSnapshot: number }[];
     title: string;
     expectedValue: number;
     probability?: number;
