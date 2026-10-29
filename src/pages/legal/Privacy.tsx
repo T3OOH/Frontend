@@ -23,6 +23,7 @@ export function Privacy() {
                 <li><strong>Orçamentos e pedidos:</strong> painéis escolhidos, prazo da campanha, cupom utilizado e observações enviadas.</li>
                 <li><strong>Contato:</strong> nome, e-mail, telefone, empresa e mensagem enviados pelos formulários.</li>
                 <li><strong>Dados técnicos:</strong> endereço IP e navegador no envio de formulários, para segurança e prevenção de fraude.</li>
+                <li><strong>Segurança da conta:</strong> para manter você conectado e proteger a conta, registramos cada aparelho que entra (navegador, sistema, endereço IP e datas de entrada e último uso) e um histórico de segurança (entradas, tentativas com senha errada, trocas de senha e aparelhos desconectados). Quando a conta entra em um aparelho novo, enviamos um aviso por e-mail. Você vê e encerra esses aparelhos em Meu perfil → Segurança.</li>
                 <li><strong>Estatísticas de visita:</strong> páginas vistas, tipo de aparelho, navegador e a origem da visita (por exemplo, Google, Instagram ou link de campanha). São anônimas: usamos um código aleatório que vale só enquanto a aba está aberta e não guardamos o IP. A origem também acompanha os formulários de orçamento, contato e cadastro.</li>
                 <li><strong>Localização:</strong> somente quando você autoriza no navegador, para mostrar painéis próximos. Ela não é armazenada.</li>
             </ul>
@@ -58,6 +59,10 @@ export function Privacy() {
                 Usamos apenas recursos <strong>essenciais</strong> ao funcionamento do site: a sessão de login (válida só na aba aberta),
                 o carrinho de painéis, as preferências de aparência e o registro da sua escolha sobre cookies. O Google reCAPTCHA pode
                 definir cookies próprios para identificar acessos automatizados. Não utilizamos cookies de publicidade.
+            </p>
+            <p>
+                Quem marca "Manter conectado" no login fica com a sessão guardada no navegador por até 30 dias sem uso (90 dias no máximo),
+                junto de um código aleatório do aparelho, usado só para reconhecer aparelhos já usados. Sem a opção, a sessão termina ao fechar a aba.
             </p>
             <p>
                 Para as estatísticas de visita, guardamos no navegador um código da visita (apagado ao fechar a aba) e, por até 90 dias,

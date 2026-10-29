@@ -35,13 +35,15 @@ function loadGoogleScript() {
 interface GoogleSignInProps {
     /** Texto do botão: "Continuar com o Google" (entrar) ou "Inscrever-se com o Google" (cadastro). */
     mode?: 'signin' | 'signup';
+    /** "Manter conectado" da tela de login (o cadastro mantém por padrão). */
+    remember?: boolean;
 }
 
 /**
  * Botão oficial do Google (Google Identity Services). O Google devolve uma credencial (ID token)
  * que o backend confere em /auth/google: entra na conta com o mesmo e-mail ou cria uma conta de cliente.
  */
-export function GoogleSignIn({ mode = 'signin' }: GoogleSignInProps) {
+export function GoogleSignIn({ mode = 'signin', remember = true }: GoogleSignInProps) {
     const box = useRef<HTMLDivElement>(null);
     const { signInWithGoogle } = useAuth();
     const toast = useToast();
@@ -52,7 +54,7 @@ export function GoogleSignIn({ mode = 'signin' }: GoogleSignInProps) {
     onCredential.current = async (credential: string) => {
         setState('busy');
         try {
-            const { created } = await signInWithGoogle(credential);
+            const { created } = await signInWithGoogle(credential, remember);
             // Login e cadastro já redirecionam quando a sessão começa
             toast.success(created ? 'Conta criada com o Google. Complete seus dados em Meu perfil.' : 'Login realizado com sucesso!');
         } catch (error) {

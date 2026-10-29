@@ -21,6 +21,7 @@ export function Login() {
     const toast = useToast();
 
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [remember, setRemember] = useState(true);
     const captchaRef = useRef<ReCAPTCHA>(null);
 
     // Redireciona se já estiver logado
@@ -39,8 +40,8 @@ export function Login() {
         }
 
         try {
-            const response = await authService.login({ ...data, captchaToken } as any);
-            signIn(response.token, response.user);
+            const response = await authService.login({ ...data, captchaToken, remember });
+            signIn(response);
             toast.success('Login realizado com sucesso!');
         } catch (error: any) {
             // O token do reCAPTCHA é de uso único: exige nova verificação
@@ -66,7 +67,7 @@ export function Login() {
                 subtitle="Acompanhe seus orçamentos, pedidos e campanhas nos telões da T3."
                 footer={<>Ainda não tem conta? <Link to="/cadastro" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Criar conta</Link></>}
             >
-                <GoogleSignIn mode="signin" />
+                <GoogleSignIn mode="signin" remember={remember} />
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
                     <Input
                         id="login-email"
@@ -89,7 +90,14 @@ export function Login() {
                             className={authInput}
                             {...register('password')}
                         />
-                        <Link to="/recuperar-senha" className="-my-2 self-end py-3 text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
+                        <div className="-my-2 flex items-center justify-between gap-3">
+                            <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-sm text-ink-300">
+                                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-[#FF5E00]" />
+                                Manter conectado
+                            </label>
+                            <Link to="/recuperar-senha" className="py-3 text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
+                        </div>
+                        {!remember && <p className="text-xs text-ink-500">Você sai ao fechar esta aba. Use em computadores compartilhados.</p>}
                     </div>
 
                     <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
