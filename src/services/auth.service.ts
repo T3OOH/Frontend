@@ -1,15 +1,13 @@
 import { api } from '../lib/axios';
-import type { User } from '@/contexts/AuthContext';
+import { deviceId } from '../lib/session';
+import type { LoginResponse } from '@/contexts/AuthContext';
 
 export interface LoginData {
     email: string;
     password: string;
     captchaToken?: string | null;
-}
-
-export interface AuthResponse {
-    user: User;
-    token: string;
+    /** "Manter conectado": sessão de 30 dias neste aparelho (senão, até fechar a aba). */
+    remember?: boolean;
 }
 
 export const authService = {
@@ -18,8 +16,9 @@ export const authService = {
         return response.data;
     },
 
-    async login(data: LoginData): Promise<AuthResponse> {
-        const response = await api.post<AuthResponse>('/auth/login', data);
+    async login(data: LoginData): Promise<LoginResponse> {
+        // O id do aparelho permite avisar por e-mail quando a conta entra em um aparelho novo
+        const response = await api.post<LoginResponse>('/auth/login', { ...data, deviceId: deviceId() });
         return response.data;
     },
 };

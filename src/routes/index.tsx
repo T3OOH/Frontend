@@ -55,6 +55,7 @@ const Terms = lazy(() => import('@/pages/legal/Terms').then(m => ({ default: m.T
 const UpdatePassword = lazy(() => import('@/pages/UpdatePassword').then(m => ({ default: m.UpdatePassword })));
 
 // User Views
+const ReportAccess = lazy(() => import('@/pages/ReportAccess').then(m => ({ default: m.ReportAccess })));
 const UserProfile = lazy(() => import('@/pages/UserProfile').then(m => ({ default: m.UserProfile })));
 
 // ==========================================
@@ -140,6 +141,7 @@ export function AppRoutes() {
                                 <Route path="/cadastro" element={<Suspense fallback={<PageLoader />}><Register /></Suspense>} />
                                 <Route path="/recuperar-senha" element={<Suspense fallback={<PageLoader />}><UpdatePassword /></Suspense>} />
                                 <Route path="/atualizar-senha" element={<Suspense fallback={<PageLoader />}><UpdatePassword /></Suspense>} />
+                                <Route path="/seguranca/nao-fui-eu" element={<Suspense fallback={<PageLoader />}><ReportAccess /></Suspense>} />
 
                                 {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>

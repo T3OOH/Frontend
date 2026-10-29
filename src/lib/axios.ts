@@ -1,22 +1,40 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { AUTH_STORAGE_KEY, clearSession, readSession, refreshSession, validToken } from './session';
 
-export const AUTH_STORAGE_KEY = '@t3ooh:session';
+export { AUTH_STORAGE_KEY };
 
 export const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3333',
 });
 
+const isAuthRoute = (url?: string) => String(url ?? '').startsWith('/auth/');
+
+// Cada requisição sai com um token de acesso válido (renovado antes de vencer)
+api.interceptors.request.use(async (config) => {
+    if (isAuthRoute(config.url) || config.headers.Authorization) return config;
+    const token = await validToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        const isAuthRequest = String(error.config?.url ?? '').startsWith('/auth/');
-        const hadSession = Boolean(error.config?.headers?.Authorization);
+    async (error: AxiosError) => {
+        const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
+        const hadSession = Boolean(config?.headers?.Authorization);
 
-        // Só derruba a sessão quando um token existente foi recusado.
+        // Token recusado: tenta renovar uma vez e repete a requisição.
         // Erros de login/reset (/auth/*) são tratados pela própria tela.
-        if (error.response?.status === 401 && hadSession && !isAuthRequest && typeof window !== 'undefined') {
-            delete api.defaults.headers.common.Authorization;
-            window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        if (error.response?.status === 401 && hadSession && config && !isAuthRoute(config.url) && typeof window !== 'undefined') {
+            if (!config._retried && readSession()?.refreshToken) {
+                config._retried = true;
+                const token = await refreshSession().catch(() => null);
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                    return api(config);
+                }
+            }
+            clearSession();
             window.location.assign('/login');
         }
 
