@@ -5,7 +5,7 @@ import { ArrowRight, Check, ChevronLeft, Loader2, Maximize, Minimize, Plus, Sear
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { api } from '@/lib/axios';
-import { panelsService } from '@/services/panels.service';
+import { panelsService, PanelData } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -134,10 +134,8 @@ export function Map() {
      */
     useEffect(() => {
         const fetchPanels = async () => {
-            try {
-                setIsLoading(true);
-                const data = await panelsService.getAllPanels();
-                
+            // Mostra a última lista conhecida na hora e troca pela atual quando a API responder
+            const show = (data: PanelData[]) => {
                 const validPanels = data
                     .filter((p: any) => p.status === 'AVAILABLE' && p.id)
                     .map((p: any) => {
@@ -156,6 +154,11 @@ export function Map() {
                     }) as Panel[];
                     
                 setPanels(validPanels);
+                setIsLoading(false);
+            };
+            try {
+                setIsLoading(true);
+                show(await panelsService.getAllPanels(show));
             } catch (error) {
                 console.error("API Error (Panels Fetch):", error);
             } finally {
