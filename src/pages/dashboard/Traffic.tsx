@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Copy, Download, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { useTheme } from '@/contexts/ThemeContext';
+import { mediumName, sourceName } from '@/lib/leadSources';
+import { BarList, downloadCsv, niceMax, useMarkColor } from '@/components/app/charts';
 import { CrmPage, Panel, Stat, Badge, EmptyState, Skeleton, Field } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -25,20 +26,8 @@ interface Summary {
 
 const PERIODS = [7, 30, 90] as const;
 
-/** Nomes das origens como o gestor fala, não como o navegador manda. */
-const SOURCE_LABEL: Record<string, string> = {
-    direto: 'Direto', google: 'Google', bing: 'Bing', buscador: 'Outros buscadores', chatgpt: 'ChatGPT', perplexity: 'Perplexity',
-    claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn',
-    x: 'X (Twitter)', youtube: 'YouTube', tiktok: 'TikTok', whatsapp: 'WhatsApp', email: 'E-mail', 'sem registro': 'Sem registro',
-};
-const MEDIUM_LABEL: Record<string, string> = {
-    organico: 'busca orgânica', anuncio: 'anúncio', social: 'rede social', ia: 'assistente de IA', referencia: 'link em outro site',
-    campanha: 'campanha', cpc: 'anúncio', email: 'e-mail',
-};
 const DEVICE_LABEL: Record<string, string> = { mobile: 'Celular', desktop: 'Computador', tablet: 'Tablet', desconhecido: 'Não identificado' };
 
-const sourceName = (s: string) => SOURCE_LABEL[s] ?? s;
-const mediumName = (m: string | null) => (m ? m.split(', ').map((x) => MEDIUM_LABEL[x] ?? x).join(', ') : '');
 const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
 const int = (v: number) => v.toLocaleString('pt-BR');
 const shortDay = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}`; };
@@ -46,18 +35,7 @@ const dateTime = (iso: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-dig
 
 // ============================ GRÁFICOS ============================
 
-/** Cor da série: laranja da marca; no tema claro um tom mais escuro (contraste ≥ 3:1 sobre branco). */
-function useMarkColor() {
-    return useTheme().theme === 'light' ? '#E05200' : '#FF5E00';
-}
-
 const W = 640, H = 200, PAD = { l: 36, r: 8, t: 10, b: 24 };
-
-function niceMax(v: number) {
-    if (v <= 4) return 4;
-    const p = 10 ** Math.floor(Math.log10(v));
-    return Math.ceil(v / p) * p;
-}
 
 function Axis({ max, labels }: { max: number; labels: { x: number; text: string }[] }) {
     const ticks = [0, max / 2, max];
@@ -164,28 +142,6 @@ function LeadsChart({ series }: { series: Summary['series'] }) {
     );
 }
 
-/** Lista com barra proporcional (magnitude em um só tom). */
-function BarList({ rows, empty }: { rows: { label: string; hint?: string; value: number }[]; empty: string }) {
-    const color = useMarkColor();
-    const max = Math.max(...rows.map((r) => r.value), 1);
-    if (!rows.length) return <p className="text-sm text-brand-muted">{empty}</p>;
-    return (
-        <ul className="flex flex-col gap-3">
-            {rows.map((r) => (
-                <li key={r.label}>
-                    <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="min-w-0 truncate text-brand-text" title={r.label}>{r.label}{r.hint && <span className="ml-2 text-xs text-brand-muted">{r.hint}</span>}</span>
-                        <span className="shrink-0 font-mono text-brand-text">{int(r.value)}</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 bg-brand-background">
-                        <div className="h-full" style={{ width: `${(r.value / max) * 100}%`, background: color }} />
-                    </div>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
 // ============================ LINK DE CAMPANHA ============================
 
 const CAMPAIGN_PAGES = [['/', 'Início'], ['/mapa', 'Mapa de painéis'], ['/servicos', 'Catálogo'], ['/solution', 'T3 Solution'], ['/contato', 'Contato']] as const;
@@ -237,13 +193,7 @@ function exportCsv(s: Summary) {
         new Date(l.createdAt).toLocaleString('pt-BR'), l.kindLabel, l.name, l.email ?? '', l.company ?? '', l.value != null ? String(l.value).replace('.', ',') : '',
         sourceName(l.source), mediumName(l.medium), l.campaign ?? '', l.landingPage ?? '', l.referrer ?? '',
     ]);
-    const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
-    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `leads-origem-${s.days}dias-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadCsv(`leads-origem-${s.days}dias-${new Date().toISOString().slice(0, 10)}.csv`, head, rows);
 }
 
 export function Traffic() {
