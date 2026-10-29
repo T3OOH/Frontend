@@ -46,7 +46,7 @@ type Option<K extends keyof Preferences> = { value: Preferences[K]; label: strin
 type Group = { [K in keyof Preferences]: { key: K; title: string; hint: string; options: Option<K>[]; staffOnly?: boolean } }[keyof Preferences];
 
 const GROUPS: Group[] = [
-    { key: 'background', title: 'Fundo do site', hint: 'O vídeo da cidade ou a foto animada, mais leve. No celular o site usa sempre a foto.', options: [{ value: 'video', label: 'Vídeo da cidade' }, { value: 'still', label: 'Foto animada' }] },
+    { key: 'background', title: 'Fundo do site', hint: 'O vídeo da cidade toca uma vez e para no último quadro. A imagem parada é mais leve para dados móveis.', options: [{ value: 'video', label: 'Vídeo da cidade' }, { value: 'still', label: 'Imagem parada' }] },
     { key: 'motion', title: 'Movimento', hint: 'Menos movimento desliga animações, transições e o vídeo de fundo.', options: [{ value: 'full', label: 'Completo' }, { value: 'reduced', label: 'Menos movimento' }] },
     { key: 'textSize', title: 'Tamanho do texto', hint: 'Aumenta textos e espaçamentos do site inteiro.', options: [{ value: 'default', label: 'Padrão' }, { value: 'large', label: 'Maior' }] },
     { key: 'mapStyle', title: 'Mapa de painéis', hint: 'Cor do mapa na página de painéis.', options: [{ value: 'dark', label: 'Escuro' }, { value: 'light', label: 'Claro' }] },

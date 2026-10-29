@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface Preferences {
     /** Tema das áreas internas (Gestão e CRM). */
     theme: 'dark' | 'light';
-    /** Fundo do site: vídeo da cidade ou foto animada (mais leve). */
+    /** Fundo do site: vídeo da cidade ou um quadro parado dele (mais leve). */
     background: 'video' | 'still';
     motion: 'full' | 'reduced';
     textSize: 'default' | 'large';
