@@ -6,6 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AVATAR_COLORS, Preferences, usePreferences, useAvatarClass } from '@/contexts/ThemeContext';
 import { roleLabel } from '@/lib/roles';
+import { SecurityTab } from '@/pages/profile/SecurityTab';
 import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
@@ -163,7 +164,9 @@ export function UserProfile() {
     const avatarClass = useAvatarClass();
     // Equipe (gestão e comercial) não faz orçamentos pelo site: vê dados e aparência
     const isStaff = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'COMERCIAL';
-    const [tab, setTab] = useState<'data' | 'orders' | 'appearance'>('data');
+    const [tab, setTab] = useState<'data' | 'orders' | 'appearance' | 'security'>(() =>
+        // Links de e-mail podem abrir direto na segurança (/perfil?aba=seguranca)
+        new URLSearchParams(window.location.search).get('aba') === 'seguranca' ? 'security' : 'data');
     const [googleLinked, setGoogleLinked] = useState(false);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [editing, setEditing] = useState(false);
@@ -240,8 +243,8 @@ export function UserProfile() {
                 </header>
 
                 {/* ============================ ABAS ============================ */}
-                <div role="tablist" aria-label="Seções do perfil" className={`mt-6 grid gap-px border border-white/[0.08] bg-white/[0.08] ${isStaff ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                    {([['data', 'Meus dados'], ...(isStaff ? [] : [['orders', 'Orçamentos']] as const), ['appearance', 'Aparência']] as const).map(([id, label]) => (
+                <div role="tablist" aria-label="Seções do perfil" className={`mt-6 grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08] ${isStaff ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+                    {([['data', 'Meus dados'], ...(isStaff ? [] : [['orders', 'Orçamentos']] as const), ['appearance', 'Aparência'], ['security', 'Segurança']] as const).map(([id, label]) => (
                         <button key={id} role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setOpen(null); }}
                             className={`flex items-center justify-center gap-2 px-4 py-3 text-sm transition-colors ${tab === id ? 'bg-ink-900 text-ink-100 shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-ink-950 text-ink-400 hover:text-ink-100'}`}>
                             {label} {id === 'orders' && status === 'ready' && <span className="font-mono text-xs text-ink-500">{orders.length}</span>}
@@ -249,11 +252,12 @@ export function UserProfile() {
                     ))}
                 </div>
 
+                {tab === 'security' && <SecurityTab />}
                 {tab === 'appearance' && <Appearance isStaff={isStaff} initial={(saved.name || user?.name || 'U').charAt(0).toUpperCase()} />}
 
-                {status === 'loading' && tab !== 'appearance' && <div className="mt-6 flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse bg-ink-900" />)}</div>}
+                {status === 'loading' && tab !== 'appearance' && tab !== 'security' && <div className="mt-6 flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse bg-ink-900" />)}</div>}
 
-                {status === 'error' && tab !== 'appearance' && (
+                {status === 'error' && tab !== 'appearance' && tab !== 'security' && (
                     <div className="mt-6 border border-dashed border-white/15 p-8">
                         <p className="text-ink-100">Não foi possível carregar seu perfil</p>
                         <button type="button" onClick={load} className={`mt-4 ${btnGhost}`}>Tentar de novo</button>

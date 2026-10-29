@@ -7,6 +7,7 @@ Disallow: /dashboard
 Disallow: /crm
 Disallow: /perfil
 Disallow: /atualizar-senha
+Disallow: /seguranca
 
 # Assistentes e buscadores de IA (citam o site nas respostas)
 User-agent: GPTBot
@@ -25,5 +26,6 @@ Disallow: /dashboard
 Disallow: /crm
 Disallow: /perfil
 Disallow: /atualizar-senha
+Disallow: /seguranca
 
 Sitemap: https://t3ooh.com/sitemap.xml

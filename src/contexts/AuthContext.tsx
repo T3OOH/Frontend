@@ -1,5 +1,6 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
-import { api, AUTH_STORAGE_KEY } from '@/lib/axios';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { api } from '@/lib/axios';
+import { StoredSession, deviceId, logoutSession, onSessionChange, readSession, saveSession } from '@/lib/session';
 
 export interface User {
     id: string;
@@ -10,101 +11,69 @@ export interface User {
     preferences?: Record<string, unknown> | null;
 }
 
-interface StoredSession {
+/** Resposta de login do backend (senha ou Google). */
+export interface LoginResponse {
     token: string;
     user: User;
+    refreshToken?: string;
+    persistent?: boolean;
 }
 
 interface AuthContextData {
     user: User | null;
     isAuthenticated: boolean;
-    signIn: (token: string, user: User) => void;
+    signIn: (response: LoginResponse) => void;
     signOut: () => void;
     /** Atualiza dados do usuário na sessão atual (ex.: preferências salvas no perfil). */
     updateUser: (patch: Partial<User>) => void;
     /** Entra (ou cria a conta) com a credencial devolvida pelo botão do Google. */
-    signInWithGoogle: (credential: string) => Promise<{ created: boolean }>;
-    
+    signInWithGoogle: (credential: string, remember?: boolean) => Promise<{ created: boolean }>;
+
     // Novas funções do fluxo de autenticação e recuperação
     registerUser: (email: string, password: string, name: string) => Promise<void>;
     sendPasswordResetEmail: (email: string) => Promise<void>;
     updatePassword: (password: string, token: string) => Promise<void>;
 }
 
-/**
- * Lê e valida a sessão atual armazenada no SessionStorage do navegador.
- * Garante que dados corrompidos sejam limpos imediatamente.
- */
-function readSession(): StoredSession | null {
-    if (typeof window === 'undefined') return null;
-
-    try {
-        const serialized = window.sessionStorage.getItem(AUTH_STORAGE_KEY);
-        if (!serialized) return null;
-
-        const session = JSON.parse(serialized) as StoredSession;
-        if (!session.token || !session.user) return null;
-
-        // Descarta sessões com JWT expirado (evita exibir telas restritas sem acesso real)
-        const payload = JSON.parse(atob(session.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
-            window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-            return null;
-        }
-        return session;
-    } catch {
-        window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-        return null;
-    }
-}
-
-// Inicializa a sessão e já injeta o token no Axios para requisições subsequentes
-const initialSession = readSession();
-if (initialSession) {
-    api.defaults.headers.common.Authorization = `Bearer ${initialSession.token}`;
-}
-
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 /**
  * Provider de Autenticação Global.
- * Gerencia o estado do usuário logado e expõe os métodos de comunicação com a API.
+ * A sessão (tokens, renovação e sincronização entre abas) fica em lib/session.ts;
+ * aqui só o estado de tela acompanha.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [session, setSession] = useState<StoredSession | null>(initialSession);
+    const [session, setSession] = useState<StoredSession | null>(readSession);
 
-    /**
-     * Autentica o usuário na aplicação, salvando o token na sessão e no Axios.
-     */
-    const signIn = (token: string, user: User) => {
-        const nextSession = { token, user };
-        window.sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextSession));
-        api.defaults.headers.common.Authorization = `Bearer ${token}`;
-        setSession(nextSession);
+    // Renovação, saída ou login em outra aba: a tela acompanha
+    useEffect(() => onSessionChange(setSession), []);
+
+    /** Guarda a sessão (no navegador se "manter conectado", senão só na aba). */
+    const signIn = (response: LoginResponse) => {
+        saveSession({
+            token: response.token,
+            user: response.user,
+            refreshToken: response.refreshToken,
+            persistent: response.persistent ?? false,
+        });
     };
 
     const updateUser = useCallback((patch: Partial<User>) => {
-        setSession((current) => {
-            if (!current) return current;
-            const next = { ...current, user: { ...current.user, ...patch } };
-            window.sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
-            return next;
-        });
+        const current = readSession();
+        if (current) saveSession({ ...current, user: { ...current.user, ...patch } });
     }, []);
 
-    const signInWithGoogle = async (credential: string) => {
-        const { data } = await api.post('/auth/google', { credential });
-        signIn(data.token, data.user);
+    const signInWithGoogle = async (credential: string, remember = true) => {
+        const { data } = await api.post('/auth/google', { credential, deviceId: deviceId(), remember });
+        signIn(data);
         return { created: Boolean(data.created) };
     };
 
     /**
-     * Encerra a sessão do usuário, limpando os dados locais e redirecionando para o login.
+     * Encerra a sessão deste aparelho (também no servidor) e volta para o login.
      */
     const signOut = () => {
-        window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-        delete api.defaults.headers.common.Authorization;
-        setSession(null);
+        logoutSession();
         window.location.assign('/login');
     };
 
@@ -121,12 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      */
     const sendPasswordResetEmail = async (email: string) => {
         await api.post('/auth/forgot-password', { email });
-        
-        // NOTA: Se você decidir usar o cliente do Supabase diretamente no Frontend futuramente:
-        // const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        //    redirectTo: `${window.location.origin}/atualizar-senha`,
-        // });
-        // if (error) throw error;
     };
 
     /**
