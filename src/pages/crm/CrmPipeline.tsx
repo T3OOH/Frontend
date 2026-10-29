@@ -6,6 +6,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, formatDate, whatsappUrl } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
+import { SolutionProject } from '@/components/crm/SolutionProject';
+import { DealLine, LINE_LABEL, SOLUTION_APPLICATIONS, SolutionDetails, solutionSummary } from '@/lib/solution';
 
 const STAGES: { id: DealStage; title: string }[] = [
     { id: 'NEW_LEAD', title: 'Novos leads' },
@@ -22,7 +24,14 @@ const STATUS_TABS: { id: DealStatus; label: string }[] = [
     { id: 'LOST', label: 'Perdidos' },
 ];
 
-const EMPTY_FORM = { clientId: '', title: '', expectedValue: '', probability: '50' };
+const LINE_TABS: { id: DealLine | 'ALL'; label: string }[] = [
+    { id: 'ALL', label: 'Todas as linhas' },
+    { id: 'OOH', label: 'T3 OOH' },
+    { id: 'SOLUTION', label: 'T3 Solution' },
+];
+
+const EMPTY_FORM = { clientId: '', title: '', expectedValue: '', probability: '50', line: 'OOH' as DealLine, application: '' };
+const lineOf = (d: CrmDeal): DealLine => (d.line === 'SOLUTION' ? 'SOLUTION' : 'OOH');
 const daysSince = (date: string) => Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
 const errorMessage = (error: unknown, fallback: string) =>
     (error as { response?: { data?: { error?: string } } }).response?.data?.error || fallback;
@@ -33,6 +42,7 @@ export function CrmPipeline() {
     const [clients, setClients] = useState<CrmClient[]>([]);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [view, setView] = useState<DealStatus>('OPEN');
+    const [line, setLine] = useState<DealLine | 'ALL'>('ALL');
     const [mobileStage, setMobileStage] = useState<DealStage>('NEW_LEAD');
     const [dragId, setDragId] = useState<string | null>(null);
     const [overStage, setOverStage] = useState<DealStage | null>(null);
@@ -55,12 +65,18 @@ export function CrmPipeline() {
 
     useEffect(() => { load(); }, []);
 
-    const byStatus = useMemo(() => deals.filter((d) => d.status === view), [deals, view]);
+    const byLine = useMemo(() => (line === 'ALL' ? deals : deals.filter((d) => lineOf(d) === line)), [deals, line]);
+    const byStatus = useMemo(() => byLine.filter((d) => d.status === view), [byLine, view]);
     const counts = useMemo(() => ({
-        OPEN: deals.filter((d) => d.status === 'OPEN').length,
-        WON: deals.filter((d) => d.status === 'WON').length,
-        LOST: deals.filter((d) => d.status === 'LOST').length,
-    }), [deals]);
+        OPEN: byLine.filter((d) => d.status === 'OPEN').length,
+        WON: byLine.filter((d) => d.status === 'WON').length,
+        LOST: byLine.filter((d) => d.status === 'LOST').length,
+    }), [byLine]);
+    const lineCounts = useMemo(() => ({
+        ALL: deals.filter((d) => d.status === view).length,
+        OOH: deals.filter((d) => d.status === view && lineOf(d) === 'OOH').length,
+        SOLUTION: deals.filter((d) => d.status === view && lineOf(d) === 'SOLUTION').length,
+    }), [deals, view]);
 
     /** Atualiza um negócio na tela antes da resposta e desfaz se o servidor recusar. */
     const optimistic = async (id: string, patch: Partial<CrmDeal>, request: () => Promise<unknown>, success: string) => {
@@ -89,6 +105,18 @@ export function CrmPipeline() {
         setSelected(null);
     };
 
+    const saveProject = async (deal: CrmDeal, data: { solution: SolutionDetails; expectedValue: number }) => {
+        try {
+            await crmService.updateDeal(deal.id, data);
+            const patch = { solution: data.solution, expectedValue: data.expectedValue };
+            setDeals((prev) => prev.map((d) => (d.id === deal.id ? { ...d, ...patch } : d)));
+            setSelected((prev) => (prev?.id === deal.id ? { ...prev, ...patch } : prev));
+            toast.success('Projeto salvo.');
+        } catch (error) {
+            toast.error(errorMessage(error, 'Não foi possível salvar o projeto.'));
+        }
+    };
+
     const onDrop = (e: DragEvent, stage: DealStage) => {
         e.preventDefault();
         const deal = deals.find((d) => d.id === (dragId || e.dataTransfer.getData('text/plain')));
@@ -106,6 +134,8 @@ export function CrmPipeline() {
                 title: form.title.trim(),
                 expectedValue: Number(form.expectedValue) || 0,
                 probability: Math.round(Number(form.probability) || 0),
+                line: form.line,
+                solution: form.line === 'SOLUTION' && form.application ? { application: form.application as SolutionDetails['application'] } : undefined,
             });
             toast.success('Oportunidade criada em novos leads.');
             setCreating(false);
@@ -125,7 +155,7 @@ export function CrmPipeline() {
             return;
         }
         const first = deal.client?.name?.split(' ')[0] || '';
-        window.open(whatsappUrl(phone, `Olá, ${first}! Aqui é do comercial da T3 OOH.`), '_blank', 'noopener');
+        window.open(whatsappUrl(phone, `Olá, ${first}! Aqui é do comercial da ${LINE_LABEL[lineOf(deal)]}.`), '_blank', 'noopener');
     };
 
     const DealCard = ({ deal }: { deal: CrmDeal }) => {
@@ -138,8 +168,14 @@ export function CrmPipeline() {
                 className={`border border-brand-border bg-brand-surface transition-colors hover:border-brand-muted ${dragId === deal.id ? 'opacity-40' : ''} ${view === 'OPEN' ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
                 <button type="button" onClick={() => setSelected(deal)} className="block w-full p-4 text-left">
+                    {lineOf(deal) === 'SOLUTION' && (
+                        <span className="mb-2 inline-block border border-brand-neon/40 bg-brand-neon/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-brand-neon">T3 Solution</span>
+                    )}
                     <p className="line-clamp-2 text-sm font-medium text-brand-text">{deal.title}</p>
                     <p className="mt-1 truncate text-xs text-brand-muted">{deal.client?.name || 'Cliente'}</p>
+                    {lineOf(deal) === 'SOLUTION' && solutionSummary(deal.solution) && (
+                        <p className="mt-1 truncate font-mono text-[11px] text-brand-muted">{solutionSummary(deal.solution)}</p>
+                    )}
                     <div className="mt-3 flex items-center justify-between gap-2 border-t border-brand-border pt-3">
                         <span className="font-mono text-sm text-brand-text">{formatBRL(deal.expectedValue)}</span>
                         <span className={`font-mono text-xs ${days > 7 && view === 'OPEN' ? 'text-red-500' : 'text-brand-muted'}`} title="Dias sem movimentação">
@@ -161,6 +197,15 @@ export function CrmPipeline() {
             description={view === 'OPEN' ? 'Arraste os cards entre as etapas, ou abra um card para mudar a etapa e fechar o negócio.' : 'Negócios encerrados. Abra um card para reabrir.'}
             actions={<button type="button" onClick={() => setCreating(true)} className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Nova oportunidade</button>}
         >
+            <div className="flex flex-wrap items-center gap-3">
+            <div role="tablist" aria-label="Linha de negócio" className="flex gap-px self-start border border-brand-border bg-brand-border">
+                {LINE_TABS.map((t) => (
+                    <button key={t.id} role="tab" aria-selected={line === t.id} onClick={() => setLine(t.id)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm ${line === t.id ? 'bg-brand-surface text-brand-text shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                        {t.label} <span className="font-mono text-xs text-brand-muted">{lineCounts[t.id]}</span>
+                    </button>
+                ))}
+            </div>
             <div role="tablist" aria-label="Situação" className="flex gap-px self-start border border-brand-border bg-brand-border">
                 {STATUS_TABS.map((t) => (
                     <button key={t.id} role="tab" aria-selected={view === t.id} onClick={() => setView(t.id)}
@@ -168,6 +213,7 @@ export function CrmPipeline() {
                         {t.label} <span className="font-mono text-xs text-brand-muted">{counts[t.id]}</span>
                     </button>
                 ))}
+            </div>
             </div>
 
             {status === 'loading' && (
@@ -248,7 +294,7 @@ export function CrmPipeline() {
             <Sheet
                 open={Boolean(selected)}
                 onClose={() => setSelected(null)}
-                eyebrow={selected ? (selected.status === 'OPEN' ? selectedStage?.title : selected.status === 'WON' ? 'Ganho' : 'Perdido') : undefined}
+                eyebrow={selected ? `${LINE_LABEL[lineOf(selected)]} · ${selected.status === 'OPEN' ? selectedStage?.title : selected.status === 'WON' ? 'Ganho' : 'Perdido'}` : undefined}
                 title={selected?.title ?? ''}
                 size="lg"
                 footer={selected && (selected.status === 'OPEN' ? <>
@@ -264,7 +310,9 @@ export function CrmPipeline() {
                             {[
                                 ['Valor', formatBRL(selected.expectedValue)],
                                 ['Probabilidade', `${selected.probability}%`],
-                                ['Prazo', selected.contractMonths ? `${selected.contractMonths} ${selected.contractMonths === 1 ? 'mês' : 'meses'}` : '—'],
+                                lineOf(selected) === 'SOLUTION'
+                                    ? ['Aplicação', selected.solution?.application || '—']
+                                    : ['Prazo', selected.contractMonths ? `${selected.contractMonths} ${selected.contractMonths === 1 ? 'mês' : 'meses'}` : '—'],
                                 ['Criado em', formatDate(selected.createdAt)],
                             ].map(([k, v]) => (
                                 <div key={k} className="bg-brand-surface p-3">
@@ -290,6 +338,16 @@ export function CrmPipeline() {
                                 <CustomSelect id="deal-stage" value={selected.stage} onChange={(v) => moveTo(selected, v as DealStage)}
                                     options={STAGES.map((s) => ({ value: s.id, label: s.title }))} />
                             </Field>
+                        )}
+
+                        {lineOf(selected) === 'SOLUTION' && (
+                            <SolutionProject
+                                key={selected.id}
+                                value={selected.solution}
+                                expectedValue={Number(selected.expectedValue)}
+                                disabled={selected.status !== 'OPEN'}
+                                onSave={(data) => saveProject(selected, data)}
+                            />
                         )}
 
                         {Boolean(selected.items?.length) && (
@@ -328,12 +386,30 @@ export function CrmPipeline() {
                     <EmptyState title="Nenhum cliente na carteira" text="A oportunidade precisa de um cliente." action={<Link to="/crm/clientes" className={crmBtn.primary}>Cadastrar cliente</Link>} />
                 ) : (
                     <form id="deal-form" onSubmit={onCreate} className="grid grid-cols-2 gap-4">
+                        <fieldset className="col-span-2">
+                            <legend className="mb-1.5 text-sm text-brand-text">Linha de negócio</legend>
+                            <div role="radiogroup" className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border">
+                                {(['OOH', 'SOLUTION'] as DealLine[]).map((l) => (
+                                    <button key={l} type="button" role="radio" aria-checked={form.line === l} onClick={() => setForm({ ...form, line: l })}
+                                        className={`min-h-11 px-3 py-2.5 text-sm md:min-h-9 ${form.line === l ? 'bg-brand-surface font-medium text-brand-text shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                                        {LINE_LABEL[l]}
+                                        <span className="block text-xs font-normal text-brand-muted">{l === 'OOH' ? 'Mídia nos telões' : 'Venda e instalação de painéis'}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </fieldset>
+                        {form.line === 'SOLUTION' && (
+                            <Field label="Aplicação" htmlFor="d-application" className="col-span-2">
+                                <CustomSelect id="d-application" value={form.application} onChange={(v) => setForm({ ...form, application: v })} placeholder="Onde vai a tela"
+                                    options={SOLUTION_APPLICATIONS.map((a) => ({ value: a.title, label: a.title }))} />
+                            </Field>
+                        )}
                         <Field label="Cliente" htmlFor="d-client" className="col-span-2">
                             <CustomSelect id="d-client" required value={form.clientId} onChange={(v) => setForm({ ...form, clientId: v })} placeholder="Selecione o cliente"
                                 options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
                         </Field>
                         <Field label="Título" htmlFor="d-title" className="col-span-2">
-                            <input id="d-title" required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={crmInput} placeholder="Ex.: Pacote anual Av. T-63" />
+                            <input id="d-title" required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={crmInput} placeholder={form.line === 'SOLUTION' ? 'Ex.: Telão da área gourmet' : 'Ex.: Pacote anual Av. T-63'} />
                         </Field>
                         <Field label="Valor estimado (R$)" htmlFor="d-value">
                             <input id="d-value" type="number" inputMode="decimal" min="0" step="0.01" value={form.expectedValue} onChange={(e) => setForm({ ...form, expectedValue: e.target.value })} className={`${crmInput} font-mono`} />

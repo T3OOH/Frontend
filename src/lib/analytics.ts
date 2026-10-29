@@ -162,7 +162,7 @@ export function installAnalytics() {
     };
 
     // Formulários de lead levam a origem (o servidor ignora se vier inválida)
-    const LEAD_URLS = /^\/(contacts|crm\/deals\/checkout|orders|auth\/register|auth\/google)\/?$/;
+    const LEAD_URLS = /^\/(contacts|crm\/deals\/checkout|crm\/deals\/solution|orders|auth\/register|auth\/google)\/?$/;
     api.interceptors.request.use((config) => {
         if (config.method === 'post' && LEAD_URLS.test(String(config.url ?? '')) && config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
             config.data = { ...config.data, attribution: leadAttribution() };
