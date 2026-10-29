@@ -76,10 +76,23 @@ export interface CreateClientData {
     state?: string;
 }
 
+/** Pessoa cadastrada no site (role USER ou COMPANY). */
+export interface SiteClient {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    document?: string | null;
+    companyName?: string | null;
+    role: 'USER' | 'COMPANY';
+    createdAt: string;
+    company?: { corporateName: string; tradeName?: string | null } | null;
+}
+
 export interface CreateDealData {
     /** Cliente da carteira; sem cadastro, use newClient (o cliente é criado junto). */
     clientId?: string;
-    newClient?: { name: string; company?: string | null; phone?: string | null; email?: string | null };
+    newClient?: { name: string; company?: string | null; phone?: string | null; email?: string | null; document?: string | null };
     contractMonths?: number;
     originalValue?: number;
     stage?: DealStage;
@@ -106,6 +119,11 @@ export const crmService = {
 
     async getClients(): Promise<CrmClient[]> {
         const response = await api.get('/crm/clients');
+        return response.data;
+    },
+
+    async getSiteClients(): Promise<SiteClient[]> {
+        const response = await api.get('/crm/site-clients');
         return response.data;
     },
 

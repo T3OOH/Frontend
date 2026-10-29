@@ -5,7 +5,7 @@ import { ArrowLeft, ClipboardCheck, Download, Eye, Search, Send } from 'lucide-r
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
-import { crmService, CrmClient } from '@/services/crm.service';
+import { crmService, CrmClient, SiteClient } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
@@ -27,6 +27,8 @@ interface LoadedOrder {
 
 /** Mesma regra do backend (pricing.service): 3, 6 e 12 meses. */
 const termDiscountFor = (months: number) => (months >= 12 ? 0.3 : months >= 6 ? 0.2 : months >= 3 ? 0.15 : 0);
+const SITE_PREFIX = 'site:';
+const siteCompany = (u: SiteClient) => u.company?.tradeName || u.company?.corporateName || u.companyName || undefined;
 const MONTHS = [1, 2, 3, 4, 5, 6, 9, 12, 18, 24, 36];
 const PANEL_DISCOUNTS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
@@ -44,6 +46,8 @@ export function CrmProposals() {
 
     const [loading, setLoading] = useState(true);
     const [clients, setClients] = useState<CrmClient[]>([]);
+    // Cadastrados no site: entram no seletor com o valor "site:<id>"
+    const [siteClients, setSiteClients] = useState<SiteClient[]>([]);
     const [panels, setPanels] = useState<PanelWithPrice[]>([]);
     const [order, setOrder] = useState<LoadedOrder | null>(null);
     const [orderError, setOrderError] = useState(false);
@@ -77,6 +81,8 @@ export function CrmProposals() {
             // Antes uma falha aqui deixava a lista vazia sem aviso
             if (c.status === 'fulfilled') setClients(c.value);
             else setClientsError(true);
+            // Lista extra: se falhar, a carteira continua funcionando
+            crmService.getSiteClients().then((list) => { if (active) setSiteClients(list); }).catch(() => {});
             const loadedOrder = o.status === 'fulfilled' ? o.value : null;
             if (orderId && !loadedOrder) setOrderError(true);
             // Painéis do pedido continuam na proposta mesmo se já estiverem ocupados
@@ -116,9 +122,25 @@ export function CrmProposals() {
             const name = newClient.name.trim();
             return name.length >= 2 ? { name, company: newClient.company.trim() || undefined, email: newClient.email.trim() || undefined, phone: newClient.phone.trim() || undefined } : null;
         }
+        if (clientId.startsWith(SITE_PREFIX)) {
+            const u = siteClients.find((x) => SITE_PREFIX + x.id === clientId);
+            return u ? { name: u.name, company: siteCompany(u), document: u.document || undefined, email: u.email, phone: u.phone || undefined } : null;
+        }
         const c = clients.find((x) => x.id === clientId);
         return c ? { name: c.name, company: c.company, document: c.document, email: c.email, phone: c.whatsapp || c.phone } : null;
-    }, [order, clients, clientId, clientMode, newClient]);
+    }, [order, clients, siteClients, clientId, clientMode, newClient]);
+
+    // Carteira primeiro; depois quem se cadastrou no site e ainda não tem ficha (mesmo e-mail)
+    const clientOptions = useMemo(() => {
+        const walletEmails = new Set(clients.map((c) => c.email?.toLowerCase()).filter(Boolean));
+        return [
+            ...clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined })),
+            ...siteClients
+                .filter((u) => !walletEmails.has(u.email.toLowerCase()))
+                .map((u) => ({ value: SITE_PREFIX + u.id, label: u.name, hint: ['cadastro no site', siteCompany(u)].filter(Boolean).join(' · ') })),
+        ];
+    }, [clients, siteClients]);
+    const fromSite = clientMode === 'wallet' && clientId.startsWith(SITE_PREFIX);
 
     const calculated: CalculatedPanel[] = useMemo(() => panels
         .filter((p) => selectedIds.includes(p.id))
@@ -181,8 +203,9 @@ export function CrmProposals() {
         try {
             const contract = totals.finalMonthlyValue * months;
             const deal = await crmService.createDeal({
-                ...(clientMode === 'new'
-                    ? { newClient: { name: client.name, company: client.company || null, phone: client.phone || null, email: client.email || null } }
+                // Sem ficha no CRM (digitado ou cadastro do site): a ficha é criada ou reaproveitada pelo e-mail
+                ...(clientMode === 'new' || fromSite
+                    ? { newClient: { name: client.name, company: client.company || null, phone: client.phone || null, email: client.email || null, document: client.document || null } }
                     : { clientId }),
                 title: `Proposta ${months} ${months === 1 ? 'mês' : 'meses'} · ${calculated.length} ${calculated.length === 1 ? 'painel' : 'painéis'}`,
                 expectedValue: Math.round(contract * 100) / 100,
@@ -198,8 +221,8 @@ export function CrmProposals() {
                 })),
             });
             setFormalized(deal.id);
-            addToast(clientMode === 'new' ? 'Pedido formalizado e cliente cadastrado na sua carteira.' : 'Pedido formalizado no funil.', 'success');
-            if (clientMode === 'new') {
+            addToast(clientMode === 'new' || fromSite ? 'Pedido formalizado e cliente cadastrado na sua carteira.' : 'Pedido formalizado no funil.', 'success');
+            if (clientMode === 'new' || fromSite) {
                 await reloadClients();
                 setClientMode('wallet');
                 setClientId(deal.clientId);
@@ -277,13 +300,14 @@ export function CrmProposals() {
                                 {clientMode === 'wallet' ? (
                                     <Field label="Cliente" htmlFor="p-client">
                                         <CustomSelect id="p-client" value={clientId} onChange={setClientId}
-                                            placeholder={clients.length ? 'Selecione um cliente da carteira' : 'Carteira vazia'} disabled={!clients.length}
-                                            options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
+                                            placeholder={clientOptions.length ? 'Selecione um cliente' : 'Nenhum cliente'} disabled={!clientOptions.length}
+                                            options={clientOptions} />
+                                        {fromSite && <p className="mt-2 text-sm text-brand-muted">Cadastrado no site. Ao formalizar, ele entra na sua carteira.</p>}
                                         {clientsError ? (
                                             <p role="alert" className="mt-2 text-sm text-red-500">
                                                 Não foi possível carregar seus clientes. <button type="button" onClick={reloadClients} className="underline underline-offset-4">Tentar de novo</button>
                                             </p>
-                                        ) : !clients.length && (
+                                        ) : !clientOptions.length && (
                                             <p className="mt-2 text-sm text-brand-muted">
                                                 Nenhum cliente na sua carteira. Use <button type="button" onClick={() => setClientMode('new')} className="text-brand-text underline underline-offset-4">Sem cadastro</button> ou <Link to="/crm/clientes" className="text-brand-text underline underline-offset-4">cadastre um cliente</Link>.
                                             </p>
