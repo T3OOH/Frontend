@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -29,6 +29,54 @@ const SIDES: Record<Side, { to: string; logo: string; logoAlt: string; eyebrow: 
 const spring = { type: 'spring', stiffness: 170, damping: 26 } as const;
 
 /**
+ * Vídeo de fundo de cada lado. Parado no primeiro quadro (o pôster é esse quadro, então não há
+ * salto) e toca enquanto o lado está ativo: mouse em cima, foco do teclado ou primeiro toque.
+ */
+const MEDIA: Record<Side, { video: string; poster: string; position: string }> = {
+    // Goiânia em golden hour com a logo da T3 nos telões (mesmo vídeo do fundo do site)
+    ooh: { video: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[30%_60%]' },
+    // Avenida com o letreiro "T3 Solution" à direita: o enquadramento puxa para a direita para
+    // o letreiro aparecer mesmo com o lado recolhido
+    solution: { video: '/video/t3-solution.mp4', poster: '/video/t3-solution-poster.webp', position: 'object-[82%_60%]' },
+};
+
+/** Economia de dados, 2G ou "reduzir movimento": os vídeos não tocam (fica o quadro parado). */
+const stillOnly = () => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches || Boolean(connection?.saveData) || /(^|-)2g$/.test(connection?.effectiveType ?? '');
+};
+
+function SideVideo({ media, active, preload }: { media: (typeof MEDIA)[Side]; active: boolean; preload: boolean }) {
+    const ref = useRef<HTMLVideoElement>(null);
+    const [still] = useState(stillOnly);
+
+    useEffect(() => {
+        const v = ref.current;
+        if (!v || still) return;
+        // Ativo: continua de onde parou. Inativo: pausa no quadro atual.
+        if (active) v.play().catch(() => { /* navegador recusou: fica o quadro parado */ });
+        else v.pause();
+    }, [active, still]);
+
+    return (
+        <motion.video
+            ref={ref}
+            aria-hidden="true"
+            muted
+            loop
+            playsInline
+            // No computador os dois vídeos carregam logo depois da tela abrir, para tocarem sem espera
+            preload={!still && preload ? 'auto' : 'none'}
+            poster={media.poster}
+            src={media.video}
+            className={`absolute inset-0 -z-10 h-full w-full object-cover ${media.position}`}
+            animate={{ scale: active ? 1.08 : 1.02 }}
+            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+        />
+    );
+}
+
+/**
  * Tela de entrada: escolha entre a T3 OOH e a T3 Solution.
  * O lado sob o mouse (ou com foco do teclado) se expande; no celular o primeiro toque
  * expande e o segundo entra. A escolha preenche a tela e abre o site.
@@ -38,6 +86,14 @@ export function Gateway({ onDone }: { onDone: () => void }) {
     const [hovered, setHovered] = useState<Side | null>(null);
     const [chosen, setChosen] = useState<Side | null>(null);
     const [touch] = useState(() => window.matchMedia('(hover: none)').matches);
+    // Pré-carrega os vídeos 1 s depois de abrir (sem disputar com a primeira pintura).
+    // No celular só carrega o lado tocado (dados móveis).
+    const [preloadVideos, setPreloadVideos] = useState(false);
+    useEffect(() => {
+        if (touch) return;
+        const t = window.setTimeout(() => setPreloadVideos(true), 1000);
+        return () => window.clearTimeout(t);
+    }, [touch]);
 
     useEffect(() => {
         const previous = document.body.style.overflow;
@@ -90,7 +146,8 @@ export function Gateway({ onDone }: { onDone: () => void }) {
                         type="button"
                         onClick={() => choose(side)}
                         onMouseEnter={() => !touch && setHovered(side)}
-                        onFocus={() => setHovered(side)}
+                        // No toque, o foco vem junto do toque: quem expande é o próprio toque (senão o primeiro já entrava)
+                        onFocus={() => !touch && setHovered(side)}
                         animate={{ flexGrow: grow(side), opacity: hidden ? 0 : 1, y: 0 }}
                         initial={{ flexGrow: 0.5, y: i === 0 ? -40 : 40, opacity: 0 }}
                         transition={spring}
@@ -99,27 +156,8 @@ export function Gateway({ onDone }: { onDone: () => void }) {
                         className={`group relative isolate flex min-h-0 min-w-0 flex-col justify-end overflow-hidden text-left focus:outline-none ${i === 0 ? 'border-b border-white/10 md:border-b-0 md:border-r' : ''}`}
                     >
                         {/* ============================ FUNDO ============================ */}
-                        {side === 'ooh' ? (
-                            <motion.img
-                                src="/cidade-t3-noite.webp"
-                                alt=""
-                                aria-hidden="true"
-                                className="absolute inset-0 -z-10 h-full w-full object-cover object-[30%_60%]"
-                                animate={{ scale: active ? 1.08 : 1.02 }}
-                                transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                        ) : (
-                            // Avenida de Goiânia com o letreiro "T3 Solution" à direita: o enquadramento
-                            // puxa para a direita para o letreiro aparecer mesmo com o lado recolhido
-                            <motion.img
-                                src="/solution-cidade.webp"
-                                alt=""
-                                aria-hidden="true"
-                                className="absolute inset-0 -z-10 h-full w-full object-cover object-[82%_60%]"
-                                animate={{ scale: active ? 1.08 : 1.02 }}
-                                transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-                            />
-                        )}
+                        <SideVideo media={MEDIA[side]} active={active} preload={preloadVideos} />
+
                         <div
                             className={`absolute inset-0 -z-10 transition-opacity duration-500 ${active ? 'opacity-70' : 'opacity-90'}`}
                             style={{ background: 'linear-gradient(to top, rgba(11,11,12,0.98) 0%, rgba(11,11,12,0.7) 45%, rgba(11,11,12,0.25) 100%)' }}
