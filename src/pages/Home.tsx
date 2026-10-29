@@ -47,8 +47,9 @@ export function Home() {
 
     useEffect(() => {
         let active = true;
-        panelsService.getAllPanels()
-            .then((data) => { if (active) { setPanels(data); setStatus('ready'); } })
+        const show = (data: PanelData[]) => { if (active) { setPanels(data); setStatus('ready'); } };
+        panelsService.getAllPanels(show)
+            .then(show)
             .catch(() => { if (active) setStatus('error'); });
         return () => { active = false; };
     }, []);

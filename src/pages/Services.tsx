@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Check, Loader2, MapPin, Maximize, Plus, Search, ShoppingCart, Tag, X } from 'lucide-react';
 
 import { api } from '@/lib/axios';
-import { panelsService } from '@/services/panels.service';
+import { panelsService, PanelData } from '@/services/panels.service';
 import { useCart, Panel } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,10 +86,8 @@ export function Services() {
         const controller = new AbortController();
 
         const fetchInitialData = async () => {
-            try {
-                setIsLoading(true);
-                const panelsData = await panelsService.getAllPanels();
-                
+            // Mostra a última lista conhecida na hora e troca pela atual quando a API responder
+            const show = (panelsData: PanelData[]) => {
                 if (!controller.signal.aborted) {
                     const validPanels = panelsData
                         .filter((p: any) => p.status === 'AVAILABLE' && p.id)
@@ -102,7 +100,12 @@ export function Services() {
                             price: Number(p.price) || 0
                         })) as CartPanel[];
                     setPanels(validPanels);
+                    setIsLoading(false);
                 }
+            };
+            try {
+                setIsLoading(true);
+                show(await panelsService.getAllPanels(show));
             } catch (error) {
                 if (!controller.signal.aborted) {
                     console.error("Erro ao carregar servicos:", error);

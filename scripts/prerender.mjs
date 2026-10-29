@@ -120,7 +120,7 @@ async function fetchPanels() {
         if (!res.ok) return [];
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.panels ?? data?.data ?? [];
-        return list.filter((p) => p?.name).slice(0, 200);
+        return list;
     } catch {
         return [];
     }
@@ -203,7 +203,10 @@ function render(template, page, panels) {
 }
 
 const template = await readFile(path.join(DIST, 'index.html'), 'utf8');
-const panels = await fetchPanels();
+const allPanels = await fetchPanels();
+const panels = allPanels.filter((p) => p?.name).slice(0, 200);
+// Cópia da lista servida pela CDN: o site mostra os painéis na hora enquanto a API responde
+if (allPanels.length) await writeFile(path.join(DIST, 'panels.json'), JSON.stringify(allPanels));
 for (const page of PAGES) {
     await writeFile(path.join(DIST, page.file), render(template, page, panels));
 }
