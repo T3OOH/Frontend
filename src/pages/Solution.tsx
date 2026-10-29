@@ -8,19 +8,14 @@ import { useToast } from '@/contexts/ToastContext';
 import { Seo } from '@/components/Seo';
 import type { LedScene } from '@/components/led/LedScreen';
 import { CtaBand, btnOnOrange } from '@/components/CtaBand';
+import { SOLUTION_APPLICATIONS } from '@/lib/solution';
 import { btnDark, btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
 
 interface PortfolioItem { image: string; alt: string }
 
-const APPLICATIONS = [
-    { title: 'Residências', text: 'Áreas de lazer, salas de cinema, espaços gourmet e fachadas de casas de alto padrão.' },
-    { title: 'Condomínios', text: 'Avisos digitais para moradores e telas nas áreas comuns, com conteúdo atualizado de longe.' },
-    { title: 'Empresas', text: 'Recepções, salas de reunião, painéis de indicadores e comunicação interna.' },
-    { title: 'Comércio', text: 'Vitrines e pontos de venda com promoções que mudam ao longo do dia.' },
-    { title: 'Empreendimentos', text: 'Lançamentos imobiliários, stands, empenas e grandes fachadas.' },
-    { title: 'Sob medida', text: 'Formatos fora do padrão, respeitando as medidas e as restrições da arquitetura.' },
-];
+// Mesmas opções do CRM (lib/solution.ts)
+const APPLICATIONS = SOLUTION_APPLICATIONS;
 
 const SPECS = [
     { label: 'Indoor', value: 'Pixel fino e alta taxa de atualização, para quem vê a tela de perto.' },
@@ -71,9 +66,8 @@ export function Solution() {
         e.preventDefault();
         setSending(true);
         try {
-            // A aplicação segue no corpo da mensagem (o endpoint aceita apenas os campos do contato)
-            const message = [`[T3 Solution] Aplicação: ${form.application}`, form.message.trim()].filter(Boolean).join('\n\n');
-            await api.post('/contacts', { name: form.name, phone: form.phone, email: form.email, company: form.company || undefined, message });
+            // Vira um negócio da linha T3 Solution na fila do CRM, com a aplicação escolhida
+            await api.post('/crm/deals/solution', { name: form.name, phone: form.phone, email: form.email, company: form.company || undefined, application: form.application, message: form.message.trim() || undefined });
             setSent(true);
             setForm(EMPTY_FORM);
         } catch (error: unknown) {

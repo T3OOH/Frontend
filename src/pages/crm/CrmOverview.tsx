@@ -23,7 +23,7 @@ interface Order {
 
 /** Item da fila: orçamento do mapa (deal) ou pedido do catálogo (order). */
 type QueueItem =
-    | { kind: 'deal'; id: string; createdAt: string; name: string; detail: string; value: number }
+    | { kind: 'deal'; id: string; createdAt: string; name: string; detail: string; value: number; solution?: boolean }
     | { kind: 'order'; id: string; createdAt: string; name: string; detail: string; value: number };
 
 const STALE_DAYS = 7;
@@ -77,6 +77,7 @@ export function CrmOverview() {
             name: deal.client?.name || 'Cliente do site',
             detail: deal.title,
             value: Number(deal.expectedValue),
+            solution: deal.line === 'SOLUTION',
         })),
         ...openOrders.filter((o) => !o.sellerId).map((order) => ({
             kind: 'order' as const,
@@ -133,8 +134,14 @@ export function CrmOverview() {
                     [0, 1, 2, 3].map((i) => <div key={i} className="bg-brand-surface p-5"><Skeleton className="h-3 w-24" /><Skeleton className="mt-6 h-7 w-32" /></div>)
                 ) : (
                     <>
-                        <Stat label="Em negociação" value={formatBRL(metrics?.totalExpectedValue ?? 0)} hint={`${metrics?.totalActiveDeals ?? 0} oportunidades abertas`} accent />
-                        <Stat label="Ganhos" value={formatBRL(metrics?.totalWonValue ?? 0)} hint="Negócios marcados como ganhos" />
+                        <Stat label="Em negociação" value={formatBRL(metrics?.totalExpectedValue ?? 0)} accent
+                            hint={metrics?.byLine
+                                ? `OOH ${formatBRL(metrics.byLine.OOH.expectedValue)} · Solution ${formatBRL(metrics.byLine.SOLUTION.expectedValue)}`
+                                : `${metrics?.totalActiveDeals ?? 0} oportunidades abertas`} />
+                        <Stat label="Ganhos" value={formatBRL(metrics?.totalWonValue ?? 0)}
+                            hint={metrics?.byLine
+                                ? `OOH ${formatBRL(metrics.byLine.OOH.wonValue)} · Solution ${formatBRL(metrics.byLine.SOLUTION.wonValue)}`
+                                : 'Negócios marcados como ganhos'} />
                         <Stat label="Na fila" value={queue.length} hint="Leads e pedidos sem consultor" />
                         <Stat label="Clientes" value={metrics?.totalClients ?? 0} hint="Na sua carteira" />
                     </>
@@ -148,7 +155,7 @@ export function CrmOverview() {
                         {loading ? (
                             <div className="flex flex-col gap-2 p-5">{[0, 1].map((i) => <Skeleton key={i} className="h-14" />)}</div>
                         ) : queue.length === 0 ? (
-                            <p className="p-5 text-sm text-brand-muted">Nenhum orçamento esperando consultor. Os pedidos do site aparecem aqui assim que chegam.</p>
+                            <p className="p-5 text-sm text-brand-muted">Nenhum orçamento esperando consultor. Pedidos do mapa, do catálogo e da T3 Solution aparecem aqui assim que chegam.</p>
                         ) : (
                             <ul className="divide-y divide-brand-border">
                                 {queue.map((item) => (
@@ -156,7 +163,9 @@ export function CrmOverview() {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="truncate font-medium text-brand-text">{item.name}</span>
-                                                <Badge tone="muted">{item.kind === 'deal' ? 'Mapa' : 'Catálogo'}</Badge>
+                                                {item.kind === 'deal' && item.solution
+                                                    ? <Badge tone="accent">T3 Solution</Badge>
+                                                    : <Badge tone="muted">{item.kind === 'deal' ? 'Mapa' : 'Catálogo'}</Badge>}
                                             </div>
                                             <p className="mt-1 truncate text-sm text-brand-muted">{item.detail} · {ago(item.createdAt)}</p>
                                         </div>
