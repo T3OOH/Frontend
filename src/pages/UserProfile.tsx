@@ -31,6 +31,47 @@ const STATUS: Record<Status, { label: string; className: string }> = {
     CANCELLED: { label: 'Cancelado', className: 'border-white/10 text-ink-500' },
 };
 
+/** Etapas que o cliente acompanha e o que acontece em cada uma. */
+const STEPS: { status: Status; label: string }[] = [
+    { status: 'IN_REVIEW', label: 'Em análise' },
+    { status: 'PROPOSAL_SENT', label: 'Proposta enviada' },
+    { status: 'APPROVED', label: 'Aprovado' },
+];
+const NEXT: Record<Status, string> = {
+    IN_REVIEW: 'Um consultor está conferindo a disponibilidade dos painéis e prepara a proposta. Ela chega por WhatsApp ou e-mail.',
+    PROPOSAL_SENT: 'A proposta foi enviada. Fale com o consultor para aprovar ou ajustar painéis e prazo.',
+    APPROVED: 'Tudo certo. O consultor combina com você a arte da campanha e a data de início.',
+    CANCELLED: 'Este orçamento foi encerrado. Se quiser, monte um novo no mapa de painéis.',
+};
+
+function OrderSteps({ status }: { status: Status }) {
+    const current = STEPS.findIndex((st) => st.status === status);
+    return (
+        <div className="border-b border-white/[0.08] p-4 md:p-6">
+            {status === 'CANCELLED' ? (
+                <p className="text-sm text-ink-400">Orçamento cancelado</p>
+            ) : (
+                <ol className="grid grid-cols-3 gap-2" aria-label="Andamento do orçamento">
+                    {STEPS.map((st, i) => {
+                        const done = i <= current;
+                        return (
+                            <li key={st.status} aria-current={i === current ? 'step' : undefined}>
+                                <span className={`block h-1 ${done ? 'bg-brand-neon' : 'bg-white/10'}`} aria-hidden="true" />
+                                <span className={`mt-2 flex items-center gap-1.5 text-xs ${done ? 'text-ink-100' : 'text-ink-500'}`}>
+                                    {i < current && <Check className="h-3.5 w-3.5 text-brand-neon" aria-hidden="true" />}
+                                    {st.label}
+                                    <span className="sr-only">{i < current ? ' (concluída)' : i === current ? ' (etapa atual)' : ' (próxima)'}</span>
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ol>
+            )}
+            <p className="mt-3 max-w-[60ch] text-sm text-ink-400">{NEXT[status]}</p>
+        </div>
+    );
+}
+
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
 const date = (v: string) => new Date(v).toLocaleDateString('pt-BR');
 const shortId = (id: string) => id.slice(0, 6).toUpperCase();
@@ -345,6 +386,8 @@ export function UserProfile() {
                             </div>
                             <span className={`shrink-0 border px-2 py-0.5 text-[11px] ${STATUS[open.status].className}`}>{STATUS[open.status].label}</span>
                         </div>
+
+                        <OrderSteps status={open.status} />
 
                         <ul className="divide-y divide-white/[0.08]">
                             {open.items.map((item) => (

@@ -62,14 +62,15 @@ export function CrmClients() {
 
     useEffect(() => {
         load().then((data) => {
-            // Link vindo do funil: /crm/clientes?dealId=...
+            // Link vindo do funil ou da busca rápida: /crm/clientes?dealId=... ou ?clientId=...
             const dealId = searchParams.get('dealId');
-            if (!data || !dealId) return;
-            const deal = data.d.find((x) => x.id === dealId);
-            const client = deal && data.c.find((x) => x.id === deal.clientId);
+            const clientId = searchParams.get('clientId') ?? (dealId && data?.d.find((x) => x.id === dealId)?.clientId);
+            if (!data || (!dealId && !clientId)) return;
+            const client = clientId && data.c.find((x) => x.id === clientId);
             if (client) setProfile(client);
             else addToast('Este cliente não está na sua carteira.', 'info');
             searchParams.delete('dealId');
+            searchParams.delete('clientId');
             setSearchParams(searchParams, { replace: true });
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps

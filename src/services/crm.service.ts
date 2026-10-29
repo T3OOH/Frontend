@@ -4,6 +4,16 @@ import type { DealLine, SolutionDetails } from '../lib/solution';
 export type { DealLine, SolutionDetails };
 
 export type DealStage = 'NEW_LEAD' | 'FIRST_CONTACT' | 'NEGOTIATION' | 'WAITING_REPLY' | 'PROPOSAL_SENT' | 'POST_SALES';
+
+/** Nome de cada etapa do funil, na ordem do processo. */
+export const DEAL_STAGE_LABEL: Record<DealStage, string> = {
+    NEW_LEAD: 'Novos leads',
+    FIRST_CONTACT: 'Primeiro contato',
+    NEGOTIATION: 'Em negociação',
+    WAITING_REPLY: 'Aguardando retorno',
+    PROPOSAL_SENT: 'Proposta enviada',
+    POST_SALES: 'Pós-venda',
+};
 export type DealStatus = 'OPEN' | 'WON' | 'LOST';
 
 export interface CrmMetrics {

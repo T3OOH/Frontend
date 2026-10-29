@@ -1,10 +1,11 @@
 import { ComponentType, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeftRight, Globe, LogOut, Menu, Moon, Sun, UserRound, X } from 'lucide-react';
+import { ArrowLeftRight, Globe, LogOut, Menu, Moon, Search, Sun, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvatarClass, useTheme } from '@/contexts/ThemeContext';
 import { roleLabel } from '@/lib/roles';
+import { CommandPalette } from '@/components/app/CommandPalette';
 
 export interface ShellNavItem {
     to: string;
@@ -34,6 +35,19 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+
+    // Ctrl+K (Cmd+K no Mac) abre a busca rápida de qualquer tela
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                setSearchOpen((v) => !v);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
 
     useEffect(() => { setMenuOpen(false); }, [location.pathname]);
     useEffect(() => {
@@ -68,6 +82,11 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                     <img src={logo} alt="T3 OOH" className="h-7 w-auto" />
                     <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-muted">{area}</span>
                 </div>
+
+                <button type="button" onClick={() => setSearchOpen(true)} className="mx-3 mt-4 flex items-center gap-2 border border-brand-border bg-brand-background px-3 py-2 text-sm text-brand-muted hover:border-brand-muted hover:text-brand-text">
+                    <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Buscar
+                    <kbd className="ml-auto font-mono text-[10px]">Ctrl K</kbd>
+                </button>
 
                 <nav aria-label={area} className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4">
                     {nav.map(({ to, label, icon: Icon, end }) => (
@@ -114,9 +133,14 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                         <img src={logo} alt="T3 OOH" className="h-6 w-auto" />
                         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-muted">{area}</span>
                     </div>
-                    <button type="button" onClick={toggleTheme} aria-label={themeLabel} className="p-3 text-brand-muted hover:text-brand-text">
-                        <ThemeIcon className="h-5 w-5" strokeWidth={1.75} />
-                    </button>
+                    <div className="flex items-center">
+                        <button type="button" onClick={() => setSearchOpen(true)} aria-label="Buscar" className="p-3 text-brand-muted hover:text-brand-text">
+                            <Search className="h-5 w-5" strokeWidth={1.75} />
+                        </button>
+                        <button type="button" onClick={toggleTheme} aria-label={themeLabel} className="p-3 text-brand-muted hover:text-brand-text">
+                            <ThemeIcon className="h-5 w-5" strokeWidth={1.75} />
+                        </button>
+                    </div>
                 </header>
 
                 <main className="flex-1 px-4 pb-28 pt-6 md:px-6 lg:px-8 lg:pb-10 lg:pt-8">
@@ -141,6 +165,16 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                     <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Mais
                 </button>
             </nav>
+
+            <CommandPalette
+                open={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                links={[
+                    ...nav,
+                    ...(switchTo ? [{ to: switchTo.to, label: switchTo.label, icon: ArrowLeftRight }] : []),
+                    { to: '/perfil', label: 'Meu perfil', icon: UserRound },
+                ]}
+            />
 
             {/* ============================ MENU COMPLETO (celular) ============================ */}
             <AnimatePresence>
