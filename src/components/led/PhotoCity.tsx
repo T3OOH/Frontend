@@ -3,24 +3,26 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
 /**
- * Vídeo de fundo: Goiânia em golden hour, com a logo da T3 nos telões (1280×720, 10 s,
- * H.264 com índice no início). Toca em loop: perto do fim, uma segunda cópia começa do início
- * e as duas se cruzam em fade, então a volta ao começo não aparece como corte.
- * O pôster é um quadro do próprio vídeo: aparece enquanto ele carrega e no lugar dele
- * quando o vídeo não deve tocar.
+ * Vídeos de fundo (1280×720, 10 s, H.264 com índice no início). Tocam em loop: perto do fim,
+ * uma segunda cópia começa do início e as duas se cruzam em fade, então a volta ao começo não
+ * aparece como corte. O pôster é um quadro do próprio vídeo: aparece enquanto ele carrega e no
+ * lugar dele quando o vídeo não deve tocar.
  */
-const BACKGROUND_VIDEO = {
-    mp4: '/video/t3-cidade.mp4',
-    poster: '/video/t3-cidade-poster.webp',
+export const BACKGROUND_VIDEOS = {
+    /** Goiânia em golden hour, com a logo da T3 nos telões (site da T3 OOH). */
+    cidade: { mp4: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[80%_50%] md:object-center' },
+    /** Casa com piscina e o telão de LED da T3 Solution no terraço (página da T3 Solution). */
+    solution: { mp4: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', position: 'object-[64%_55%]' },
 };
+export type BackgroundVideo = (typeof BACKGROUND_VIDEOS)[keyof typeof BACKGROUND_VIDEOS];
+
+/** Duração do cruzamento entre o fim do vídeo e o começo da próxima volta. */
+const CROSSFADE_S = 1.2;
 
 /**
  * Economia de dados, conexão 2G ou "reduzir movimento" do sistema: fica a imagem parada.
  * (3G não entra: a estimativa do navegador marca muita conexão boa como 3G.)
  */
-/** Duração do cruzamento entre o fim do vídeo e o começo da próxima volta. */
-const CROSSFADE_S = 1.2;
-
 const deviceWantsStill = () => {
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
@@ -33,9 +35,11 @@ interface PhotoCityProps {
     veil?: number;
     /** "fixed" para fundo da página inteira; "absolute" para preencher uma seção. */
     position?: 'fixed' | 'absolute';
+    /** Vídeo do fundo (padrão: a cidade). */
+    video?: BackgroundVideo;
 }
 
-export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixed' }: PhotoCityProps) {
+export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixed', video = BACKGROUND_VIDEOS.cidade }: PhotoCityProps) {
     // Perfil → Aparência: "imagem parada" ou "menos movimento" também desligam o vídeo
     const { preferences } = useTheme();
     const [deviceStill] = useState(deviceWantsStill);
@@ -66,7 +70,7 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     const scale = useTransform(scrollY, [0, 1600], [1.04, 1.22]);
     const y = useTransform(scrollY, [0, 1600], [0, -60]);
 
-    const media = 'absolute inset-0 h-full w-full origin-[50%_62%] object-cover object-[80%_50%] md:object-center';
+    const media = `absolute inset-0 h-full w-full origin-[50%_62%] object-cover ${video.position}`;
 
     return (
         <div
@@ -75,7 +79,7 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
         >
             {/* Quadro do vídeo: base enquanto carrega e fundo fixo quando o vídeo não toca */}
             <motion.img
-                src={BACKGROUND_VIDEO.poster}
+                src={video.poster}
                 alt=""
                 style={{ scale, y }}
                 className={`${media} select-none`}
@@ -93,13 +97,13 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
                     muted
                     playsInline
                     preload={i === 0 ? 'auto' : 'metadata'}
-                    poster={BACKGROUND_VIDEO.poster}
+                    poster={video.poster}
                     onPlaying={() => { if (i === 0) setVideoReady(true); }}
                     onTimeUpdate={() => onTime(i)}
                     // A cópia que saiu termina escondida e volta ao início para a próxima vez
                     onEnded={(e) => { if (front !== i) e.currentTarget.currentTime = 0; }}
                 >
-                    <source src={BACKGROUND_VIDEO.mp4} type="video/mp4" />
+                    <source src={video.mp4} type="video/mp4" />
                 </motion.video>
             ))}
 

@@ -6,7 +6,7 @@ import { ArrowDown, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
 import { Seo } from '@/components/Seo';
-import { LedScreen, LedScene } from '@/components/led/LedScreen';
+import type { LedScene } from '@/components/led/LedScreen';
 import { CtaBand, btnOnOrange } from '@/components/CtaBand';
 import { btnDark, btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -34,14 +34,6 @@ const STEPS = [
     { title: 'Desenhamos a solução', text: 'Definimos tamanho, pixel, estrutura e a especificação técnica.' },
     { title: 'Proposta', text: 'Você recebe o escopo e o investimento detalhados.' },
     { title: 'Instalação', text: 'Com a aprovação, cuidamos da fixação, instalação e configuração.' },
-];
-
-/** Telão do hero: a tela "de produto" que a T3 Solution entrega. */
-const HERO_SCENES: LedScene[] = [
-    { type: 'logo', hold: 3200 },
-    { type: 'ad', lines: ['SUA TELA', 'SOB MEDIDA'], bg: '#FF5E00', fg: '#0B0B0C', stripe: '#0B0B0C', hold: 3600 },
-    { type: 'bars', hold: 2400 },
-    { type: 'text', lines: ['INDOOR', 'OUTDOOR'], hold: 3000 },
 ];
 
 const CTA_SCENES: LedScene[] = [
@@ -97,7 +89,8 @@ export function Solution() {
             <Seo title="T3 Solution" description="Painéis de LED sob medida para casas, empresas, comércio e empreendimentos: projeto, instalação e suporte com a T3 Solution." path="/solution" />
 
             {/* ============================ HERO ============================ */}
-            <section className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-14 px-4 pb-20 pt-12 md:px-8 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)] lg:pb-24">
+            {/* O fundo da página é o vídeo da casa com o telão da T3 Solution (MainLayout) */}
+            <section className="mx-auto flex max-w-[1400px] items-center px-4 pb-20 pt-12 md:px-8 lg:min-h-[calc(100dvh-5rem)] lg:pb-24">
                 <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
                     <img src="/t3-solution-3d.webp" alt="T3 Solution" className="mb-10 h-auto w-56 md:w-72" />
                     <h1 className="text-[2.6rem] font-light uppercase leading-[0.95] tracking-tight text-ink-100 sm:text-6xl xl:text-7xl">
@@ -109,28 +102,6 @@ export function Solution() {
                     <div className="mt-10 flex flex-wrap gap-3">
                         <a href="#orcamento" className={btnPrimary}>Pedir orçamento <ArrowDown className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></a>
                         <a href="#aplicacoes" className={btnGhost}>Onde aplicar</a>
-                    </div>
-                </motion.div>
-
-                {/* Módulo de LED: gabinetes com a tela rodando */}
-                <motion.div
-                    initial={{ opacity: 0, y: 28 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ ...spring, delay: 0.15 }}
-                    className="relative hidden lg:block"
-                    aria-hidden="true"
-                >
-                    <div className="border border-white/10 bg-[#1d1d20] p-3 shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
-                        <div className="relative">
-                            <LedScreen scenes={HERO_SCENES} cols={96} rows={54} className="block aspect-video w-full bg-[#121113]" />
-                            {/* Juntas dos gabinetes (grade 4×3) */}
-                            <div className="pointer-events-none absolute inset-0 grid grid-cols-4 grid-rows-3">
-                                {Array.from({ length: 12 }, (_, i) => <span key={i} className="border-[0.5px] border-black/40" />)}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mx-auto flex w-2/3 justify-between">
-                        <span className="h-16 w-2 bg-[#2a2a2e]" /><span className="h-16 w-2 bg-[#2a2a2e]" />
                     </div>
                 </motion.div>
             </section>
