@@ -1,8 +1,9 @@
-import { Building2, Images, LayoutDashboard, List, Map as MapIcon, ShoppingCart, Users } from 'lucide-react';
+import { BarChart3, Building2, Images, LayoutDashboard, List, Map as MapIcon, ShoppingCart, Users } from 'lucide-react';
 import { AppShell, ShellNavItem } from './AppShell';
 
 const NAV: ShellNavItem[] = [
     { to: '/dashboard', label: 'Visão geral', short: 'Início', icon: LayoutDashboard, end: true },
+    { to: '/dashboard/trafego', label: 'Tráfego e leads', short: 'Tráfego', icon: BarChart3 },
     { to: '/dashboard/paineis', label: 'Painéis', icon: List },
     { to: '/dashboard/pedidos', label: 'Pedidos', icon: ShoppingCart },
     { to: '/dashboard/mapa', label: 'Mapa', icon: MapIcon },

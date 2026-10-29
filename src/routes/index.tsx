@@ -10,6 +10,7 @@ import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { CrmLayout } from '@/layouts/CrmLayout'; 
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { ScrollToTop } from '@/components/ScrollToTop';
+import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 
 // ==========================================
 // MODULE IMPORTS (CODE SPLITTING)
@@ -27,6 +28,7 @@ const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info })))
 const Solution = lazy(() => import('@/pages/Solution').then(m => ({ default: m.Solution })));
 
 // Dashboard Views (Admin & Manager)
+const Traffic = lazy(() => import('@/pages/dashboard/Traffic').then(m => ({ default: m.Traffic })));
 const Overview = lazy(() => import('@/pages/dashboard/Overview').then(m => ({ default: m.Overview })));
 const Panels = lazy(() => import('@/pages/dashboard/Panels').then(m => ({ default: m.Panels })));
 const PanelForm = lazy(() => import('@/pages/dashboard/PanelForm').then(m => ({ default: m.PanelForm })));
@@ -117,6 +119,7 @@ export function AppRoutes() {
                               * Intercepta mudanças de rota e reseta a posição de scroll da janela para top 0
                               */}
                             <ScrollToTop />
+                            <AnalyticsTracker />
 
                             <Routes>
                                 {/* ROTAS PÚBLICAS */}
@@ -148,6 +151,7 @@ export function AppRoutes() {
                                         <Route path="mapa" element={<Suspense fallback={<MapLoader />}><DashboardMap /></Suspense>} />
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
+                                        <Route path="trafego" element={<Suspense fallback={<PageLoader />}><Traffic /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
                                         {/* A ROTA NOVA VAI AQUI DENTRO DO DASHBOARD */}
                                         <Route path="info" element={<Suspense fallback={<PageLoader />}><DashboardInfo /></Suspense>} />

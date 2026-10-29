@@ -76,7 +76,7 @@ export function Home() {
     return (
         <>
             <Seo
-                title="T3 OOH | Mídia OOH e painéis de LED"
+                title="T3 OOH | Painéis de LED e mídia exterior em Goiânia"
                 description="Anuncie nos telões de LED da T3 em Goiânia e região. Veja os pontos no mapa, monte seu pacote e solicite o orçamento."
                 path="/"
             />

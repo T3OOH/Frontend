@@ -1,7 +1,29 @@
+# T3 OOH: páginas públicas liberadas para buscadores e assistentes de IA.
+# Áreas internas (gestão, CRM e conta) ficam de fora.
+
 User-agent: *
 Allow: /
 Disallow: /dashboard
 Disallow: /crm
 Disallow: /perfil
+Disallow: /atualizar-senha
+
+# Assistentes e buscadores de IA (citam o site nas respostas)
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bingbot
+Allow: /
+Disallow: /dashboard
+Disallow: /crm
+Disallow: /perfil
+Disallow: /atualizar-senha
 
 Sitemap: https://t3ooh.com/sitemap.xml

@@ -8,6 +8,7 @@ import { contactSchema, ContactFormData } from '@/schemas/contact.schema';
 import { ATTENDANTS } from '@/lib/contacts';
 import { COMPANY_CNPJ, COMPANY_NAME } from '@/lib/company';
 import { Seo } from '@/components/Seo';
+import { api } from '@/lib/axios';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 
 const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
@@ -36,6 +37,14 @@ export function Contact() {
         const contact = [`E-mail: ${data.email}`, `Telefone: ${data.phone}`, data.company && `Empresa: ${data.company}`].filter(Boolean).join('\n');
         const text = `Olá, ${attendant.name}! Meu nome é *${data.name}*.\n\n${contact}\n\n${data.message}`;
         window.open(`https://wa.me/${attendant.phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+        // Registra o lead (com a origem) para a gestão; o WhatsApp abre de qualquer jeito
+        api.post('/contacts', {
+            name: data.name.trim(),
+            email: data.email.trim(),
+            phone: data.phone.trim(),
+            company: data.company?.trim() || undefined,
+            message: `[WhatsApp: ${attendant.name}] ${data.message.trim()}`.slice(0, 3000),
+        }).catch(() => { /* o contato já seguiu pelo WhatsApp */ });
         setSent(true);
         reset();
     };
