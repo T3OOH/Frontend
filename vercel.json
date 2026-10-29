@@ -1,6 +1,33 @@
 {
-    "cleanUrls": true,
     "rewrites": [
+        {
+            "source": "/mapa",
+            "destination": "/mapa.html"
+        },
+        {
+            "source": "/servicos",
+            "destination": "/servicos.html"
+        },
+        {
+            "source": "/solution",
+            "destination": "/solution.html"
+        },
+        {
+            "source": "/sobre",
+            "destination": "/sobre.html"
+        },
+        {
+            "source": "/contato",
+            "destination": "/contato.html"
+        },
+        {
+            "source": "/privacidade",
+            "destination": "/privacidade.html"
+        },
+        {
+            "source": "/termos",
+            "destination": "/termos.html"
+        },
         {
             "source": "/(.*)",
             "destination": "/index.html"

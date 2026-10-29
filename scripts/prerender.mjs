@@ -8,7 +8,7 @@
  *  - dados estruturados (JSON-LD: empresa local, site, trilha, perguntas frequentes, serviços);
  *  - o conteúdo da página em HTML semântico dentro do #root (o React troca ao carregar).
  *
- * Com "cleanUrls" na Vercel, /sobre serve dist/sobre.html; o resto continua na index.html.
+ * O vercel.json aponta /sobre para dist/sobre.html (e assim por diante); o resto continua na index.html.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
