@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { pdf, PDFViewer } from '@react-pdf/renderer';
-import { ArrowLeft, Download, Eye, Search, Send } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Download, Eye, Search, Send } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
@@ -13,6 +13,7 @@ import { CalculatedPanel, PanelWithPrice, ProposalClient, ProposalDocument } fro
 import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
+import { apiErrorMessage } from '@/lib/upload';
 
 interface LoadedOrder {
     id: string;
@@ -47,6 +48,13 @@ export function CrmProposals() {
     const [order, setOrder] = useState<LoadedOrder | null>(null);
     const [orderError, setOrderError] = useState(false);
 
+    const [clientsError, setClientsError] = useState(false);
+    // "Da carteira" ou "Sem cadastro" (dados digitados aqui; o cliente é criado ao formalizar)
+    const [clientMode, setClientMode] = useState<'wallet' | 'new'>('wallet');
+    const [newClient, setNewClient] = useState({ name: '', company: '', phone: '', email: '' });
+    const [formalizing, setFormalizing] = useState(false);
+    const [formalized, setFormalized] = useState<string | null>(null);
+
     const [clientId, setClientId] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [months, setMonths] = useState(12);
@@ -66,7 +74,9 @@ export function CrmProposals() {
                 orderId ? api.get<LoadedOrder>(`/orders/${orderId}`).then((r) => r.data) : Promise.resolve(null),
             ]);
             if (!active) return;
+            // Antes uma falha aqui deixava a lista vazia sem aviso
             if (c.status === 'fulfilled') setClients(c.value);
+            else setClientsError(true);
             const loadedOrder = o.status === 'fulfilled' ? o.value : null;
             if (orderId && !loadedOrder) setOrderError(true);
             // Painéis do pedido continuam na proposta mesmo se já estiverem ocupados
@@ -83,6 +93,15 @@ export function CrmProposals() {
         return () => { active = false; };
     }, [orderId, addToast]);
 
+    const reloadClients = useCallback(async () => {
+        setClientsError(false);
+        try {
+            setClients(await crmService.getClients());
+        } catch {
+            setClientsError(true);
+        }
+    }, []);
+
     const client: ProposalClient | null = useMemo(() => {
         if (order) {
             return {
@@ -93,9 +112,13 @@ export function CrmProposals() {
                 phone: order.user?.phone,
             };
         }
+        if (clientMode === 'new') {
+            const name = newClient.name.trim();
+            return name.length >= 2 ? { name, company: newClient.company.trim() || undefined, email: newClient.email.trim() || undefined, phone: newClient.phone.trim() || undefined } : null;
+        }
         const c = clients.find((x) => x.id === clientId);
         return c ? { name: c.name, company: c.company, document: c.document, email: c.email, phone: c.whatsapp || c.phone } : null;
-    }, [order, clients, clientId]);
+    }, [order, clients, clientId, clientMode, newClient]);
 
     const calculated: CalculatedPanel[] = useMemo(() => panels
         .filter((p) => selectedIds.includes(p.id))
@@ -151,6 +174,44 @@ export function CrmProposals() {
         }
     };
 
+    /** Registra a proposta como negócio na etapa "Proposta enviada", com painéis, prazo e valor. */
+    const formalize = async () => {
+        if (!ready || !client) return;
+        setFormalizing(true);
+        try {
+            const contract = totals.finalMonthlyValue * months;
+            const deal = await crmService.createDeal({
+                ...(clientMode === 'new'
+                    ? { newClient: { name: client.name, company: client.company || null, phone: client.phone || null, email: client.email || null } }
+                    : { clientId }),
+                title: `Proposta ${months} ${months === 1 ? 'mês' : 'meses'} · ${calculated.length} ${calculated.length === 1 ? 'painel' : 'painéis'}`,
+                expectedValue: Math.round(contract * 100) / 100,
+                originalValue: Math.round(totals.monthlyAfterIndividual * months * 100) / 100,
+                probability: 70,
+                line: 'OOH',
+                contractMonths: months,
+                stage: 'PROPOSAL_SENT',
+                // Valor mensal de cada painel já com os descontos de prazo e de negociação
+                items: calculated.map((p) => ({
+                    panelId: p.id,
+                    priceSnapshot: Math.round(p.finalPrice * (1 - totals.termDiscountPercent) * (1 - totals.globalDiscountNum / 100) * 100) / 100,
+                })),
+            });
+            setFormalized(deal.id);
+            addToast(clientMode === 'new' ? 'Pedido formalizado e cliente cadastrado na sua carteira.' : 'Pedido formalizado no funil.', 'success');
+            if (clientMode === 'new') {
+                await reloadClients();
+                setClientMode('wallet');
+                setClientId(deal.clientId);
+                setNewClient({ name: '', company: '', phone: '', email: '' });
+            }
+        } catch (error) {
+            addToast(apiErrorMessage(error, 'Não foi possível formalizar o pedido.'), 'error');
+        } finally {
+            setFormalizing(false);
+        }
+    };
+
     const send = async () => {
         if (!client?.phone) {
             addToast('Este cliente não tem WhatsApp cadastrado. Baixe o PDF e envie por outro canal.', 'error');
@@ -203,10 +264,48 @@ export function CrmProposals() {
                                 <p className="mt-2 text-xs text-brand-muted">Valor do pedido no site: <span className="font-mono text-brand-text">{formatBRL(order.totalValue)}</span></p>
                             </div>
                         ) : (
-                            <Field label="Cliente" htmlFor="p-client">
-                                <CustomSelect id="p-client" value={clientId} onChange={setClientId} placeholder="Selecione um cliente da carteira"
-                                    options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
-                            </Field>
+                            <div className="flex flex-col gap-3">
+                                <div role="radiogroup" aria-label="Cliente da proposta" className="grid grid-cols-2 gap-px border border-brand-border bg-brand-border">
+                                    {([['wallet', 'Da carteira'], ['new', 'Sem cadastro']] as const).map(([id, label]) => (
+                                        <button key={id} type="button" role="radio" aria-checked={clientMode === id} onClick={() => setClientMode(id)}
+                                            className={`min-h-11 px-3 py-2 text-sm md:min-h-9 ${clientMode === id ? 'bg-brand-surface font-medium text-brand-text shadow-[inset_0_-2px_0_rgb(255,94,0)]' : 'bg-brand-background text-brand-muted hover:text-brand-text'}`}>
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {clientMode === 'wallet' ? (
+                                    <Field label="Cliente" htmlFor="p-client">
+                                        <CustomSelect id="p-client" value={clientId} onChange={setClientId}
+                                            placeholder={clients.length ? 'Selecione um cliente da carteira' : 'Carteira vazia'} disabled={!clients.length}
+                                            options={clients.map((c) => ({ value: c.id, label: c.name, hint: c.company || undefined }))} />
+                                        {clientsError ? (
+                                            <p role="alert" className="mt-2 text-sm text-red-500">
+                                                Não foi possível carregar seus clientes. <button type="button" onClick={reloadClients} className="underline underline-offset-4">Tentar de novo</button>
+                                            </p>
+                                        ) : !clients.length && (
+                                            <p className="mt-2 text-sm text-brand-muted">
+                                                Nenhum cliente na sua carteira. Use <button type="button" onClick={() => setClientMode('new')} className="text-brand-text underline underline-offset-4">Sem cadastro</button> ou <Link to="/crm/clientes" className="text-brand-text underline underline-offset-4">cadastre um cliente</Link>.
+                                            </p>
+                                        )}
+                                    </Field>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <Field label="Nome do cliente" htmlFor="p-new-name" className="sm:col-span-2">
+                                            <input id="p-new-name" required minLength={2} value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} className={crmInput} placeholder="Quem vai receber a proposta" />
+                                        </Field>
+                                        <Field label="Empresa" htmlFor="p-new-company">
+                                            <input id="p-new-company" value={newClient.company} onChange={(e) => setNewClient({ ...newClient, company: e.target.value })} className={crmInput} />
+                                        </Field>
+                                        <Field label="WhatsApp" htmlFor="p-new-phone">
+                                            <input id="p-new-phone" type="tel" inputMode="tel" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} className={crmInput} placeholder="(62) 9 0000-0000" />
+                                        </Field>
+                                        <Field label="E-mail" htmlFor="p-new-email" className="sm:col-span-2" hint="O cliente entra na sua carteira quando você formalizar o pedido.">
+                                            <input id="p-new-email" type="email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} className={crmInput} />
+                                        </Field>
+                                    </div>
+                                )}
+                            </div>
                         )}
                         <Field label="Prazo" htmlFor="p-months">
                             <CustomSelect id="p-months" value={String(months)} onChange={(v) => setMonths(Number(v))}
@@ -286,12 +385,23 @@ export function CrmProposals() {
                         <p className="text-xs text-brand-muted">Total do contrato: <span className="font-mono text-brand-text">{formatBRL(totals.finalMonthlyValue * months)}</span></p>
                     </Panel>
 
-                    {!ready && <p className="text-sm text-brand-muted">Escolha o cliente e pelo menos um painel para gerar o PDF.</p>}
+                    {!ready && <p className="text-sm text-brand-muted">{clientMode === 'new' ? 'Informe o nome do cliente' : 'Escolha o cliente'} e pelo menos um painel para gerar o PDF.</p>}
+                    {formalized && (
+                        <p role="status" className="border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-500">
+                            Pedido registrado em "Proposta enviada". <Link to="/crm/pipeline" className="underline underline-offset-4">Ver no funil</Link>
+                        </p>
+                    )}
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
                         <button type="button" onClick={send} disabled={!ready || busy} className={crmBtn.primary}><Send className="h-4 w-4" aria-hidden="true" /> {busy ? 'Gerando…' : 'Enviar pelo WhatsApp'}</button>
                         <button type="button" onClick={download} disabled={!ready} className={crmBtn.secondary}><Download className="h-4 w-4" aria-hidden="true" /> Baixar PDF</button>
-                        <button type="button" onClick={() => setPreviewOpen(true)} disabled={!ready} className={`${crmBtn.secondary} sm:col-span-2 lg:col-span-1`}><Eye className="h-4 w-4" aria-hidden="true" /> Ver como fica</button>
+                        <button type="button" onClick={() => setPreviewOpen(true)} disabled={!ready} className={crmBtn.secondary}><Eye className="h-4 w-4" aria-hidden="true" /> Ver como fica</button>
+                        {/* Pedido do site já está no sistema; aqui só propostas montadas pelo comercial */}
+                        {!order && (
+                            <button type="button" onClick={formalize} disabled={!ready || formalizing} className={crmBtn.secondary}>
+                                <ClipboardCheck className="h-4 w-4" aria-hidden="true" /> {formalizing ? 'Formalizando…' : 'Formalizar no funil'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
