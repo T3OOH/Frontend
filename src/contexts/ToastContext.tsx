@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, LifeBuoy, X } from 'lucide-react';
+import { lastReported } from '@/lib/errorReporting';
+import { supportUrl } from '@/lib/support';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -26,10 +28,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         const id = Math.random().toString(36).substring(2, 9);
         setToasts((prev) => [...prev, { id, message, type }]);
 
-        // Remove automaticamente após 4 segundos
+        // Some sozinho: erros ficam mais tempo para dar tempo de acionar o suporte
         setTimeout(() => {
             setToasts((prev) => prev.filter((toast) => toast.id !== id));
-        }, 4000);
+        }, type === 'error' ? 9000 : 4000);
     }, []);
 
     // Valor estável: páginas usam o toast em dependências de efeitos sem disparar re-execuções
@@ -65,6 +67,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             {toast.type === 'info' && <Info className="w-5 h-5 shrink-0" />}
                             
                             <p className="flex-1 text-sm text-ink-100">{toast.message}</p>
+
+                            {toast.type === 'error' && (
+                                <a
+                                    href={supportUrl({ message: toast.message, code: lastReported && Date.now() - lastReported.at < 60_000 ? lastReported.code : null })}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex min-h-9 shrink-0 items-center gap-1.5 border border-white/15 px-2.5 text-xs text-ink-100 transition-colors hover:border-white/40"
+                                >
+                                    <LifeBuoy className="h-3.5 w-3.5" aria-hidden="true" /> Acionar suporte
+                                </a>
+                            )}
                             
                             <button 
                                 onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
