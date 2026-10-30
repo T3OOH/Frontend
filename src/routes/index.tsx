@@ -30,6 +30,7 @@ const Solution = lazy(() => import('@/pages/Solution').then(m => ({ default: m.S
 // Dashboard Views (Admin & Manager)
 const Traffic = lazy(() => import('@/pages/dashboard/Traffic').then(m => ({ default: m.Traffic })));
 const Reports = lazy(() => import('@/pages/dashboard/Reports').then(m => ({ default: m.Reports })));
+const AuditLogPage = lazy(() => import('@/pages/dashboard/AuditLog').then(m => ({ default: m.AuditLogPage })));
 const Overview = lazy(() => import('@/pages/dashboard/Overview').then(m => ({ default: m.Overview })));
 const Panels = lazy(() => import('@/pages/dashboard/Panels').then(m => ({ default: m.Panels })));
 const PanelForm = lazy(() => import('@/pages/dashboard/PanelForm').then(m => ({ default: m.PanelForm })));
@@ -155,6 +156,7 @@ export function AppRoutes() {
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
                                         <Route path="relatorios" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+                                        <Route path="registros" element={<Suspense fallback={<PageLoader />}><AuditLogPage /></Suspense>} />
                                         <Route path="trafego" element={<Suspense fallback={<PageLoader />}><Traffic /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
                                         {/* A ROTA NOVA VAI AQUI DENTRO DO DASHBOARD */}

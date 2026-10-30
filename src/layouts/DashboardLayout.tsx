@@ -1,4 +1,4 @@
-import { BarChart3, Building2, FileBarChart, Images, LayoutDashboard, List, Map as MapIcon, ShoppingCart, Users } from 'lucide-react';
+import { BarChart3, Building2, FileBarChart, ScrollText, Images, LayoutDashboard, List, Map as MapIcon, ShoppingCart, Users } from 'lucide-react';
 import { AppShell, ShellNavItem } from './AppShell';
 
 const NAV: ShellNavItem[] = [
@@ -9,6 +9,7 @@ const NAV: ShellNavItem[] = [
     { to: '/dashboard/pedidos', label: 'Pedidos', icon: ShoppingCart },
     { to: '/dashboard/mapa', label: 'Mapa', icon: MapIcon },
     { to: '/dashboard/usuarios', label: 'Usuários', icon: Users },
+    { to: '/dashboard/registros', label: 'Registros', icon: ScrollText },
     { to: '/dashboard/solution', label: 'T3 Solution', icon: Images },
     { to: '/dashboard/info', label: 'Página Sobre', icon: Building2 },
 ];
