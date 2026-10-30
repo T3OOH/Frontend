@@ -28,6 +28,11 @@ interface InteractiveMapProps {
     isInCart?: (id: string) => boolean;
     /** Preço mensal mostrado no popup (o site exibe o valor do plano anual). */
     priceLabel?: (panel: MapPanel) => string;
+    /**
+     * Celular: sem popup (a tela mostra um cartão próprio embaixo), sem botões de zoom
+     * (gesto de pinça) e o ponto escolhido fica acima do cartão.
+     */
+    compact?: boolean;
 }
 
 const toCoord = (value: number | string) => {
@@ -36,7 +41,7 @@ const toCoord = (value: number | string) => {
 };
 
 /** Enquadra os pontos na primeira carga e acompanha o painel selecionado. */
-function Camera({ panels, selectedId }: { panels: MapPanel[]; selectedId?: string | null }) {
+function Camera({ panels, selectedId, offsetY = 0 }: { panels: MapPanel[]; selectedId?: string | null; offsetY?: number }) {
     const map = useMap();
     const framed = useRef(false);
 
@@ -58,28 +63,32 @@ function Camera({ panels, selectedId }: { panels: MapPanel[]; selectedId?: strin
         const panel = panels.find((p) => p.id === selectedId);
         const lat = panel && toCoord(panel.lat);
         const lng = panel && toCoord(panel.lng);
-        if (lat && lng) map.flyTo([lat, lng], Math.max(map.getZoom(), 16), { duration: 0.8 });
-    }, [selectedId, panels, map]);
+        if (!lat || !lng) return;
+        const zoom = Math.max(map.getZoom(), 16);
+        // Centro deslocado para baixo: o ponto fica na parte de cima da tela, livre do cartão
+        const target = offsetY ? map.unproject(map.project([lat, lng], zoom).add([0, offsetY]), zoom) : L.latLng(lat, lng);
+        map.flyTo(target, zoom, { duration: 0.8 });
+    }, [selectedId, panels, map, offsetY]);
 
     return null;
 }
 
-export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, isInCart, priceLabel }: InteractiveMapProps) {
+export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, isInCart, priceLabel, compact }: InteractiveMapProps) {
     const markers = useRef<Record<string, L.Marker | null>>({});
     const { preferences } = useTheme();
 
     useEffect(() => {
-        if (!selectedPanelId) return;
+        if (!selectedPanelId || compact) return;
         const t = setTimeout(() => markers.current[selectedPanelId]?.openPopup(), 850);
         return () => clearTimeout(t);
-    }, [selectedPanelId]);
+    }, [selectedPanelId, compact]);
 
     return (
         <MapContainer center={GOIANIA} zoom={13} minZoom={4} maxBounds={BRAZIL_BOUNDS} maxBoundsViscosity={0.8} zoomControl={false} className="h-full w-full outline-none">
             {/* Estilo escolhido em Perfil → Aparência (key recria a camada ao trocar) */}
             <BaseTiles key={preferences.mapStyle} theme={preferences.mapStyle} />
-            <ZoomControl position="bottomright" />
-            <Camera panels={panels} selectedId={selectedPanelId} />
+            {!compact && <ZoomControl position="bottomright" />}
+            <Camera panels={panels} selectedId={selectedPanelId} offsetY={compact ? 110 : 0} />
 
             {panels.map((panel) => {
                 const lat = toCoord(panel.lat);
@@ -100,7 +109,7 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                         title={panel.name}
                         alt={panel.name}
                     >
-                        <Popup closeButton>
+                        {!compact && <Popup closeButton>
                             <div className="flex flex-col">
                                 <div className="aspect-[16/9] w-full bg-ink-850">
                                     <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-full w-full object-cover" />
@@ -126,7 +135,7 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                                     )}
                                 </div>
                             </div>
-                        </Popup>
+                        </Popup>}
                     </Marker>
                 );
             })}

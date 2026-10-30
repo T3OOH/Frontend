@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { InteractiveMap, MapPanel } from '@/features/map/InteractiveMap';
-import { ArrowRight, Check, ChevronLeft, Loader2, Maximize, Minimize, Plus, Search, Send, ShoppingCart, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, List, Loader2, Map as MapIcon, MapPin, Maximize, Minimize, Plus, Search, Send, ShoppingCart, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { api } from '@/lib/axios';
@@ -16,6 +16,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /** Desconto do plano anual exibido nos cards (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
@@ -48,6 +49,10 @@ export function Map() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Celular: alterna entre o mapa e a lista completa de telões
+    const isMobile = !useMediaQuery('(min-width: 768px)');
+    const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
 
     // Checkout Flow State Management
     const [checkoutStep, setCheckoutStep] = useState<'cart' | 'crm'>('cart');
@@ -181,6 +186,13 @@ export function Map() {
         const cities = Array.from(new Set(filtered.map(p => p.city).filter(Boolean))).sort();
         return [{ value: '', label: 'Todas as Cidades' }, ...cities.map(city => ({ value: city as string, label: city as string }))];
     }, [panels, selectedState]);
+
+    /** Cidades com quantidade de telões (atalhos do celular), da que tem mais para a que tem menos. */
+    const cityChips = useMemo(() => {
+        const count: Record<string, number> = {};
+        for (const p of panels) if (p.city) count[p.city] = (count[p.city] ?? 0) + 1;
+        return Object.entries(count).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
+    }, [panels]);
 
     const filteredPanels = panels.filter(panel => {
         const q = searchTerm.trim().toLowerCase();
@@ -332,6 +344,15 @@ export function Map() {
     const clearFilters = () => { setSearchTerm(''); setSelectedState(''); setSelectedCity(''); };
     const closeCheckout = () => { setIsCheckoutOpen(false); setCheckoutStep('cart'); };
     const pick = (id: string) => { setSelectedPanelId(id); };
+    const showOnMap = (id: string) => { setMobileView('map'); setSelectedPanelId(id); };
+    const selectedIndex = filteredPanels.findIndex((p) => p.id === selectedPanelId);
+    const selectedPanel = selectedIndex >= 0 ? filteredPanels[selectedIndex] : null;
+    /** Anterior e próximo telão (dá a volta no fim da lista). */
+    const step = (dir: 1 | -1) => {
+        if (!filteredPanels.length) return;
+        const next = (Math.max(0, selectedIndex) + dir + filteredPanels.length) % filteredPanels.length;
+        setSelectedPanelId(filteredPanels[next].id);
+    };
 
     /** Card do painel (lista lateral e faixa do celular). */
     const PanelCard = ({ panel, compact }: { panel: Panel; compact?: boolean }) => {
@@ -442,6 +463,7 @@ export function Map() {
                         onToggle={(p) => toggleInCart(p as Panel)}
                         isInCart={isInCart}
                         priceLabel={priceLabel}
+                        compact={isMobile}
                     />
                 )}
 
@@ -457,31 +479,135 @@ export function Map() {
                     </button>
                 </div>
 
-                {/* Busca (celular) */}
-                <div className="absolute left-3 right-3 top-3 z-[400] flex gap-2 md:hidden">
-                    <div className="relative flex-1">
-                        <label htmlFor="map-search-m" className="sr-only">Buscar painéis</label>
-                        <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
-                        <input id="map-search-m" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} border-white/20 bg-ink-950/95 pl-10 backdrop-blur`} autoComplete="off" />
+                {/* ============================ CELULAR ============================ */}
+                {/* Busca e atalhos por cidade */}
+                <div className={`absolute inset-x-0 top-0 z-[450] flex flex-col gap-2 px-3 pb-3 pt-3 md:hidden ${mobileView === 'list' ? 'border-b border-white/[0.08] bg-ink-950' : 'bg-gradient-to-b from-ink-950/95 via-ink-950/70 to-transparent'}`}>
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <label htmlFor="map-search-m" className="sr-only">Buscar painéis</label>
+                            <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                            <input id="map-search-m" type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Avenida, bairro ou cidade" className={`${field} border-white/20 bg-ink-950/95 pl-10 backdrop-blur`} autoComplete="off" />
+                        </div>
+                        <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className="shrink-0 border border-white/20 bg-ink-950/95 px-3.5 text-ink-100" aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+                            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                        </button>
                     </div>
-                    <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className="shrink-0 border border-white/20 bg-ink-950/95 px-3 text-ink-100" aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
-                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                    </button>
-                </div>
-
-                {/* Faixa de cards (celular) */}
-                <div className="absolute inset-x-0 bottom-0 z-[400] flex flex-col gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
-                    {cart.length > 0 && (
-                        <div className="px-3">
-                            <button type="button" onClick={() => setIsCheckoutOpen(true)} className={`${btnPrimary} w-full`}>
-                                <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Ver orçamento · <span className="font-mono">{cart.length}</span>
-                            </button>
+                    {cityChips.length > 1 && (
+                        <div role="radiogroup" aria-label="Cidade" className="-mx-3 flex gap-1.5 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {([['', panels.length], ...cityChips] as [string, number][]).map(([city, n]) => {
+                                const on = selectedCity === city && (city !== '' || !selectedState);
+                                return (
+                                    <button key={city || 'todas'} type="button" role="radio" aria-checked={on}
+                                        onClick={() => { setSelectedState(''); setSelectedCity(city); setSelectedPanelId(null); }}
+                                        className={`flex min-h-9 shrink-0 items-center gap-1.5 border px-3 text-xs backdrop-blur ${on ? 'border-brand-neon bg-brand-neon text-ink-950' : 'border-white/20 bg-ink-950/90 text-ink-100'}`}>
+                                        {city || 'Todas'} <span className={`font-mono ${on ? 'text-ink-950/70' : 'text-ink-400'}`}>{n}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
-                    <div className="flex snap-x gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        {filteredPanels.map((panel) => <PanelCard key={panel.id} panel={panel} compact />)}
-                        {!isLoading && filteredPanels.length === 0 && <p className="border border-white/15 bg-ink-950/95 px-4 py-3 text-sm text-ink-300">Nenhum ponto com essa busca.</p>}
+                </div>
+
+                {/* Lista completa de telões */}
+                {mobileView === 'list' && (
+                    <div className="absolute inset-0 z-[440] overflow-y-auto bg-ink-950 px-3 pb-28 pt-[124px] md:hidden">
+                        <p className={`${eyebrow} mb-3`}>{isLoading ? 'Carregando' : `${filteredPanels.length} ${filteredPanels.length === 1 ? 'telão' : 'telões'}${hasFilters ? ' com esse filtro' : ''}`}</p>
+                        {isLoading ? (
+                            <div className="flex flex-col gap-3">{[0, 1, 2].map((i) => <div key={i} className="h-64 animate-pulse bg-ink-900" />)}</div>
+                        ) : filteredPanels.length === 0 ? (
+                            <div className="border border-dashed border-white/15 p-6">
+                                <p className="text-ink-100">Nenhum telão encontrado</p>
+                                {hasFilters && <button type="button" onClick={clearFilters} className={`mt-4 ${btnGhost}`}>Limpar filtros</button>}
+                            </div>
+                        ) : (
+                            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                {filteredPanels.map((panel) => {
+                                    const inCart = isInCart(panel.id);
+                                    const impacts = parseImpacts(panel.impacts);
+                                    return (
+                                        <li key={panel.id} className={`flex flex-col border bg-ink-900 ${inCart ? 'border-white/40' : 'border-white/[0.08]'}`}>
+                                            <button type="button" onClick={() => showOnMap(panel.id)} className="relative aspect-[16/9] w-full overflow-hidden bg-ink-850" aria-label={`Ver ${panel.name} no mapa`}>
+                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt="" loading="lazy" className="h-full w-full object-cover" />
+                                                {inCart && <span className="absolute left-2 top-2 bg-ink-950/90 px-2 py-1 text-[11px] text-ink-100">No orçamento</span>}
+                                            </button>
+                                            <div className="flex flex-1 flex-col gap-3 p-4">
+                                                <div>
+                                                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[panel.city, panel.state].filter(Boolean).join(' · ')}</p>
+                                                    <p className="mt-1 text-base font-medium leading-snug text-ink-100">{panel.name}</p>
+                                                </div>
+                                                <dl className="grid grid-cols-3 gap-2 border-t border-white/10 pt-3 font-mono text-xs">
+                                                    <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-0.5 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
+                                                    <div><dt className="text-ink-500">Formato</dt><dd className="mt-0.5 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                                    <div><dt className="text-ink-500">Plano anual</dt><dd className="mt-0.5 text-brand-neon">{Number(panel.price) > 0 ? formatCurrency(Number(panel.price) * (1 - ANNUAL_DISCOUNT)) : 'Consulte'}</dd></div>
+                                                </dl>
+                                                <div className="mt-auto grid grid-cols-2 gap-2">
+                                                    <button type="button" onClick={() => showOnMap(panel.id)} className="flex min-h-11 items-center justify-center gap-2 border border-white/20 text-sm text-ink-100">
+                                                        <MapPin className="h-4 w-4" aria-hidden="true" /> Ver no mapa
+                                                    </button>
+                                                    <button type="button" onClick={() => toggleInCart(panel)} aria-pressed={inCart}
+                                                        className={`flex min-h-11 items-center justify-center gap-2 text-sm font-semibold ${inCart ? 'border border-white/40 text-ink-100' : 'bg-brand-neon text-ink-950'}`}>
+                                                        {inCart ? <><Check className="h-4 w-4" aria-hidden="true" /> Adicionado</> : <><Plus className="h-4 w-4" aria-hidden="true" /> Orçamento</>}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
                     </div>
+                )}
+
+                {/* Embaixo: alternar mapa e lista, orçamento, e o telão escolhido ou a faixa de telões */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[460] flex flex-col gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+                    <div className="pointer-events-auto flex justify-center gap-2 px-3">
+                        <button type="button" onClick={() => setMobileView(mobileView === 'map' ? 'list' : 'map')}
+                            className="flex min-h-11 items-center gap-2 border border-white/20 bg-ink-950/95 px-4 text-sm font-medium text-ink-100 shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur">
+                            {mobileView === 'map'
+                                ? <><List className="h-4 w-4" aria-hidden="true" /> Lista <span className="font-mono text-ink-400">{filteredPanels.length}</span></>
+                                : <><MapIcon className="h-4 w-4" aria-hidden="true" /> Mapa</>}
+                        </button>
+                        {cart.length > 0 && (
+                            <button type="button" onClick={() => setIsCheckoutOpen(true)} className={`${btnPrimary} min-h-11 shadow-[0_10px_30px_rgba(0,0,0,0.45)]`}>
+                                <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Orçamento · <span className="font-mono">{cart.length}</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {mobileView === 'map' && (selectedPanel ? (
+                        <div className="pointer-events-auto px-3">
+                            <article className="border border-white/15 bg-ink-950/95 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur" aria-label={`Telão ${selectedPanel.name}`}>
+                                <div className="flex gap-3 p-3">
+                                    <img src={selectedPanel.images?.[0] || '/placeholder.svg'} alt="" className="h-24 w-28 shrink-0 bg-ink-850 object-cover" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}</p>
+                                            <button type="button" onClick={() => setSelectedPanelId(null)} className="-m-2 p-2 text-ink-400" aria-label="Fechar"><X className="h-4 w-4" /></button>
+                                        </div>
+                                        <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-ink-100">{selectedPanel.name}</p>
+                                        <p className="mt-1.5 font-mono text-xs text-ink-300">
+                                            {parseImpacts(selectedPanel.impacts) ? `${formatImpacts(parseImpacts(selectedPanel.impacts))}/dia` : '—'}{selectedPanel.size ? ` · ${selectedPanel.size}` : ''}
+                                        </p>
+                                        {Number(selectedPanel.price) > 0 && <p className="font-mono text-xs text-brand-neon">{formatCurrency(Number(selectedPanel.price) * (1 - ANNUAL_DISCOUNT))}/mês no plano anual</p>}
+                                    </div>
+                                </div>
+                                <div className="flex items-stretch border-t border-white/10">
+                                    <button type="button" onClick={() => step(-1)} className="flex w-12 items-center justify-center text-ink-300" aria-label="Telão anterior"><ChevronLeft className="h-5 w-5" /></button>
+                                    <span className="flex items-center px-1 font-mono text-[11px] text-ink-400">{selectedIndex + 1}/{filteredPanels.length}</span>
+                                    <button type="button" onClick={() => step(1)} className="flex w-12 items-center justify-center text-ink-300" aria-label="Próximo telão"><ChevronRight className="h-5 w-5" /></button>
+                                    <button type="button" onClick={() => toggleInCart(selectedPanel)} aria-pressed={isInCart(selectedPanel.id)}
+                                        className={`ml-auto flex min-h-12 flex-1 items-center justify-center gap-2 text-sm font-semibold ${isInCart(selectedPanel.id) ? 'border-l border-white/10 text-ink-100' : 'bg-brand-neon text-ink-950'}`}>
+                                        {isInCart(selectedPanel.id) ? <><Check className="h-4 w-4" aria-hidden="true" /> No orçamento</> : <><Plus className="h-4 w-4" aria-hidden="true" /> Adicionar ao orçamento</>}
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                    ) : (
+                        <div className="pointer-events-auto flex snap-x gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {filteredPanels.map((panel) => <PanelCard key={panel.id} panel={panel} compact />)}
+                            {!isLoading && filteredPanels.length === 0 && <p className="border border-white/15 bg-ink-950/95 px-4 py-3 text-sm text-ink-300">Nenhum ponto com essa busca.</p>}
+                        </div>
+                    ))}
                 </div>
             </div>
 
