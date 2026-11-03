@@ -1,7 +1,7 @@
 import { ComponentType, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeftRight, Globe, LogOut, Menu, Moon, Search, Sun, UserRound, X } from 'lucide-react';
+import { ArrowLeftRight, Globe, LogOut, Menu, MonitorDown, Moon, Search, Sun, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvatarClass, useTheme } from '@/contexts/ThemeContext';
 import { roleLabel } from '@/lib/roles';
@@ -74,6 +74,10 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
 
     const secondary = 'flex items-center gap-3 px-3 py-2 text-sm text-brand-muted hover:bg-brand-background hover:text-brand-text';
 
+    // Página privada de download do app desktop, dentro da área atual (o comercial não acessa /dashboard)
+    const appLink = area === 'Comercial' ? '/crm/aplicativo' : '/dashboard/aplicativo';
+    const appButton = 'flex items-center gap-3 border border-brand-neon/40 bg-brand-neon/10 px-3 py-2 text-sm font-medium text-brand-neon transition-colors hover:bg-brand-neon/20';
+
     return (
         <div className={`flex min-h-[100dvh] w-full bg-brand-background text-brand-text ${theme === 'light' ? 'dashboard-light' : ''}`}>
             {/* ============================ BARRA LATERAL (desktop) ============================ */}
@@ -97,6 +101,9 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                 </nav>
 
                 <div className="flex flex-col gap-1 border-t border-brand-border p-3">
+                    <Link to={appLink} className={`${appButton} mb-1`}>
+                        <MonitorDown className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Baixar o app desktop
+                    </Link>
                     {switchTo && (
                         <Link to={switchTo.to} className={secondary}>
                             <ArrowLeftRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}
@@ -172,6 +179,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                 links={[
                     ...nav,
                     ...(switchTo ? [{ to: switchTo.to, label: switchTo.label, icon: ArrowLeftRight }] : []),
+                    { to: appLink, label: 'Baixar o app desktop', icon: MonitorDown },
                     { to: '/perfil', label: 'Meu perfil', icon: UserRound },
                 ]}
             />
@@ -206,6 +214,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                                     <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {label}
                                 </NavLink>
                             ))}
+                            <Link to={appLink} className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-brand-neon"><MonitorDown className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Baixar o app desktop</Link>
                             {switchTo && <Link to={switchTo.to} className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><ArrowLeftRight className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}</Link>}
                             <Link to="/" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><Globe className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Site público</Link>
                             <Link to="/perfil" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><UserRound className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Meu perfil</Link>
