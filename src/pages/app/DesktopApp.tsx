@@ -11,6 +11,8 @@ interface DesktopFile {
     size: number;
     platform: 'windows' | 'macos' | 'linux';
     kind: 'instalador' | 'portatil';
+    /** SHA-256 do arquivo (hex); null se o GitHub não informou. */
+    sha256?: string | null;
 }
 
 interface DesktopRelease {
@@ -28,7 +30,7 @@ const mb = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('pt-BR', {
 
 const STEPS = [
     { title: 'Baixe o arquivo', text: 'Use o botão de download. O link é pessoal e vale por poucos minutos.' },
-    { title: 'Instale ou extraia', text: 'Com o instalador (.msi), siga as telas. Com o .zip, extraia a pasta onde quiser, como em Documentos.' },
+    { title: 'Instale ou extraia', text: 'O instalador (.msi) instala só para o seu usuário, sem pedir senha de administrador. Com o .zip, extraia a pasta onde quiser, como em Documentos.' },
     { title: 'Abra o T3 Gestor', text: 'Pelo atalho do menu Iniciar ou pelo arquivo "T3 Gestor.exe" da pasta extraída.' },
     { title: 'Entre com a sua conta', text: 'Mesmo e-mail e senha do site. Marque "Manter conectado" para o app abrir direto nas próximas vezes.' },
 ];
@@ -135,6 +137,11 @@ export function DesktopApp() {
                                 {downloadButton(main, `Baixar para ${PLATFORM[main.platform]}`)}
                                 <span className="text-xs text-brand-muted">{main.name} · {mb(main.size)}</span>
                             </div>
+                            {main.sha256 && (
+                                <p className="break-all font-mono text-[11px] leading-relaxed text-brand-muted" title="Confira com: Get-FileHash arquivo.msi">
+                                    SHA-256 {main.sha256}
+                                </p>
+                            )}
                             {release.files.length > 1 && (
                                 <div className="flex flex-col gap-2 border-t border-brand-border pt-5">
                                     <p className={eyebrowCrm}>Outros arquivos</p>
@@ -190,7 +197,11 @@ export function DesktopApp() {
                             <ul className="flex flex-col divide-y divide-brand-border text-sm">
                                 <li className="flex gap-3 px-5 py-3.5">
                                     <MonitorDown className="mt-0.5 h-4 w-4 shrink-0 text-brand-muted" strokeWidth={1.75} aria-hidden="true" />
-                                    <span className="text-brand-muted"><span className="text-brand-text">Windows 10 ou 11 (64 bits)</span>, internet e cerca de 120 MB livres.</span>
+                                    <span className="text-brand-muted"><span className="text-brand-text">Windows 10 ou 11 (64 bits)</span>, internet e cerca de 250 MB livres.</span>
+                                </li>
+                                <li className="flex gap-3 px-5 py-3.5">
+                                    <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-brand-muted" strokeWidth={1.75} aria-hidden="true" />
+                                    <span className="text-brand-muted">Instalado pelo .msi, o app <span className="text-brand-text">se atualiza sozinho</span>: quando sai versão nova, aparece "Atualizar" na barra de cima. O arquivo é conferido (SHA-256) antes de instalar.</span>
                                 </li>
                                 <li className="flex gap-3 px-5 py-3.5">
                                     <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-brand-muted" strokeWidth={1.75} aria-hidden="true" />
