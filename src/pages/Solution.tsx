@@ -5,10 +5,12 @@ import { ArrowDown, ArrowRight, Check, Loader2 } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
 import type { LedScene } from '@/components/led/LedScreen';
 import { CtaBand, btnOnOrange } from '@/components/CtaBand';
-import { SOLUTION_APPLICATIONS } from '@/lib/solution';
+import { SOLUTION_APPLICATIONS, SOLUTION_ENVIRONMENTS, SOLUTION_SERVICES } from '@/lib/solution';
 import { btnDark, btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
 
@@ -36,18 +38,51 @@ const CTA_SCENES: LedScene[] = [
     { type: 'logo', hold: 2600 },
 ];
 
-const EMPTY_FORM = { name: '', phone: '', email: '', company: '', application: '', message: '' };
+type ServiceValue = (typeof SOLUTION_SERVICES)[number]['value'];
+
+const EMPTY_FORM = { name: '', phone: '', email: '', company: '', application: '', environment: '', width: '', height: '', message: '' };
 
 const field = 'w-full border border-white/15 bg-ink-900 px-4 py-3.5 text-sm text-ink-100 placeholder:text-ink-500 transition-colors focus:border-brand-neon focus:outline-none';
 const label = 'mb-2 block text-sm text-ink-300';
+const chip = (active: boolean) => `flex min-h-11 items-center gap-2 border px-4 py-2.5 text-left text-sm transition-colors ${active ? 'border-brand-neon bg-brand-neon/10 text-ink-100' : 'border-white/15 bg-ink-900 text-ink-300 hover:border-white/30 hover:text-ink-100'}`;
 const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
+
+const maskPhone = (value: string) => {
+    const v = value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 10) return v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+    if (v.length > 6) return v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    if (v.length > 2) return v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+    return v ? `(${v}` : '';
+};
+
+/** "4,5" ou "4.5" em metros; vazio ou inválido vira undefined (o campo é opcional). */
+const meters = (v: string) => {
+    const n = Number(v.replace(',', '.'));
+    return v.trim() && Number.isFinite(n) && n > 0 && n <= 200 ? n : undefined;
+};
+const num = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 
 export function Solution() {
     const { addToast } = useToast();
+    const { user, isAuthenticated } = useAuth();
     const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
     const [form, setForm] = useState(EMPTY_FORM);
+    const [services, setServices] = useState<ServiceValue[]>([]);
     const [sending, setSending] = useState(false);
-    const [sent, setSent] = useState(false);
+    const [sent, setSent] = useState<{ protocol: string; email: string } | null>(null);
+
+    // Cliente logado: nome, e-mail, WhatsApp e empresa já vêm da conta
+    useEffect(() => {
+        if (!isAuthenticated || !user) return;
+        setForm((f) => ({ ...f, name: f.name || user.name || '', email: f.email || user.email || '' }));
+        profileService.getProfile()
+            .then((p: { phone?: string | null; companyName?: string | null }) => setForm((f) => ({
+                ...f,
+                phone: f.phone || maskPhone(p?.phone || ''),
+                company: f.company || p?.companyName || '',
+            })))
+            .catch(() => { /* sem o perfil, o cliente digita */ });
+    }, [isAuthenticated, user]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -62,17 +97,42 @@ export function Solution() {
 
     const set = (key: keyof typeof EMPTY_FORM) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+    const toggleService = (value: ServiceValue) =>
+        setServices((list) => (list.includes(value) ? list.filter((s) => s !== value) : [...list, value]));
+
+    const width = meters(form.width);
+    const height = meters(form.height);
+
     const onSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (!form.application) {
+            addToast('Escolha onde a tela vai ficar.', 'error');
+            return;
+        }
         setSending(true);
         try {
-            // Vira um negócio da linha T3 Solution na fila do CRM, com a aplicação escolhida
-            await api.post('/crm/deals/solution', { name: form.name, phone: form.phone, email: form.email, company: form.company || undefined, application: form.application, message: form.message.trim() || undefined });
-            setSent(true);
+            // Vira um negócio da linha T3 Solution na fila do CRM, já com o projeto preenchido
+            const { data } = await api.post('/crm/deals/solution', {
+                name: form.name,
+                phone: form.phone,
+                email: form.email,
+                company: form.company || undefined,
+                application: form.application,
+                environment: form.environment || undefined,
+                width,
+                height,
+                services: services.length ? services : undefined,
+                message: form.message.trim() || undefined,
+            });
+            setSent({ protocol: data?.protocol || String(data?.id || '').slice(0, 6).toUpperCase(), email: form.email });
             setForm(EMPTY_FORM);
+            setServices([]);
         } catch (error: unknown) {
-            const details = (error as { response?: { data?: { details?: { message?: string }[] } } }).response?.data?.details;
-            addToast(details?.[0]?.message || 'Não foi possível enviar sua mensagem. Tente novamente.', 'error');
+            const response = (error as { response?: { status?: number; data?: { details?: { message?: string }[] } } }).response;
+            const message = response?.status === 429
+                ? 'Muitos envios em pouco tempo. Aguarde alguns minutos e tente de novo.'
+                : response?.data?.details?.[0]?.message || 'Não foi possível enviar seu pedido. Tente novamente.';
+            addToast(message, 'error');
         } finally {
             setSending(false);
         }
@@ -212,8 +272,19 @@ export function Solution() {
                         <div role="status" className="flex flex-col items-start justify-center border border-white/10 p-8 md:p-12">
                             <span className="flex h-12 w-12 items-center justify-center bg-brand-neon text-ink-950"><Check className="h-6 w-6" strokeWidth={2} aria-hidden="true" /></span>
                             <h3 className="mt-6 text-3xl font-light uppercase tracking-tight text-ink-100">Pedido recebido</h3>
-                            <p className="mt-3 max-w-[44ch] leading-relaxed text-ink-400">A equipe vai analisar o projeto e falar com você em breve.</p>
-                            <button type="button" onClick={() => setSent(false)} className={`mt-8 ${btnGhost}`}>Enviar outro pedido</button>
+                            {sent.protocol && <p className="mt-3 font-mono text-sm text-ink-300">Protocolo <span className="text-brand-neon">#{sent.protocol}</span></p>}
+                            <p className="mt-3 max-w-[44ch] leading-relaxed text-ink-400">
+                                A equipe vai analisar o projeto e falar com você pelo WhatsApp. Enviamos a confirmação para <span className="text-ink-100">{sent.email}</span>.
+                            </p>
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                {isAuthenticated ? (
+                                    <Link to="/perfil?aba=orcamentos" className={btnPrimary}>Acompanhar no perfil <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></Link>
+                                ) : (
+                                    <Link to="/cadastro" className={btnPrimary}>Criar conta para acompanhar <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></Link>
+                                )}
+                                <button type="button" onClick={() => setSent(null)} className={btnGhost}>Enviar outro pedido</button>
+                            </div>
+                            {!isAuthenticated && <p className="mt-4 max-w-[44ch] text-xs text-ink-500">Cadastre-se com o mesmo e-mail e o pedido aparece em Meu perfil → Orçamentos.</p>}
                         </div>
                     ) : (
                         <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -223,7 +294,7 @@ export function Solution() {
                             </div>
                             <div>
                                 <label htmlFor="sol-phone" className={label}>WhatsApp</label>
-                                <input id="sol-phone" required type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder="(62) 9 0000-0000" className={field} />
+                                <input id="sol-phone" required type="tel" inputMode="tel" autoComplete="tel" minLength={14} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))} placeholder="(62) 90000-0000" className={field} />
                             </div>
                             <div>
                                 <label htmlFor="sol-email" className={label}>E-mail</label>
@@ -240,9 +311,56 @@ export function Solution() {
                                         options={APPLICATIONS.map((a) => ({ value: a.title, label: a.title }))} />
                                 </div>
                             </div>
+
+                            {/* Projeto: tudo opcional, chega preenchido no negócio do CRM */}
+                            <fieldset className="md:col-span-2">
+                                <legend className={label}>Ambiente <span className="text-ink-500">(opcional)</span></legend>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {SOLUTION_ENVIRONMENTS.map((env) => {
+                                        const active = form.environment === env.value;
+                                        return (
+                                            <button key={env.value} type="button" aria-pressed={active} className={chip(active)}
+                                                onClick={() => setForm((f) => ({ ...f, environment: active ? '' : env.value }))}>
+                                                <span className="font-medium">{env.label}</span>
+                                                <span className="text-xs text-ink-500">{env.hint}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </fieldset>
+                            <div>
+                                <label htmlFor="sol-width" className={label}>Largura aproximada <span className="text-ink-500">(m)</span></label>
+                                <input id="sol-width" inputMode="decimal" value={form.width} onChange={set('width')} placeholder="Ex.: 4" className={field} />
+                            </div>
+                            <div>
+                                <label htmlFor="sol-height" className={label}>Altura aproximada <span className="text-ink-500">(m)</span></label>
+                                <input id="sol-height" inputMode="decimal" value={form.height} onChange={set('height')} placeholder="Ex.: 2,5" className={field} />
+                            </div>
+                            {width && height && (
+                                <p className="-mt-3 font-mono text-xs text-ink-400 md:col-span-2">
+                                    Tela de {num(width)} × {num(height)} m · <span className="text-brand-neon">{num(width * height)} m²</span>
+                                </p>
+                            )}
+                            <fieldset className="md:col-span-2">
+                                <legend className={label}>O que você precisa <span className="text-ink-500">(opcional, marque quantos quiser)</span></legend>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {SOLUTION_SERVICES.map((s) => {
+                                        const active = services.includes(s.value);
+                                        return (
+                                            <button key={s.value} type="button" role="checkbox" aria-checked={active} className={chip(active)} onClick={() => toggleService(s.value)}>
+                                                <span className={`flex h-4 w-4 shrink-0 items-center justify-center border ${active ? 'border-brand-neon bg-brand-neon text-ink-950' : 'border-white/30'}`} aria-hidden="true">
+                                                    {active && <Check className="h-3 w-3" strokeWidth={3} />}
+                                                </span>
+                                                {s.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </fieldset>
+
                             <div className="md:col-span-2">
                                 <label htmlFor="sol-msg" className={label}>Detalhes do projeto <span className="text-ink-500">(opcional)</span></label>
-                                <textarea id="sol-msg" rows={5} value={form.message} onChange={set('message')} placeholder="Local, medidas aproximadas, uso da tela" className={`${field} resize-none`} />
+                                <textarea id="sol-msg" rows={4} value={form.message} onChange={set('message')} placeholder="Endereço ou bairro, uso da tela, prazo desejado" className={`${field} resize-none`} />
                             </div>
                             <div className="md:col-span-2">
                                 <button type="submit" disabled={sending} className={`${btnPrimary} w-full md:w-auto`}>

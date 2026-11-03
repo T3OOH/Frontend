@@ -10,6 +10,7 @@ import { SecurityTab } from '@/pages/profile/SecurityTab';
 import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
+import { DealLine, SOLUTION_SERVICES, SolutionDetails, solutionSummary } from '@/lib/solution';
 
 type Status = 'IN_REVIEW' | 'PROPOSAL_SENT' | 'APPROVED' | 'CANCELLED';
 
@@ -22,7 +23,14 @@ interface MyOrder {
     months: number;
     seller?: { name?: string; phone?: string | null } | null;
     items: { id: string; priceSnapshot: number; panel?: { name?: string; city?: string; state?: string; images?: string[] } | null }[];
+    /** Pedido da T3 Solution: sem painéis da rede, com o projeto da tela. */
+    line?: DealLine;
+    solution?: SolutionDetails | null;
 }
+
+const isSolution = (o: MyOrder) => o.line === 'SOLUTION';
+const originLabel = (o: MyOrder) => (isSolution(o) ? 'T3 Solution' : o.source === 'MAP' ? 'Pelo mapa' : 'Pelo catálogo');
+const serviceLabel = (value: string) => SOLUTION_SERVICES.find((s) => s.value === value)?.label ?? value;
 
 const STATUS: Record<Status, { label: string; className: string }> = {
     IN_REVIEW: { label: 'Em análise', className: 'border-white/20 text-ink-100' },
@@ -43,8 +51,15 @@ const NEXT: Record<Status, string> = {
     APPROVED: 'Tudo certo. O consultor combina com você a arte da campanha e a data de início.',
     CANCELLED: 'Este orçamento foi encerrado. Se quiser, monte um novo no mapa de painéis.',
 };
+/** Mesmas etapas para o pedido de painel de LED da T3 Solution. */
+const NEXT_SOLUTION: Record<Status, string> = {
+    IN_REVIEW: 'A equipe da T3 Solution está analisando o espaço e o uso da tela. Um consultor fala com você para fechar medidas e especificação.',
+    PROPOSAL_SENT: 'A proposta com escopo e investimento foi enviada. Fale com o consultor para aprovar ou ajustar o projeto.',
+    APPROVED: 'Projeto aprovado. O consultor combina com você a visita técnica e a data da instalação.',
+    CANCELLED: 'Este pedido foi encerrado. Se quiser, faça um novo pela página da T3 Solution.',
+};
 
-function OrderSteps({ status }: { status: Status }) {
+function OrderSteps({ status, solution = false }: { status: Status; solution?: boolean }) {
     const current = STEPS.findIndex((st) => st.status === status);
     return (
         <div className="border-b border-white/[0.08] p-4 md:p-6">
@@ -67,7 +82,7 @@ function OrderSteps({ status }: { status: Status }) {
                     })}
                 </ol>
             )}
-            <p className="mt-3 max-w-[60ch] text-sm text-ink-400">{NEXT[status]}</p>
+            <p className="mt-3 max-w-[60ch] text-sm text-ink-400">{(solution ? NEXT_SOLUTION : NEXT)[status]}</p>
         </div>
     );
 }
@@ -206,8 +221,8 @@ export function UserProfile() {
     // Equipe (gestão e comercial) não faz orçamentos pelo site: vê dados e aparência
     const isStaff = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'COMERCIAL';
     const [tab, setTab] = useState<'data' | 'orders' | 'appearance' | 'security'>(() =>
-        // Links de e-mail podem abrir direto na segurança (/perfil?aba=seguranca)
-        new URLSearchParams(window.location.search).get('aba') === 'seguranca' ? 'security' : 'data');
+        // Links de e-mail podem abrir direto na segurança ou nos orçamentos (/perfil?aba=seguranca|orcamentos)
+        ({ seguranca: 'security', orcamentos: 'orders' } as const)[new URLSearchParams(window.location.search).get('aba') as 'seguranca' | 'orcamentos'] ?? 'data');
     const [googleLinked, setGoogleLinked] = useState(false);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [editing, setEditing] = useState(false);
@@ -257,7 +272,7 @@ export function UserProfile() {
     const talkToSeller = (order: MyOrder) => {
         let phone = String(order.seller?.phone || DEFAULT_SALES_PHONE).replace(/\D/g, '');
         if (!phone.startsWith('55') && phone.length <= 11) phone = `55${phone}`;
-        const text = `Olá! Quero falar sobre o meu orçamento #${shortId(order.id)} (${STATUS[order.status].label.toLowerCase()}).`;
+        const text = `Olá! Quero falar sobre o meu ${isSolution(order) ? 'pedido da T3 Solution' : 'orçamento'} #${shortId(order.id)} (${STATUS[order.status].label.toLowerCase()}).`;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
     };
 
@@ -361,10 +376,16 @@ export function UserProfile() {
                                                     <span className={`border px-2 py-0.5 text-[11px] ${STATUS[o.status].className}`}>{STATUS[o.status].label}</span>
                                                 </div>
                                                 <p className="mt-1 truncate text-xs text-ink-400">
-                                                    {o.source === 'MAP' ? 'Pelo mapa' : 'Pelo catálogo'} · {date(o.createdAt)} · {o.items.length} {o.items.length === 1 ? 'painel' : 'painéis'}
+                                                    {originLabel(o)} · {date(o.createdAt)} · {isSolution(o)
+                                                        ? [o.solution?.application, solutionSummary(o.solution)].filter(Boolean).join(' · ') || 'Painel de LED'
+                                                        : `${o.items.length} ${o.items.length === 1 ? 'painel' : 'painéis'}`}
                                                 </p>
                                             </div>
-                                            <span className="shrink-0 text-right font-mono text-sm text-ink-100">{brl(o.total)}<span className="block text-xs text-ink-500">{o.months} {o.months === 1 ? 'mês' : 'meses'}</span></span>
+                                            {isSolution(o) ? (
+                                                <span className="shrink-0 text-right font-mono text-sm text-ink-100">{o.total > 0 ? brl(o.total) : <span className="text-xs text-ink-400">Valor na proposta</span>}</span>
+                                            ) : (
+                                                <span className="shrink-0 text-right font-mono text-sm text-ink-100">{brl(o.total)}<span className="block text-xs text-ink-500">{o.months} {o.months === 1 ? 'mês' : 'meses'}</span></span>
+                                            )}
                                             <ArrowRight className="h-4 w-4 shrink-0 text-ink-500" aria-hidden="true" />
                                         </button>
                                     </li>
@@ -382,13 +403,34 @@ export function UserProfile() {
                             </button>
                             <div className="min-w-0 flex-1">
                                 <p className="font-mono text-lg text-ink-100">#{shortId(open.id)}</p>
-                                <p className="text-xs text-ink-400">{open.source === 'MAP' ? 'Pelo mapa' : 'Pelo catálogo'} · {date(open.createdAt)}</p>
+                                <p className="text-xs text-ink-400">{originLabel(open)} · {date(open.createdAt)}</p>
                             </div>
                             <span className={`shrink-0 border px-2 py-0.5 text-[11px] ${STATUS[open.status].className}`}>{STATUS[open.status].label}</span>
                         </div>
 
-                        <OrderSteps status={open.status} />
+                        <OrderSteps status={open.status} solution={isSolution(open)} />
 
+                        {isSolution(open) ? (
+                            <dl className="grid grid-cols-1 gap-px bg-white/[0.08] sm:grid-cols-2">
+                                {([
+                                    ['Aplicação', open.solution?.application],
+                                    ['Ambiente', open.solution?.environment === 'indoor' ? 'Indoor' : open.solution?.environment === 'outdoor' ? 'Outdoor' : null],
+                                    ['Tela', solutionSummary({ width: open.solution?.width, height: open.solution?.height, pitch: open.solution?.pitch })],
+                                    ['Serviços', open.solution?.services?.map(serviceLabel).join(', ')],
+                                ] as const).map(([k, v]) => (
+                                    <div key={k} className="bg-ink-950 px-4 py-3 md:px-6">
+                                        <dt className="text-xs text-ink-500">{k}</dt>
+                                        <dd className="mt-1 text-sm text-ink-100">{v || <span className="text-ink-500">A definir com o consultor</span>}</dd>
+                                    </div>
+                                ))}
+                                {open.solution?.notes && (
+                                    <div className="bg-ink-950 px-4 py-3 sm:col-span-2 md:px-6">
+                                        <dt className="text-xs text-ink-500">Detalhes</dt>
+                                        <dd className="mt-1 whitespace-pre-line text-sm text-ink-300">{open.solution.notes}</dd>
+                                    </div>
+                                )}
+                            </dl>
+                        ) : (
                         <ul className="divide-y divide-white/[0.08]">
                             {open.items.map((item) => (
                                 <li key={item.id} className="flex items-center gap-3 px-4 py-3 md:px-6">
@@ -401,11 +443,21 @@ export function UserProfile() {
                                 </li>
                             ))}
                         </ul>
+                        )}
 
                         <div className="flex flex-col gap-4 border-t border-white/[0.08] p-4 md:flex-row md:items-end md:justify-between md:p-6">
                             <dl className="font-mono">
-                                <dt className="text-xs text-ink-500">Total do contrato · {open.months} {open.months === 1 ? 'mês' : 'meses'}</dt>
-                                <dd className="mt-1 text-2xl text-brand-neon">{brl(open.total)}</dd>
+                                {isSolution(open) ? (
+                                    <>
+                                        <dt className="text-xs text-ink-500">Investimento</dt>
+                                        <dd className="mt-1 text-2xl text-brand-neon">{open.total > 0 ? brl(open.total) : <span className="font-sans text-base text-ink-300">Sai na proposta</span>}</dd>
+                                    </>
+                                ) : (
+                                    <>
+                                        <dt className="text-xs text-ink-500">Total do contrato · {open.months} {open.months === 1 ? 'mês' : 'meses'}</dt>
+                                        <dd className="mt-1 text-2xl text-brand-neon">{brl(open.total)}</dd>
+                                    </>
+                                )}
                                 {open.seller?.name && <dd className="mt-1 font-sans text-xs text-ink-400">Consultor: {open.seller.name}</dd>}
                             </dl>
                             <button type="button" onClick={() => talkToSeller(open)} className={`${btnPrimary} w-full md:w-auto`}>
