@@ -48,6 +48,7 @@ const CrmClients = lazy(() => import('@/pages/crm/CrmClients').then(m => ({ defa
 const CrmProposals = lazy(() => import('@/pages/crm/CrmProposals').then(m => ({ default: m.CrmProposals })));
 const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ default: m.CrmAgenda })));
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
+const DesktopApp = lazy(() => import('@/pages/app/DesktopApp').then(m => ({ default: m.DesktopApp })));
 
 // Legal Views
 const Privacy = lazy(() => import('@/pages/legal/Privacy').then(m => ({ default: m.Privacy })));
@@ -159,6 +160,7 @@ export function AppRoutes() {
                                         <Route path="registros" element={<Suspense fallback={<PageLoader />}><AuditLogPage /></Suspense>} />
                                         <Route path="trafego" element={<Suspense fallback={<PageLoader />}><Traffic /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
+                                        <Route path="aplicativo" element={<Suspense fallback={<PageLoader />}><DesktopApp /></Suspense>} />
                                         {/* A ROTA NOVA VAI AQUI DENTRO DO DASHBOARD */}
                                         <Route path="info" element={<Suspense fallback={<PageLoader />}><DashboardInfo /></Suspense>} />
                                         
@@ -178,6 +180,7 @@ export function AppRoutes() {
                                         
                                         <Route path="agenda" element={<Suspense fallback={<PageLoader />}><CrmAgenda /></Suspense>} />
                                         <Route path="cupons" element={<Suspense fallback={<PageLoader />}><CrmCoupons /></Suspense>} />
+                                        <Route path="aplicativo" element={<Suspense fallback={<PageLoader />}><DesktopApp /></Suspense>} />
                                     </Route>
 
                                     {/* COMPATIBILITY ROUTE
