@@ -50,6 +50,9 @@ const CrmAgenda = lazy(() => import('@/pages/crm/CrmAgenda').then(m => ({ defaul
 const CrmCoupons = lazy(() => import('@/pages/crm/CrmCoupons').then(m => ({ default: m.CrmCoupons })));
 const DesktopApp = lazy(() => import('@/pages/app/DesktopApp').then(m => ({ default: m.DesktopApp })));
 
+// Reunião (tela cheia, fora dos layouts)
+const ReuniaoPage = lazy(() => import('@/features/reuniao/ReuniaoPage').then(m => ({ default: m.ReuniaoPage })));
+
 // Legal Views
 const Privacy = lazy(() => import('@/pages/legal/Privacy').then(m => ({ default: m.Privacy })));
 const Terms = lazy(() => import('@/pages/legal/Terms').then(m => ({ default: m.Terms })));
@@ -138,6 +141,9 @@ export function AppRoutes() {
                                     <Route path="termos" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
                                     <Route path="*" element={<NotFound />} />
                                 </Route>
+
+                                {/* CHAMADA DE REUNIÃO: tela cheia, sem MainLayout nem DashboardLayout */}
+                                <Route path="/reuniao/:id" element={<Suspense fallback={<PageLoader />}><ReuniaoPage /></Suspense>} />
 
                                 {/* ROTAS DE AUTENTICAÇÃO */}
                                 <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
