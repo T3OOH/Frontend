@@ -1,4 +1,6 @@
 import L from 'leaflet';
+// Todos os mapas importam este arquivo: a proteção do Leaflet vale para o site inteiro
+import './leaflet-guards';
 
 /** Centro padrão: Goiânia. */
 export const GOIANIA: [number, number] = [-16.6869, -49.2648];
