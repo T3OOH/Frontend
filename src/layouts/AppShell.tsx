@@ -74,7 +74,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
 
     const secondary = 'flex items-center gap-3 px-3 py-2 text-sm text-brand-muted hover:bg-brand-background hover:text-brand-text';
 
-    // Página privada de download do app desktop, dentro da área atual (o comercial não acessa /dashboard)
+    // Página do app desktop (apresentação; o download abre no lançamento), dentro da área atual (o comercial não acessa /dashboard)
     const appLink = area === 'Comercial' ? '/crm/aplicativo' : '/dashboard/aplicativo';
     const appButton = 'flex items-center gap-3 border border-brand-neon/40 bg-brand-neon/10 px-3 py-2 text-sm font-medium text-brand-neon transition-colors hover:bg-brand-neon/20';
 
@@ -102,7 +102,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
 
                 <div className="flex flex-col gap-1 border-t border-brand-border p-3">
                     <Link to={appLink} className={`${appButton} mb-1`}>
-                        <MonitorDown className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Baixar o app desktop
+                        <MonitorDown className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> App desktop · em breve
                     </Link>
                     {switchTo && (
                         <Link to={switchTo.to} className={secondary}>
@@ -179,7 +179,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                 links={[
                     ...nav,
                     ...(switchTo ? [{ to: switchTo.to, label: switchTo.label, icon: ArrowLeftRight }] : []),
-                    { to: appLink, label: 'Baixar o app desktop', icon: MonitorDown },
+                    { to: appLink, label: 'App desktop · em breve', icon: MonitorDown },
                     { to: '/perfil', label: 'Meu perfil', icon: UserRound },
                 ]}
             />
@@ -214,7 +214,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                                     <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {label}
                                 </NavLink>
                             ))}
-                            <Link to={appLink} className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-brand-neon"><MonitorDown className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Baixar o app desktop</Link>
+                            <Link to={appLink} className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-brand-neon"><MonitorDown className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> App desktop · em breve</Link>
                             {switchTo && <Link to={switchTo.to} className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><ArrowLeftRight className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}</Link>}
                             <Link to="/" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><Globe className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Site público</Link>
                             <Link to="/perfil" className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><UserRound className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> Meu perfil</Link>
