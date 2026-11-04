@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { pdf, PDFViewer } from '@react-pdf/renderer';
+import { DocumentProps, pdf, PDFViewer } from '@react-pdf/renderer';
 import { ArrowLeft, ClipboardCheck, Download, Eye, Search, Send } from 'lucide-react';
 
 import { api } from '@/lib/axios';
@@ -10,6 +10,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import { CalculatedPanel, PanelWithPrice, ProposalClient, ProposalDocument } from '@/components/crm/ProposalDocument';
+import { loadProposalAssets, missingPhotos } from '@/lib/pdf/proposalAssets';
 import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -66,7 +67,9 @@ export function CrmProposals() {
     const [extraDiscount, setExtraDiscount] = useState('');
     const [panelQuery, setPanelQuery] = useState('');
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState<ReactElement<DocumentProps> | null>(null);
     const [busy, setBusy] = useState(false);
+    const [generating, setGenerating] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -175,12 +178,19 @@ export function CrmProposals() {
         setPanelDiscounts((prev) => { const next = { ...prev }; delete next[id]; return next; });
     };
 
-    const document_ = () => <ProposalDocument client={client!} panels={calculated} months={months} totals={totals} date={today} sellerName={sellerName} />;
+    /** Baixa todas as fotos dos painéis (convertidas para o PDF) e monta o documento. */
+    const buildDocument = async () => {
+        const assets = await loadProposalAssets(calculated);
+        const missing = missingPhotos(assets);
+        if (missing) addToast(`${missing} ${missing === 1 ? 'foto não carregou' : 'fotos não carregaram'} e ${missing === 1 ? 'ficou' : 'ficaram'} como "Foto indisponível" no PDF.`, 'error');
+        return <ProposalDocument client={client!} panels={calculated} months={months} totals={totals} date={today} sellerName={sellerName} assets={assets} />;
+    };
 
     const download = async () => {
-        if (!ready) return false;
+        if (!ready || generating) return false;
+        setGenerating(true);
         try {
-            const blob = await pdf(document_()).toBlob();
+            const blob = await pdf(await buildDocument()).toBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -193,6 +203,24 @@ export function CrmProposals() {
         } catch {
             addToast('Não foi possível gerar o PDF.', 'error');
             return false;
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const openPreview = async () => {
+        if (!ready || generating) return;
+        setPreviewDoc(null);
+        setPreviewOpen(true);
+        if (!isDesktop) return;
+        setGenerating(true);
+        try {
+            setPreviewDoc(await buildDocument());
+        } catch {
+            addToast('Não foi possível gerar a pré-visualização.', 'error');
+            setPreviewOpen(false);
+        } finally {
+            setGenerating(false);
         }
     };
 
@@ -417,9 +445,9 @@ export function CrmProposals() {
                     )}
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                        <button type="button" onClick={send} disabled={!ready || busy} className={crmBtn.primary}><Send className="h-4 w-4" aria-hidden="true" /> {busy ? 'Gerando…' : 'Enviar pelo WhatsApp'}</button>
-                        <button type="button" onClick={download} disabled={!ready} className={crmBtn.secondary}><Download className="h-4 w-4" aria-hidden="true" /> Baixar PDF</button>
-                        <button type="button" onClick={() => setPreviewOpen(true)} disabled={!ready} className={crmBtn.secondary}><Eye className="h-4 w-4" aria-hidden="true" /> Ver como fica</button>
+                        <button type="button" onClick={send} disabled={!ready || busy || generating} className={crmBtn.primary}><Send className="h-4 w-4" aria-hidden="true" /> {busy ? 'Gerando…' : 'Enviar pelo WhatsApp'}</button>
+                        <button type="button" onClick={download} disabled={!ready || generating} className={crmBtn.secondary}><Download className="h-4 w-4" aria-hidden="true" /> {generating && !busy ? 'Gerando PDF…' : 'Baixar PDF'}</button>
+                        <button type="button" onClick={openPreview} disabled={!ready || generating} className={crmBtn.secondary}><Eye className="h-4 w-4" aria-hidden="true" /> Ver como fica</button>
                         {/* Pedido do site já está no sistema; aqui só propostas montadas pelo comercial */}
                         {!order && (
                             <button type="button" onClick={formalize} disabled={!ready || formalizing} className={crmBtn.secondary}>
@@ -432,9 +460,11 @@ export function CrmProposals() {
 
             {!panels.length && <EmptyState title="Nenhum painel disponível" text="Cadastre ou libere painéis no painel administrativo para montar propostas." />}
 
-            <Sheet open={previewOpen && ready} onClose={() => setPreviewOpen(false)} eyebrow="Pré-visualização" title={`Proposta · ${client?.name ?? ''}`} size="lg">
+            <Sheet open={previewOpen && ready} onClose={() => { setPreviewOpen(false); setPreviewDoc(null); }} eyebrow="Pré-visualização" title={`Proposta · ${client?.name ?? ''}`} size="lg">
                 {ready && (isDesktop
-                    ? <div className="h-[70dvh]"><PDFViewer width="100%" height="100%" className="border-0">{document_()}</PDFViewer></div>
+                    ? <div className="h-[70dvh]">{previewDoc
+                        ? <PDFViewer width="100%" height="100%" className="border-0">{previewDoc}</PDFViewer>
+                        : <p role="status" className="text-sm text-brand-muted">Carregando as fotos dos painéis…</p>}</div>
                     : <p className="text-sm text-brand-muted">A pré-visualização do PDF não abre em celulares. Use "Baixar PDF" para ver o arquivo.</p>)}
             </Sheet>
         </CrmPage>
