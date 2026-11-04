@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { BarChart3, Bell, FileSpreadsheet, KanbanSquare, Lock, MessagesSquare, MonitorDown, MousePointerClick, RefreshCw, Sparkles, Zap } from 'lucide-react';
+import { BarChart3, Bell, FileSpreadsheet, HardDrive, KanbanSquare, Lock, MessagesSquare, MonitorDown, MousePointerClick, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { CrmPage, Panel, Badge } from '@/components/app/ui';
 import { eyebrowCrm } from '@/components/app/tokens';
 import { DesktopDownload } from './DesktopDownload';
+import { LauncherDownload } from './LauncherDownload';
 
 /**
  * O download só abre no lançamento. Até lá a página apresenta o app (fotos reais das telas,
@@ -17,6 +18,23 @@ const TELAS = [
     { id: 'agenda', label: 'Agenda', img: '/app-desktop/agenda.webp', text: 'Ligações, visitas e follow-ups da equipe, com o que está atrasado em destaque.' },
     { id: 'relatorios', label: 'Relatórios', img: '/app-desktop/relatorios.webp', text: 'Vendas, funil, ocupação e tráfego em Excel ou PDF com um clique, e a previsão dos próximos meses.' },
 ] as const;
+
+/** O que o perfil Comercial enxerga no app (fotos com dados fictícios). */
+const COMERCIAL = [
+    { id: 'negocios', label: 'Funil de negócios', img: '/app-desktop/comercial-negocios.jpg', text: 'Só os negócios do consultor, por etapa. Arraste o cartão quando o cliente avançar.' },
+    { id: 'fila', label: 'Fila de leads', img: '/app-desktop/comercial-fila.jpg', text: 'Pedidos do site esperando consultor, com origem e valor. Quem assumir primeiro fica com o cliente.' },
+    { id: 'clientes', label: 'Carteira de clientes', img: '/app-desktop/comercial-clientes.jpg', text: 'Contato, cidade e negócios de cada cliente da carteira, com busca por nome, e-mail ou telefone.' },
+    { id: 'agenda', label: 'Agenda do dia', img: '/app-desktop/comercial-agenda.jpg', text: 'Ligações, reuniões e mensagens de hoje e dos próximos dias, com o que atrasou em destaque.' },
+] as const;
+
+const TELAS_COMERCIAL = ['Negócios', 'Fila de leads', 'Clientes', 'Chat', 'Agenda', 'Reuniões', 'Pedidos', 'Cupons'];
+
+const LAUNCHER = [
+    { icon: MonitorDown, title: 'Baixa e instala', text: 'Entre com a conta do site e clique em Baixar. O launcher mostra MB, velocidade e tempo restante.' },
+    { icon: HardDrive, title: 'Você escolhe o disco', text: 'Instale no C:, no D: ou em outra pasta. As atualizações vão sempre para o mesmo lugar.' },
+    { icon: RefreshCw, title: 'Procura versão nova sozinho', text: 'Ao abrir e a cada 30 minutos. Achou, o botão vira Atualizar.' },
+    { icon: ShieldCheck, title: 'Arquivo conferido', text: 'Antes de instalar, confere o tamanho e a assinatura (SHA-256). Nada de arquivo trocado.' },
+];
 
 const GANHOS = [
     { icon: Zap, title: 'Abre e já está pronto', text: 'Janela própria, sem abas e sem login a cada manhã. O comercial começa o dia direto no funil.' },
@@ -42,7 +60,7 @@ const INSTALAR = [
 ];
 
 /** Janela de app em volta da foto, para parecer o programa aberto no computador. */
-function Janela({ src, alt, titulo = 'T3 Gestor' }: { src: string; alt: string; titulo?: string }) {
+function Janela({ src, alt, titulo = 'T3 Gestor', largura = 1600, altura = 1012 }: { src: string; alt: string; titulo?: string; largura?: number; altura?: number }) {
     return (
         <figure className="overflow-hidden border border-brand-border bg-[#0b0b0c] shadow-[0_30px_80px_-30px_rgba(255,94,0,0.35)]">
             <div className="flex items-center gap-2 border-b border-brand-border bg-[#141416] px-3 py-2">
@@ -51,8 +69,44 @@ function Janela({ src, alt, titulo = 'T3 Gestor' }: { src: string; alt: string; 
                 <span className="h-2.5 w-2.5 rounded-full bg-[#3a3a3e]" aria-hidden="true" />
                 <span className="ml-2 font-mono text-[11px] text-[#8a8a90]">{titulo}</span>
             </div>
-            <img src={src} alt={alt} width={1600} height={1012} loading="lazy" decoding="async" className="block h-auto w-full" />
+            <img src={src} alt={alt} width={largura} height={altura} loading="lazy" decoding="async" className="block h-auto w-full" />
         </figure>
+    );
+}
+
+/** Área comercial: as telas que o perfil Comercial vê, com o que cada uma faz. */
+function AreaComercial() {
+    const [tela, setTela] = useState<(typeof COMERCIAL)[number]['id']>('negocios');
+    const atual = COMERCIAL.find((t) => t.id === tela) ?? COMERCIAL[0];
+    return (
+        <Panel title="Área comercial · o que o consultor vê">
+            <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)]">
+                <div className="flex flex-col gap-4">
+                    <p className="text-sm leading-relaxed text-brand-muted">
+                        Quem entra com o perfil <span className="text-brand-text">Comercial</span> vê só o que precisa para vender. Painel do gestor, relatórios, tráfego e usuários ficam com a gestão.
+                    </p>
+                    <div role="tablist" aria-label="Telas do perfil comercial" className="flex flex-col gap-px border border-brand-border bg-brand-border">
+                        {COMERCIAL.map((t) => (
+                            <button key={t.id} type="button" role="tab" aria-selected={tela === t.id} onClick={() => setTela(t.id)}
+                                className={`flex flex-col items-start gap-0.5 px-4 py-3 text-left transition-colors ${tela === t.id ? 'bg-brand-neon/10 text-brand-neon' : 'bg-brand-surface text-brand-text hover:bg-brand-background'}`}>
+                                <span className="text-sm font-medium">{t.label}</span>
+                                <span className="text-xs leading-snug text-brand-muted">{t.text}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div>
+                        <p className="text-xs uppercase tracking-wider text-brand-muted">Menu do comercial</p>
+                        <ul className="mt-2 flex flex-wrap gap-1.5">
+                            {TELAS_COMERCIAL.map((t) => <li key={t}><Badge>{t}</Badge></li>)}
+                        </ul>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                    <Janela key={atual.id} src={atual.img} alt={`${atual.label} no T3 Gestor, perfil comercial`} titulo={`T3 Gestor · ${atual.label}`} />
+                    <p className="text-xs text-brand-muted">Fotos do app de verdade, no perfil comercial, com dados fictícios.</p>
+                </div>
+            </div>
+        </Panel>
     );
 }
 
@@ -170,6 +224,41 @@ export function DesktopApp() {
                     ))}
                 </ol>
             </Panel>
+
+            {/* ============================ ÁREA COMERCIAL ============================ */}
+            <AreaComercial />
+
+            {/* ============================ T3 LAUNCHER ============================ */}
+            <section aria-labelledby="launcher" className="grid gap-8 border border-brand-border bg-brand-surface p-6 md:p-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="flex flex-col gap-4">
+                    <Janela src="/app-desktop/launcher-baixar.jpg" alt="T3 Launcher pronto para baixar o T3 Gestor" titulo="T3 Launcher" largura={1180} altura={720} />
+                    <img src="/app-desktop/launcher-baixando.jpg" alt="T3 Launcher baixando o T3 Gestor com barra de progresso e velocidade" width={1180} height={720} loading="lazy" decoding="async"
+                        className="block h-auto w-full border border-brand-border" />
+                </div>
+                <div className="flex flex-col gap-5">
+                    <p className={eyebrowCrm}>Novo · T3 Launcher</p>
+                    <h2 id="launcher" className="text-2xl font-light uppercase leading-tight tracking-tight text-brand-text md:text-3xl">
+                        Baixar e atualizar<br /><span className="text-brand-neon">como um jogo.</span>
+                    </h2>
+                    <p className="text-sm leading-relaxed text-brand-muted">
+                        Um programa pequeno, no jeito da Steam e da Riot, que cuida do T3 Gestor: baixa, instala, mantém atualizado e abre com um clique.
+                    </p>
+                    <ul className="flex flex-col divide-y divide-brand-border border-y border-brand-border">
+                        {LAUNCHER.map(({ icon: Icon, title, text }) => (
+                            <li key={title} className="flex gap-3 py-3">
+                                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-neon" strokeWidth={1.5} aria-hidden="true" />
+                                <div>
+                                    <p className="text-sm font-medium text-brand-text">{title}</p>
+                                    <p className="text-sm leading-relaxed text-brand-muted">{text}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="border border-brand-neon/40 bg-brand-background p-5">
+                        <LauncherDownload />
+                    </div>
+                </div>
+            </section>
 
             {/* ============================ CHAMADA ============================ */}
             <section className="flex flex-col items-start gap-5 border border-brand-neon/40 bg-brand-neon/10 p-6 md:flex-row md:items-center md:justify-between md:p-8">
