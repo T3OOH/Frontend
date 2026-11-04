@@ -1,0 +1,22 @@
+# Toda issue nova (ou reaberta) sem responsável vai para o responsável da organização.
+# Para trocar: variável RESPONSAVEL_ISSUES (Settings → Secrets and variables → Actions → Variables).
+name: Atribuir issues
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  atribuir:
+    if: ${{ !github.event.issue.assignee }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atribuir ao responsável
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESPONSAVEL: ${{ vars.RESPONSAVEL_ISSUES || 'FBR13' }}
+          NUMERO: ${{ github.event.issue.number }}
+        run: gh issue edit "$NUMERO" --repo "$GITHUB_REPOSITORY" --add-assignee "$RESPONSAVEL"
