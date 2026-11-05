@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { formatPlayback } from '@/lib/playback';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
@@ -119,7 +120,7 @@ export function Panels() {
                                     </div>
                                     <span><Badge tone={s.tone}>{s.label}</Badge></span>
                                     <span className="font-mono text-sm text-brand-text">{impacts ? formatImpacts(impacts) : '—'}</span>
-                                    <span className="text-sm text-brand-muted">{[panel.size, panel.px].filter(Boolean).join(' · ') || '—'}</span>
+                                    <span className="text-sm text-brand-muted">{[panel.size, panel.px, formatPlayback(panel.playbackSeconds)].filter(Boolean).join(' · ') || '—'}</span>
                                     <span className="font-mono text-sm text-brand-text">{Number(panel.price) > 0 ? formatBRL(Number(panel.price)) : '—'}</span>
                                     <div className="col-span-2 flex justify-end gap-1 md:col-span-1">
                                         <Link to={`/dashboard/paineis/editar/${panel.id}`} className={crmBtn.ghost} aria-label={`Editar ${panel.name}`}><Pencil className="h-4 w-4" strokeWidth={1.75} /> <span className="md:sr-only">Editar</span></Link>

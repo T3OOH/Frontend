@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { PanelData } from '@/services/panels.service';
 import type { ProposalAssets } from '@/lib/pdf/proposalAssets';
+import { formatPlayback } from '@/lib/playback';
 
 /*
  * PDF da proposta comercial, feito para imprimir: fundo branco, texto escuro, laranja da marca
@@ -179,6 +180,7 @@ const PanelCard = ({ panel, index, total, cover }: { panel: CalculatedPanel; ind
         ['Formato', panel.size],
         ['Resolução', panel.px],
         ['Impactos', panel.impacts],
+        ['Reprodução', formatPlayback(panel.playbackSeconds) ?? undefined],
     ] as [string, string | undefined][]).filter(([, v]) => v && String(v).trim()) as [string, string][];
     const where = [place(panel), panel.address].filter(Boolean).join(' — ');
     return (

@@ -17,6 +17,8 @@ export interface PanelData {
     size: string;
     px: string;
     impacts: string;
+    /** Tempo de reprodução de cada inserção, em segundos. */
+    playbackSeconds?: number | null;
     images: string[];
     price?: number | null;
     categoryId?: string | null; 
