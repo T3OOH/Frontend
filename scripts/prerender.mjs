@@ -16,7 +16,7 @@ import path from 'node:path';
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
 const SITE = 'https://t3led.com.br';
-const API = process.env.VITE_API_URL || 'https://backend-2go8.onrender.com';
+const API = process.env.VITE_API_URL || 'https://api.t3led.com.br';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const COMPANY = {
