@@ -1,0 +1,18 @@
+name: Produção
+
+# Depois do merge na main a Hostinger compila e publica sozinha (deploy do GitHub); aqui conferimos o site no ar.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  producao:
+    uses: T3OOH/.github/.github/workflows/verificar-producao.yml@main
+    with:
+      espera-inicial: 240
+      urls: |
+        https://t3led.com.br/
+        https://t3led.com.br/mapa
