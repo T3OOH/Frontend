@@ -28,4 +28,4 @@ Disallow: /perfil
 Disallow: /atualizar-senha
 Disallow: /seguranca
 
-Sitemap: https://t3ooh.com/sitemap.xml
+Sitemap: https://t3led.com.br/sitemap.xml

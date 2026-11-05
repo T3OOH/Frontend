@@ -8,14 +8,14 @@
  *  - dados estruturados (JSON-LD: empresa local, site, trilha, perguntas frequentes, serviços);
  *  - o conteúdo da página em HTML semântico dentro do #root (o React troca ao carregar).
  *
- * O vercel.json aponta /sobre para dist/sobre.html (e assim por diante); o resto continua na index.html.
+ * O .htaccess (Hostinger) e o vercel.json apontam /sobre para dist/sobre.html (e assim por diante); o resto continua na index.html.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
-const SITE = 'https://t3ooh.com';
+const SITE = 'https://t3led.com.br';
 const API = process.env.VITE_API_URL || 'https://backend-2go8.onrender.com';
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -31,7 +31,7 @@ const COMPANY = {
 };
 
 const FAQ = [
-    ['Onde a T3 OOH tem painéis de LED?', 'Em Goiânia e no interior de Goiás, nos corredores de maior fluxo. O mapa de painéis em t3ooh.com/mapa mostra cada ponto com localização, formato e investimento.'],
+    ['Onde a T3 OOH tem painéis de LED?', 'Em Goiânia e no interior de Goiás, nos corredores de maior fluxo. O mapa de painéis em t3led.com.br/mapa mostra cada ponto com localização, formato e investimento.'],
     ['Como contratar um painel de LED na T3?', 'Escolha os pontos no mapa ou no catálogo, defina o prazo da campanha e envie o orçamento. O time comercial responde pelo WhatsApp com a proposta e o contrato.'],
     ['Existe desconto para campanhas mais longas?', 'Sim. O valor mensal tem 15% de desconto em contratos de 3 meses, 20% em 6 meses e 30% a partir de 12 meses. Os contratos vão de 1 a 36 meses.'],
     ['Quanto custa anunciar em um painel de LED em Goiânia?', 'Cada ponto tem um valor mensal próprio, que aparece no mapa e no catálogo. O orçamento soma os pontos escolhidos e aplica o desconto do prazo e cupons válidos.'],

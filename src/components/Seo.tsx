@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 
-const SITE_URL = 'https://t3ooh.com';
+const SITE_URL = 'https://t3led.com.br';
 const SITE_NAME = 'T3 OOH';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
