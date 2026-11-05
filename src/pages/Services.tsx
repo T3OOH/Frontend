@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { sortByRegion } from '@/lib/regions';
+import { formatPlayback } from '@/lib/playback';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Check, Eye, Images, Loader2, MapPin, Maximize, Monitor, Plus, ScanLine, Search, ShoppingCart, Tag, X } from 'lucide-react';
+import { ArrowRight, Check, Eye, Loader2, MapPin, Maximize, Monitor, Plus, ScanLine, Search, ShoppingCart, Tag, Timer, X } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { panelsService, PanelData } from '@/services/panels.service';
@@ -377,6 +378,8 @@ export function Services() {
                                         <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-4 font-mono text-xs">
                                             <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-1 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
                                             <div><dt className="text-ink-500">Formato</dt><dd className="mt-1 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                            <div><dt className="text-ink-500">Reprodução</dt><dd className="mt-1 text-ink-100">{formatPlayback(panel.playbackSeconds) ?? '—'}</dd></div>
+                                            <div><dt className="text-ink-500">Resolução</dt><dd className="mt-1 truncate text-ink-100">{panel.px || '—'}</dd></div>
                                         </dl>
                                         <div className="mt-auto pt-5">
                                             {basePrice > 0 ? (
@@ -430,7 +433,7 @@ export function Services() {
                                     [Eye, 'Impactos por dia', selectedPanel.impacts],
                                     [Monitor, 'Formato', selectedPanel.size],
                                     [ScanLine, 'Resolução', selectedPanel.px],
-                                    [Images, 'Fotos', String((selectedPanel.images ?? []).filter(Boolean).length || '—')],
+                                    [Timer, 'Tempo de reprodução', formatPlayback(selectedPanel.playbackSeconds)],
                                 ] as const).map(([Icon, label, value]) => (
                                     <div key={label} className="bg-ink-950 p-4">
                                         <dt className="flex items-center gap-1.5 text-xs text-ink-500"><Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> {label}</dt>

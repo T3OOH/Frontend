@@ -177,7 +177,7 @@ function staticBody(page, panels) {
         ? `<section><h2>Perguntas frequentes</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}</section>`
         : '';
     const list = page.panels && panels.length
-        ? `<section><h2>Painéis disponíveis</h2><ul>${panels.map((p) => `<li>${esc(p.name)}${p.city ? ` – ${esc(p.city)}${p.state ? `/${esc(p.state)}` : ''}` : ''}${p.size ? ` · ${esc(p.size)}` : ''}</li>`).join('')}</ul></section>`
+        ? `<section><h2>Painéis disponíveis</h2><ul>${panels.map((p) => `<li>${esc(p.name)}${p.city ? ` – ${esc(p.city)}${p.state ? `/${esc(p.state)}` : ''}` : ''}${p.size ? ` · ${esc(p.size)}` : ''}${p.playbackSeconds ? ` · ${Number(p.playbackSeconds)} s por inserção` : ''}</li>`).join('')}</ul></section>`
         : '';
     // Visualmente oculto (o React substitui ao carregar); legível para robôs e leitores sem JS
     return `<div data-prerender style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">

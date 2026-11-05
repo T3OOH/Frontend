@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { BaseTiles } from './basemap';
 import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { formatPlayback } from '@/lib/playback';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export interface MapPanel {
@@ -15,6 +16,7 @@ export interface MapPanel {
     state?: string | null;
     impacts?: string;
     size?: string;
+    playbackSeconds?: number | null;
     price?: number | string | null;
     images?: string[];
 }
@@ -122,6 +124,9 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                                     <dl className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3 font-mono text-xs">
                                         <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-0.5 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
                                         <div><dt className="text-ink-500">Formato</dt><dd className="mt-0.5 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                        {formatPlayback(panel.playbackSeconds) && (
+                                            <div className="col-span-2"><dt className="text-ink-500">Reprodução</dt><dd className="mt-0.5 text-ink-100">{formatPlayback(panel.playbackSeconds)} por inserção</dd></div>
+                                        )}
                                     </dl>
                                     {priceLabel && <p className="font-mono text-sm text-brand-neon">{priceLabel(panel)}</p>}
                                     {onToggle && (

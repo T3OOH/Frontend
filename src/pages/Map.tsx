@@ -14,6 +14,7 @@ import { pricingService, describeCoupon, Quote } from '@/services/pricing.servic
 import { Seo } from '@/components/Seo';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
+import { formatPlayback } from '@/lib/playback';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -535,9 +536,10 @@ export function Map() {
                                                     <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[panel.city, panel.state].filter(Boolean).join(' · ')}</p>
                                                     <p className="mt-1 text-base font-medium leading-snug text-ink-100">{panel.name}</p>
                                                 </div>
-                                                <dl className="grid grid-cols-3 gap-2 border-t border-white/10 pt-3 font-mono text-xs">
+                                                <dl className="grid grid-cols-2 gap-2 border-t border-white/10 pt-3 font-mono text-xs">
                                                     <div><dt className="text-ink-500">Impactos/dia</dt><dd className="mt-0.5 text-ink-100">{impacts ? formatImpacts(impacts) : '—'}</dd></div>
                                                     <div><dt className="text-ink-500">Formato</dt><dd className="mt-0.5 truncate text-ink-100">{panel.size || '—'}</dd></div>
+                                                    <div><dt className="text-ink-500">Reprodução</dt><dd className="mt-0.5 text-ink-100">{formatPlayback(panel.playbackSeconds) ?? '—'}</dd></div>
                                                     <div><dt className="text-ink-500">Plano anual</dt><dd className="mt-0.5 text-brand-neon">{Number(panel.price) > 0 ? formatCurrency(Number(panel.price) * (1 - ANNUAL_DISCOUNT)) : 'Consulte'}</dd></div>
                                                 </dl>
                                                 <div className="mt-auto grid grid-cols-2 gap-2">
@@ -586,7 +588,7 @@ export function Map() {
                                         </div>
                                         <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-ink-100">{selectedPanel.name}</p>
                                         <p className="mt-1.5 font-mono text-xs text-ink-300">
-                                            {parseImpacts(selectedPanel.impacts) ? `${formatImpacts(parseImpacts(selectedPanel.impacts))}/dia` : '—'}{selectedPanel.size ? ` · ${selectedPanel.size}` : ''}
+                                            {parseImpacts(selectedPanel.impacts) ? `${formatImpacts(parseImpacts(selectedPanel.impacts))}/dia` : '—'}{selectedPanel.size ? ` · ${selectedPanel.size}` : ''}{formatPlayback(selectedPanel.playbackSeconds) ? ` · ${formatPlayback(selectedPanel.playbackSeconds)} por inserção` : ''}
                                         </p>
                                         {Number(selectedPanel.price) > 0 && <p className="font-mono text-xs text-brand-neon">{formatCurrency(Number(selectedPanel.price) * (1 - ANNUAL_DISCOUNT))}/mês no plano anual</p>}
                                     </div>
