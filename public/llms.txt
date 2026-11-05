@@ -11,12 +11,12 @@ Atendimento comercial pelo WhatsApp: Victor Hugo (62) 9320-6010 e Lucas Dourado 
 - O orçamento vai para o comercial, que responde com proposta e contrato. O cliente acompanha tudo em "Meu perfil".
 
 ## Páginas
-- [Mapa de painéis](https://t3ooh.com/mapa): todos os painéis de LED com localização, formato e valor mensal.
-- [Catálogo](https://t3ooh.com/servicos): lista de painéis para montar um pacote com vários pontos.
-- [T3 Solution](https://t3ooh.com/solution): painéis de LED sob medida para casas, empresas, comércio e empreendimentos (projeto, instalação e suporte).
-- [Sobre a T3](https://t3ooh.com/sobre): a empresa, a equipe e as marcas da rede.
-- [Contato](https://t3ooh.com/contato): WhatsApp e formulário do comercial.
+- [Mapa de painéis](https://t3led.com.br/mapa): todos os painéis de LED com localização, formato e valor mensal.
+- [Catálogo](https://t3led.com.br/servicos): lista de painéis para montar um pacote com vários pontos.
+- [T3 Solution](https://t3led.com.br/solution): painéis de LED sob medida para casas, empresas, comércio e empreendimentos (projeto, instalação e suporte).
+- [Sobre a T3](https://t3led.com.br/sobre): a empresa, a equipe e as marcas da rede.
+- [Contato](https://t3led.com.br/contato): WhatsApp e formulário do comercial.
 
 ## Opcional
-- [Política de Privacidade](https://t3ooh.com/privacidade)
-- [Termos de Uso](https://t3ooh.com/termos)
+- [Política de Privacidade](https://t3led.com.br/privacidade)
+- [Termos de Uso](https://t3led.com.br/termos)

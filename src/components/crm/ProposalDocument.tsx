@@ -157,7 +157,7 @@ const Header = ({ logo, date, fixed }: { logo: string | null; date: string; fixe
 
 const Footer = ({ sellerName }: { sellerName: string }) => (
     <View style={styles.footer} fixed>
-        <Text style={styles.footerText}>t3ooh.com · Vendedor(a): {sellerName} · Proposta válida por 7 dias</Text>
+        <Text style={styles.footerText}>t3led.com.br · Vendedor(a): {sellerName} · Proposta válida por 7 dias</Text>
         <Text style={styles.footerPage} render={({ pageNumber, totalPages }) => `${pad(pageNumber)} / ${pad(totalPages)}`} />
     </View>
 );
