@@ -160,7 +160,7 @@ export function Register() {
             <AuthShell
                 wide
                 eyebrow="Cadastro"
-                title={<>Criar sua<br />conta</>}
+                title={<>Criar sua <br />conta</>}
                 subtitle="Com a conta você salva orçamentos, acompanha pedidos e fala direto com o comercial."
                 footer={<>Já tem conta? <Link to="/login" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Entrar</Link></>}
             >
@@ -179,9 +179,9 @@ export function Register() {
                 ) : (
                     <>
                     <GoogleSignIn mode="signup" />
-                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5 short:gap-3 tight:gap-2 narrow:gap-2" noValidate>
                         <fieldset>
-                            <legend className="mb-2 text-sm font-medium text-ink-300">Tipo de conta</legend>
+                            <legend className="mb-2 text-sm font-medium text-ink-300 short:mb-1.5 tight:sr-only narrow:sr-only">Tipo de conta</legend>
                             <div className="grid grid-cols-2 border border-white/10" role="radiogroup">
                                 {(['PF', 'PJ'] as const).map((type) => (
                                     <button
@@ -190,7 +190,7 @@ export function Register() {
                                         role="radio"
                                         aria-checked={documentType === type}
                                         onClick={() => handleToggleType(type)}
-                                        className={`flex h-12 items-center justify-center gap-2 text-sm transition-colors ${
+                                        className={`flex h-12 items-center justify-center gap-2 text-sm transition-colors short:h-10 ${
                                             documentType === type ? 'bg-ink-100 font-medium text-ink-950' : 'text-ink-400 hover:text-ink-100'
                                         }`}
                                     >
@@ -202,15 +202,17 @@ export function Register() {
                             </div>
                         </fieldset>
 
-                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                            <Input
-                                id="cad-nome"
-                                label={documentType === 'PF' ? 'Nome completo' : 'Nome do responsável'}
-                                autoComplete="name"
-                                error={errors.name?.message}
-                                className={authInput}
-                                {...register('name')}
-                            />
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-5 short:gap-y-3 tight:gap-y-2 narrow:gap-y-2 sm:gap-x-5">
+                            <div className="min-w-0">
+                                <Input
+                                    id="cad-nome"
+                                    label={documentType === 'PF' ? 'Nome completo' : 'Nome do responsável'}
+                                    autoComplete="name"
+                                    error={errors.name?.message}
+                                    className={authInput}
+                                    {...register('name')}
+                                />
+                            </div>
                             <Input
                                 id="cad-documento"
                                 label={documentType === 'PF' ? 'CPF' : 'CNPJ'}
@@ -224,16 +226,18 @@ export function Register() {
                                     documentRegister.onChange(e);
                                 }}
                             />
-                            <Input
-                                id="cad-email"
-                                label="E-mail"
-                                type="email"
-                                placeholder="voce@empresa.com.br"
-                                autoComplete="email"
-                                error={errors.email?.message}
-                                className={authInput}
-                                {...register('email')}
-                            />
+                            <div className="min-w-0">
+                                <Input
+                                    id="cad-email"
+                                    label="E-mail"
+                                    type="email"
+                                    placeholder="voce@email.com"
+                                    autoComplete="email"
+                                    error={errors.email?.message}
+                                    className={authInput}
+                                    {...register('email')}
+                                />
+                            </div>
                             <Input
                                 id="cad-whatsapp"
                                 label="WhatsApp"
@@ -249,15 +253,17 @@ export function Register() {
                                     phoneRegister.onChange(e);
                                 }}
                             />
-                            <Input
-                                id="cad-empresa"
-                                label={documentType === 'PJ' ? 'Razão social ou nome fantasia' : 'Empresa (opcional)'}
-                                autoComplete="organization"
-                                error={errors.companyName?.message}
-                                className={authInput}
-                                {...register('companyName')}
-                            />
-                            <div className="flex flex-col gap-1.5">
+                            <div className="min-w-0">
+                                <Input
+                                    id="cad-empresa"
+                                    label={documentType === 'PJ' ? 'Razão social ou nome fantasia' : 'Empresa (opcional)'}
+                                    autoComplete="organization"
+                                    error={errors.companyName?.message}
+                                    className={authInput}
+                                    {...register('companyName')}
+                                />
+                            </div>
+                            <div className="flex min-w-0 flex-col gap-1.5">
                                 <Input
                                     id="cad-senha"
                                     label="Senha"
@@ -267,21 +273,24 @@ export function Register() {
                                     className={authInput}
                                     {...register('password')}
                                 />
-                                {!errors.password && <p className="text-xs text-ink-500">8 ou mais caracteres, com uma letra maiúscula e um número.</p>}
+                                {!errors.password && <p className="text-xs text-ink-500 short:hidden">8 ou mais caracteres, com uma letra maiúscula e um número.</p>}
                             </div>
                         </div>
 
-                        <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
-
-                        <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} mt-2 h-12 w-full`}>
-                            {isSubmitting
-                                ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Criando conta…</>
-                                : <>Criar conta <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
-                        </button>
-                        <p className="text-xs leading-relaxed text-ink-500">
-                            Ao criar a conta, você concorda com os <Link to="/termos" className="underline underline-offset-2 hover:text-ink-100">Termos de Uso</Link> e
-                            a <Link to="/privacidade" className="underline underline-offset-2 hover:text-ink-100">Política de Privacidade</Link>.
-                        </p>
+                        <div className="flex flex-col gap-5 short:gap-3 narrow:gap-2 sm:flex-row sm:items-center">
+                            <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
+                            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                                <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} h-12 w-full short:h-11`}>
+                                    {isSubmitting
+                                        ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Criando conta…</>
+                                        : <>Criar conta <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
+                                </button>
+                                <p className="text-xs leading-relaxed text-ink-500 short:text-[11px] short:leading-snug">
+                                    Ao criar a conta, você concorda com os <Link to="/termos" className="underline underline-offset-2 hover:text-ink-100">Termos de Uso</Link> e
+                                    a <Link to="/privacidade" className="underline underline-offset-2 hover:text-ink-100">Política de Privacidade</Link>.
+                                </p>
+                            </div>
+                        </div>
                     </form>
                     </>
                 )}

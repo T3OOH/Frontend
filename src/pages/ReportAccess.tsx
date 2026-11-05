@@ -41,7 +41,7 @@ export function ReportAccess() {
             <Seo title="Proteger minha conta" description="Encerre os acessos à sua conta T3 OOH e crie uma nova senha." path="/seguranca/nao-fui-eu" noIndex />
             <AuthShell
                 eyebrow="Segurança da conta"
-                title={<>Não foi<br />você?</>}
+                title={<>Não foi <br />você?</>}
                 subtitle="Vamos encerrar o acesso em todos os aparelhos e, em seguida, você cria uma nova senha."
                 footer={<>Foi você? <Link to="/" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Voltar ao site</Link>, não precisa fazer nada.</>}
             >
