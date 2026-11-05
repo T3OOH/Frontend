@@ -155,7 +155,7 @@ function CampaignLink() {
     const [copied, setCopied] = useState(false);
     const medium = CAMPAIGN_SOURCES.find(([s]) => s === source)?.[1] ?? 'campanha';
     const name = slug(campaign);
-    const url = `https://t3ooh.com${page}?utm_source=${source}&utm_medium=${medium}${name ? `&utm_campaign=${name}` : ''}`;
+    const url = `https://t3led.com.br${page}?utm_source=${source}&utm_medium=${medium}${name ? `&utm_campaign=${name}` : ''}`;
 
     const copy = async () => {
         try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sem permissão de área de transferência */ }
