@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { sortByRegion } from '@/lib/regions';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Check, Loader2, MapPin, Maximize, Plus, Search, ShoppingCart, Tag, X } from 'lucide-react';
+import { ArrowRight, Check, Eye, Images, Loader2, MapPin, Maximize, Monitor, Plus, ScanLine, Search, ShoppingCart, Tag, X } from 'lucide-react';
 
 import { api } from '@/lib/axios';
 import { panelsService, PanelData } from '@/services/panels.service';
@@ -14,6 +15,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
+import { PanelGallery } from '@/components/PanelGallery';
 
 /** Desconto do plano de 12 meses, usado nos preços de vitrine (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
@@ -151,8 +153,9 @@ export function Services() {
         return [{ value: '', label: 'Todas as Cidades' }, ...cities.map(city => ({ value: city as string, label: city as string }))];
     }, [panels, selectedState]);
 
+    // Região com mais painéis primeiro (ex.: todos de Goiânia), depois as menores
     const filteredPanels = useMemo(() => {
-        return panels.filter(panel => {
+        return sortByRegion(panels).filter(panel => {
             const safeSearch = searchTerm.trim().toLowerCase();
             const matchesSearch = panel.name?.toLowerCase().includes(safeSearch) || panel.city?.toLowerCase().includes(safeSearch);
             const matchesState = selectedState ? panel.state === selectedState : true;
@@ -406,26 +409,37 @@ export function Services() {
             {selectedPanel && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[99999] flex items-center justify-center bg-ink-950/90 p-4" role="dialog" aria-modal="true" aria-labelledby="panel-title">
                     <div className="absolute inset-0" onClick={() => setSelectedPanel(null)} />
-                    <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={spring} className="relative z-10 flex max-h-[90vh] w-full max-w-[960px] flex-col overflow-hidden border border-white/10 bg-ink-950 md:flex-row">
-                        <button type="button" aria-label="Fechar" onClick={() => setSelectedPanel(null)} className="absolute right-0 top-0 z-10 bg-ink-950 p-3 text-ink-300 hover:text-ink-100"><X className="h-5 w-5" strokeWidth={1.75} /></button>
+                    <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} transition={spring} className="relative z-10 flex max-h-[92dvh] w-full max-w-[1080px] flex-col overflow-hidden border border-white/10 bg-ink-950 shadow-panel md:h-[min(640px,92dvh)] md:flex-row">
+                        <button type="button" aria-label="Fechar" onClick={() => setSelectedPanel(null)} className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center bg-ink-950/80 text-ink-300 backdrop-blur hover:text-ink-100"><X className="h-5 w-5" strokeWidth={1.75} /></button>
 
-                        <div className="relative h-[240px] shrink-0 bg-ink-900 md:h-auto md:w-1/2">
-                            <img src={selectedPanel.images?.[0] || '/placeholder.svg'} alt={`Painel ${selectedPanel.name}`} className="h-full w-full object-cover" />
+                        {/* Fotos: setas, miniaturas e arrastar no celular quando o painel tem mais de uma */}
+                        <div className="h-[300px] shrink-0 sm:h-[360px] md:h-auto md:w-[58%]">
+                            <PanelGallery key={selectedPanel.id} images={selectedPanel.images ?? []} name={selectedPanel.name} />
                         </div>
 
-                        <div className="flex flex-col overflow-y-auto p-6 md:w-1/2 md:p-10">
-                            <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-ink-400">
-                                <MapPin className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> {[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}
+                        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 md:p-8 [&>*]:shrink-0">
+                            <p className="flex items-center gap-1.5 pr-10 text-xs uppercase tracking-[0.12em] text-ink-400">
+                                <MapPin className="h-3.5 w-3.5 text-brand-neon" strokeWidth={1.75} aria-hidden="true" /> {[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}
                             </p>
-                            <h2 id="panel-title" className="mt-3 text-3xl font-light uppercase leading-tight tracking-tight text-ink-100">{selectedPanel.name}</h2>
+                            <h2 id="panel-title" className="mt-3 pr-10 text-2xl font-light uppercase leading-tight tracking-tight text-ink-100 md:text-3xl">{selectedPanel.name}</h2>
+                            {selectedPanel.address && <p className="mt-2 text-sm text-ink-400">{selectedPanel.address}</p>}
+                            {selectedPanel.description && <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-ink-300">{selectedPanel.description}</p>}
 
-                            <dl className="mt-8 grid grid-cols-2 border-t border-white/[0.08] font-mono text-sm">
-                                <div className="border-b border-white/[0.08] py-4 pr-4"><dt className="text-xs text-ink-500">Impactos por dia</dt><dd className="mt-1 text-ink-100">{selectedPanel.impacts || '—'}</dd></div>
-                                <div className="border-b border-l border-white/[0.08] py-4 pl-4"><dt className="text-xs text-ink-500">Formato</dt><dd className="mt-1 text-ink-100">{selectedPanel.size || '—'}</dd></div>
-                                <div className="col-span-2 border-b border-white/[0.08] py-4"><dt className="text-xs text-ink-500">Resolução</dt><dd className="mt-1 text-ink-100">{selectedPanel.px || '—'}</dd></div>
+                            <dl className="mt-6 grid grid-cols-2 gap-px border border-white/[0.08] bg-white/[0.08] text-sm">
+                                {([
+                                    [Eye, 'Impactos por dia', selectedPanel.impacts],
+                                    [Monitor, 'Formato', selectedPanel.size],
+                                    [ScanLine, 'Resolução', selectedPanel.px],
+                                    [Images, 'Fotos', String((selectedPanel.images ?? []).filter(Boolean).length || '—')],
+                                ] as const).map(([Icon, label, value]) => (
+                                    <div key={label} className="bg-ink-950 p-4">
+                                        <dt className="flex items-center gap-1.5 text-xs text-ink-500"><Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> {label}</dt>
+                                        <dd className="mt-1.5 font-mono text-ink-100">{value || '—'}</dd>
+                                    </div>
+                                ))}
                             </dl>
 
-                            <div className="mt-auto pt-8">
+                            <div className="mt-auto pt-6">
                                 {Number(selectedPanel.price) > 0 ? (
                                     <p className="font-mono">
                                         <span className="block text-xs text-ink-500">Plano anual · de <span className="line-through">{formatCurrency(Number(selectedPanel.price))}</span> por</span>
@@ -433,8 +447,8 @@ export function Services() {
                                         <span className="text-sm text-ink-400"> /mês</span>
                                     </p>
                                 ) : <p className="text-ink-400">Valor sob consulta</p>}
-                                <button type="button" onClick={() => { toggleInCart(selectedPanel); setSelectedPanel(null); }} className={`mt-6 w-full ${isInCart(selectedPanel.id) ? btnGhost : btnPrimary}`}>
-                                    {isInCart(selectedPanel.id) ? 'Remover do projeto' : 'Adicionar ao projeto'}
+                                <button type="button" onClick={() => { toggleInCart(selectedPanel); setSelectedPanel(null); }} className={`mt-5 w-full ${isInCart(selectedPanel.id) ? btnGhost : btnPrimary}`}>
+                                    {isInCart(selectedPanel.id) ? 'Remover do projeto' : <>Adicionar ao projeto <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
                                 </button>
                             </div>
                         </div>
