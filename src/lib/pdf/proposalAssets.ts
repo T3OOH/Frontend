@@ -7,13 +7,16 @@ export interface ProposalAssets {
     photos: Record<string, (string | null)[]>;
 }
 
-/** Baixa e converte o logo e TODAS as fotos dos painéis antes de montar o PDF. */
+/**
+ * Baixa e converte o logo (versão preta, o PDF é branco) e só a foto de capa de cada painel,
+ * em tamanho pequeno: o PDF é feito para imprimir e a foto aparece em miniatura.
+ */
 export async function loadProposalAssets(panels: CalculatedPanel[]): Promise<ProposalAssets> {
     registerPdfFonts();
-    const lists = panels.map((p) => (p.images ?? []).filter(Boolean));
+    const lists = panels.map((p) => (p.images ?? []).filter(Boolean).slice(0, 1));
     const [logo, converted] = await Promise.all([
-        pdfImage('/t3-logo.webp', { maxSize: 160, type: 'image/png' }),
-        pdfImages(lists.flat(), { maxSize: 1600 }),
+        pdfImage('/t3-logo-black.png', { maxSize: 160, type: 'image/png' }),
+        pdfImages(lists.flat(), { maxSize: 600 }),
     ]);
     const photos: Record<string, (string | null)[]> = {};
     let k = 0;

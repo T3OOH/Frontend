@@ -1,11 +1,12 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { PanelData } from '@/services/panels.service';
 import type { ProposalAssets } from '@/lib/pdf/proposalAssets';
+import { formatPlayback } from '@/lib/playback';
 
 /*
- * PDF da proposta comercial, no visual do site: fundo escuro, laranja da marca, Geist e
- * cantos retos. Página 01: texto de apresentação e dados da proposta (sem fotos).
- * Da página 02 em diante: um painel por página, com nome, cidade e todas as fotos.
+ * PDF da proposta comercial, feito para imprimir: fundo branco, texto escuro, laranja da marca
+ * só em detalhes finos, Geist e cantos retos. Página 01: apresentação e dados da proposta (sem fotos).
+ * Da página 02 em diante: os painéis em lista, cada um com uma foto de capa pequena (economiza tinta).
  * Cores fixas: o arquivo não segue o tema da tela.
  */
 
@@ -48,13 +49,13 @@ const PROPOSAL_INTRO = [
 ];
 
 const C = {
-    bg: '#0A0A0B',
-    surface: '#111113',
-    surface2: '#161618',
-    border: '#27272A',
-    text: '#F8FAFC',
-    soft: '#B4B4B9',
-    muted: '#86868B',
+    bg: '#FFFFFF',
+    surface: '#FFFFFF',
+    surface2: '#F4F4F5',
+    border: '#E4E4E7',
+    text: '#111113',
+    soft: '#3F3F46',
+    muted: '#71717A',
     brand: '#FF5E00',
 };
 
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
     sectionTitle: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
     sectionBar: { width: 3, height: 10, backgroundColor: C.brand, marginRight: 6 },
 
+    summary: { fontSize: 10, lineHeight: 1.6, color: C.soft },
     bottomRow: { flexDirection: 'row' },
     bottomClient: { width: '40%', paddingRight: 10 },
     bottomTotals: { width: '60%' },
@@ -87,15 +89,6 @@ const styles = StyleSheet.create({
     clientGap: { marginTop: 8 },
     clientValue: { fontSize: 9.5, marginTop: 3, color: C.text },
 
-    tableHead: { flexDirection: 'row', backgroundColor: C.surface2, borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 7, paddingHorizontal: 10 },
-    row: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 6, paddingHorizontal: 10 },
-    cName: { flex: 2.6, paddingRight: 8 },
-    cFmt: { flex: 0.9 },
-    cMoney: { flex: 1.2, textAlign: 'right' },
-    cDisc: { flex: 0.8, textAlign: 'right' },
-    cellStrong: { fontSize: 9.5, fontWeight: 500 },
-    cell: { fontSize: 9, color: C.soft },
-    cellSub: { fontSize: 7.5, color: C.muted, marginTop: 2 },
 
     totals: { flexGrow: 1, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, padding: 12 },
     totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
@@ -110,28 +103,39 @@ const styles = StyleSheet.create({
     footerText: { fontSize: 7.5, color: C.muted },
     footerPage: { fontFamily: 'GeistMono', fontSize: 7.5, color: C.muted },
 
-    panelHeader: { marginTop: 4, marginBottom: 14 },
-    panelName: { fontSize: 20, fontWeight: 600, letterSpacing: -0.3, lineHeight: 1.2, marginTop: 6 },
-    panelCity: { fontSize: 10.5, color: C.soft, marginTop: 4 },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 },
-    chip: { borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 4, paddingHorizontal: 7, marginRight: 6, marginBottom: 6, flexDirection: 'row' },
-    chipLabel: { fontFamily: 'GeistMono', fontSize: 7, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 5 },
-    chipValue: { fontSize: 8, fontWeight: 500 },
-
-    photoHero: { width: '100%', height: 300, marginBottom: 8 },
-    photoHeroCompact: { width: '100%', height: 220, marginBottom: 8 },
-    photoHeroSolo: { width: '100%', height: 440 },
-    photoGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    photoCell: { width: '49.2%', height: 150, marginBottom: 8 },
-    photoEmpty: { width: '100%', height: 300 },
+    listTitle: { marginTop: 2, marginBottom: 10 },
+    card: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 10 },
+    cover: { width: 132, height: 84, marginRight: 14, backgroundColor: C.surface2 },
+    coverMissing: { width: '100%', height: '100%', borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
     photo: { width: '100%', height: '100%', objectFit: 'cover' },
-    photoMissing: { width: '100%', height: '100%', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+    cardBody: { flex: 1 },
+    cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    cardInfo: { flex: 1, paddingRight: 8 },
+    panelName: { fontSize: 12, fontWeight: 600, lineHeight: 1.25, marginTop: 3 },
+    panelCity: { fontSize: 8.5, color: C.soft, marginTop: 2 },
+    cardPrice: { fontSize: 11, fontWeight: 700, color: C.text, textAlign: 'right' },
+    cardPriceNote: { fontSize: 7, color: C.muted, textAlign: 'right', marginTop: 2 },
+    cardPriceLabel: { fontFamily: 'GeistMono', fontSize: 6.5, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'right' },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
+    chip: { borderWidth: 1, borderColor: C.border, paddingVertical: 2.5, paddingHorizontal: 6, marginRight: 5, marginBottom: 4, flexDirection: 'row' },
+    chipLabel: { fontFamily: 'GeistMono', fontSize: 6.5, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 4 },
+    chipValue: { fontSize: 7.5, fontWeight: 500 },
 });
 
 const brl = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 const pad = (n: number) => String(n).padStart(2, '0');
 const monthsLabel = (m: number) => `${m} ${m === 1 ? 'mês' : 'meses'}`;
 const place = (p: CalculatedPanel) => [p.city, p.state].filter(Boolean).join(' · ');
+/** "Goiânia (7), Itumbiara (4) e Uberlândia (1)", na ordem em que os painéis aparecem. */
+const regions = (panels: CalculatedPanel[]) => {
+    const count = new Map<string, number>();
+    for (const p of panels) {
+        const r = p.city || p.state || 'outras cidades';
+        count.set(r, (count.get(r) ?? 0) + 1);
+    }
+    const parts = [...count].map(([r, n]) => `${r} (${n})`);
+    return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}` : parts[0] ?? '';
+};
 
 const Eyebrow = ({ children, brand }: { children: string; brand?: boolean }) => <Text style={brand ? styles.eyebrowBrand : styles.eyebrow}>{children}</Text>;
 
@@ -162,32 +166,41 @@ const Footer = ({ sellerName }: { sellerName: string }) => (
     </View>
 );
 
-const Photo = ({ src, style }: { src: string | null; style: (typeof styles)[keyof typeof styles] }) => (
-    <View style={style} wrap={false}>
+/** Foto de capa pequena do painel (uma só por painel, para gastar pouca tinta). */
+const Cover = ({ src }: { src: string | null }) => (
+    <View style={styles.cover}>
         {src ? <Image src={src} style={styles.photo} /> : (
-            <View style={styles.photoMissing}><Text style={styles.footerText}>Foto indisponível</Text></View>
+            <View style={styles.coverMissing}><Text style={styles.footerText}>Sem foto</Text></View>
         )}
     </View>
 );
 
-const PanelPage = ({ panel, index, total, photos, logo, date, sellerName }: {
-    panel: CalculatedPanel; index: number; total: number; photos: (string | null)[]; logo: string | null; date: string; sellerName: string;
-}) => {
+const PanelCard = ({ panel, index, total, cover }: { panel: CalculatedPanel; index: number; total: number; cover: string | null }) => {
     const chips = ([
         ['Formato', panel.size],
         ['Resolução', panel.px],
         ['Impactos', panel.impacts],
+        ['Reprodução', formatPlayback(panel.playbackSeconds) ?? undefined],
     ] as [string, string | undefined][]).filter(([, v]) => v && String(v).trim()) as [string, string][];
-    const [first, ...rest] = photos;
     const where = [place(panel), panel.address].filter(Boolean).join(' — ');
     return (
-        <Page size="A4" style={styles.page}>
-            {/* Repetido nas páginas de continuação quando o painel tem muitas fotos */}
-            <Header logo={logo} date={date} fixed />
-            <View style={styles.panelHeader}>
-                <Eyebrow brand>{`Painel ${pad(index + 1)} de ${pad(total)}`}</Eyebrow>
-                <Text style={styles.panelName}>{panel.name}</Text>
-                {where && <Text style={styles.panelCity}>{where}</Text>}
+        <View style={styles.card} wrap={false}>
+            <Cover src={cover} />
+            <View style={styles.cardBody}>
+                <View style={styles.cardTop}>
+                    <View style={styles.cardInfo}>
+                        <Eyebrow brand>{`Painel ${pad(index + 1)} de ${pad(total)}`}</Eyebrow>
+                        <Text style={styles.panelName}>{panel.name}</Text>
+                        {where && <Text style={styles.panelCity}>{where}</Text>}
+                    </View>
+                    <View>
+                        <Text style={styles.cardPriceLabel}>Mensal</Text>
+                        <Text style={styles.cardPrice}>{brl(panel.finalPrice)}</Text>
+                        {panel.discountPct > 0 && (
+                            <Text style={styles.cardPriceNote}>{`Tabela ${brl(panel.basePrice)} · −${panel.discountPct}%`}</Text>
+                        )}
+                    </View>
+                </View>
                 {chips.length > 0 && (
                     <View style={styles.chips}>
                         {chips.map(([label, value]) => (
@@ -199,21 +212,7 @@ const PanelPage = ({ panel, index, total, photos, logo, date, sellerName }: {
                     </View>
                 )}
             </View>
-
-            {photos.length === 0 ? (
-                <Photo src={null} style={styles.photoEmpty} />
-            ) : (
-                <>
-                    <Photo src={first} style={rest.length > 2 ? styles.photoHeroCompact : rest.length ? styles.photoHero : styles.photoHeroSolo} />
-                    {rest.length > 0 && (
-                        <View style={styles.photoGrid}>
-                            {rest.map((src, i) => <Photo key={i} src={src} style={styles.photoCell} />)}
-                        </View>
-                    )}
-                </>
-            )}
-            <Footer sellerName={sellerName} />
-        </Page>
+        </View>
     );
 };
 
@@ -233,26 +232,10 @@ export const ProposalDocument = ({ client, panels, months, totals, date, sellerN
                 </View>
 
                 <View style={styles.section}>
-                    <SectionTitle>{`Painéis e valores · ${pad(panels.length)} ${panels.length === 1 ? 'painel' : 'painéis'}`}</SectionTitle>
-                    <View style={styles.tableHead}>
-                        <Text style={[styles.eyebrow, styles.cName]}>Painel</Text>
-                        <Text style={[styles.eyebrow, styles.cFmt]}>Formato</Text>
-                        <Text style={[styles.eyebrow, styles.cMoney]}>Tabela</Text>
-                        <Text style={[styles.eyebrow, styles.cDisc]}>Desc.</Text>
-                        <Text style={[styles.eyebrow, styles.cMoney]}>Mensal</Text>
-                    </View>
-                    {panels.map((p) => (
-                        <View key={p.id} style={styles.row} wrap={false}>
-                            <View style={styles.cName}>
-                                <Text style={styles.cellStrong}>{p.name}</Text>
-                                {place(p) && <Text style={styles.cellSub}>{place(p)}</Text>}
-                            </View>
-                            <Text style={[styles.cell, styles.cFmt]}>{p.size || '—'}</Text>
-                            <Text style={[styles.cell, styles.cMoney]}>{brl(p.basePrice)}</Text>
-                            <Text style={[styles.cell, styles.cDisc]}>{p.discountPct > 0 ? `${p.discountPct}%` : '—'}</Text>
-                            <Text style={[styles.cellStrong, styles.cMoney]}>{brl(p.finalPrice)}</Text>
-                        </View>
-                    ))}
+                    <SectionTitle>Painéis</SectionTitle>
+                    <Text style={styles.summary}>
+                        {`${pad(panels.length)} ${panels.length === 1 ? 'painel' : 'painéis'} em ${regions(panels)}. Foto, endereço, formato e valor de cada um a partir da página 02.`}
+                    </Text>
                 </View>
 
                 {/* Cliente e valores lado a lado, para a página 01 caber inteira */}
@@ -320,10 +303,17 @@ export const ProposalDocument = ({ client, panels, months, totals, date, sellerN
                 <Footer sellerName={sellerName} />
             </Page>
 
-            {/* Página 02 em diante: fotos de cada painel */}
-            {panels.map((p, i) => (
-                <PanelPage key={p.id} panel={p} index={i} total={panels.length} photos={assets.photos[p.id] ?? []} logo={assets.logo} date={date} sellerName={sellerName} />
-            ))}
+            {/* Página 02 em diante: os painéis em lista, com a foto de capa pequena de cada um */}
+            <Page size="A4" style={styles.page}>
+                <Header logo={assets.logo} date={date} fixed />
+                <View style={styles.listTitle}>
+                    <SectionTitle>{`Painéis da proposta · ${pad(panels.length)} ${panels.length === 1 ? 'painel' : 'painéis'}`}</SectionTitle>
+                </View>
+                {panels.map((p, i) => (
+                    <PanelCard key={p.id} panel={p} index={i} total={panels.length} cover={assets.photos[p.id]?.[0] ?? null} />
+                ))}
+                <Footer sellerName={sellerName} />
+            </Page>
         </Document>
     );
 };

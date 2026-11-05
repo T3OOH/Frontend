@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { parsePlaybackInput } from '@/lib/playback';
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { BaseTiles } from '@/features/map/basemap';
@@ -27,7 +28,7 @@ const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
 /** Foto já salva (url) ou escolhida agora (file + preview). */
 interface Photo { url?: string; file?: File; preview: string }
 
-const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', price: '', description: '' };
+const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', playback: '', price: '', description: '' };
 
 function ClickToPlace({ onPick }: { onPick: (pos: [number, number]) => void }) {
     useMapEvents({ click: (e) => onPick([e.latlng.lat, e.latlng.lng]) });
@@ -72,7 +73,7 @@ export function PanelForm() {
             .then((p) => {
                 setForm({
                     name: p.name || '', status: p.status || 'AVAILABLE', address: p.address || '', city: p.city || '', state: p.state || '',
-                    size: p.size || '', px: p.px || '', impacts: p.impacts || '', price: p.price != null ? String(p.price) : '', description: p.description || '',
+                    size: p.size || '', px: p.px || '', impacts: p.impacts || '', playback: p.playbackSeconds ? String(p.playbackSeconds) : '', price: p.price != null ? String(p.price) : '', description: p.description || '',
                 });
                 if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
                     setPosition([p.lat, p.lng]);
@@ -121,6 +122,8 @@ export function PanelForm() {
         if (saving) return;
         const price = form.price.trim() ? Number(form.price.replace(',', '.')) : null;
         if (price !== null && (!Number.isFinite(price) || price < 0)) { toast.error('Preço inválido.'); return; }
+        const playbackSeconds = parsePlaybackInput(form.playback);
+        if (Number.isNaN(playbackSeconds)) { toast.error('Tempo de reprodução: use segundos inteiros entre 1 e 3600.'); return; }
 
         setSaving(true);
         try {
@@ -137,6 +140,7 @@ export function PanelForm() {
                 size: form.size.trim(),
                 px: form.px.trim(),
                 impacts: form.impacts.trim(),
+                playbackSeconds: playbackSeconds,
                 price,
                 city: form.city.trim(),
                 state: form.state.trim().toUpperCase(),
@@ -209,10 +213,13 @@ export function PanelForm() {
                     </Panel>
 
                     {/* ============================ FICHA TÉCNICA ============================ */}
-                    <Panel title="Ficha técnica" bodyClassName="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
+                    <Panel title="Ficha técnica" bodyClassName="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                         <Field label="Formato" htmlFor="pn-size"><input id="pn-size" required maxLength={80} value={form.size} onChange={set('size')} className={crmInput} placeholder="6x3 m" /></Field>
                         <Field label="Resolução" htmlFor="pn-px"><input id="pn-px" required maxLength={80} value={form.px} onChange={set('px')} className={crmInput} placeholder="P10 · 960x480" /></Field>
                         <Field label="Impactos por dia" htmlFor="pn-impacts"><input id="pn-impacts" required maxLength={80} value={form.impacts} onChange={set('impacts')} className={crmInput} placeholder="280 mil" /></Field>
+                        <Field label="Tempo de reprodução (s)" htmlFor="pn-playback" hint="Segundos de cada inserção do anúncio. Opcional.">
+                            <input id="pn-playback" type="number" inputMode="numeric" min={1} max={3600} step={1} value={form.playback} onChange={set('playback')} className={crmInput} placeholder="15" />
+                        </Field>
                     </Panel>
                 </div>
 

@@ -5,6 +5,7 @@ import { ArrowLeft, ClipboardCheck, Download, Eye, Search, Send } from 'lucide-r
 
 import { api } from '@/lib/axios';
 import { panelsService } from '@/services/panels.service';
+import { sortByRegion } from '@/lib/regions';
 import { crmService, CrmClient, SiteClient } from '@/services/crm.service';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -145,7 +146,8 @@ export function CrmProposals() {
     }, [clients, siteClients]);
     const fromSite = clientMode === 'wallet' && clientId.startsWith(SITE_PREFIX);
 
-    const calculated: CalculatedPanel[] = useMemo(() => panels
+    // Na proposta (tela e PDF), a região com mais painéis vem primeiro
+    const calculated: CalculatedPanel[] = useMemo(() => sortByRegion(panels)
         .filter((p) => selectedIds.includes(p.id))
         .map((p) => {
             const basePrice = Number(p.price) || 0;
@@ -164,8 +166,9 @@ export function CrmProposals() {
 
     const visiblePanels = useMemo(() => {
         const q = panelQuery.trim().toLowerCase();
-        const list = q ? panels.filter((p) => [p.name, p.city, p.state].some((v) => v?.toLowerCase().includes(q))) : panels;
-        // Selecionados primeiro
+        const sorted = sortByRegion(panels);
+        const list = q ? sorted.filter((p) => [p.name, p.city, p.state].some((v) => v?.toLowerCase().includes(q))) : sorted;
+        // Selecionados primeiro (a ordenação é estável: dentro de cada grupo continua por região)
         return [...list].sort((a, b) => Number(selectedIds.includes(b.id)) - Number(selectedIds.includes(a.id)));
     }, [panels, panelQuery, selectedIds]);
 
