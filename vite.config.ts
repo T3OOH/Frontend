@@ -15,14 +15,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Só o núcleo do React fica num bloco fixo (muda pouco, cache longo). O resto (PDF, mapa,
+        // Socket.IO, animações...) segue a divisão natural: cada biblioteca vai junto da página que a usa
+        // e o celular não baixa o que a tela aberta não precisa.
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('leaflet') || id.includes('react-leaflet')) return 'vendor-leaflet';
-            if (id.includes('framer-motion')) return 'vendor-framer';
-            if (id.includes('react') || id.includes('react-dom')) return 'vendor-react';
-            if (id.includes('lucide-react')) return 'vendor-icons';
-            return 'vendor';
-          }
+          if (/node_modules[\/](react|react-dom|scheduler|react-router|react-router-dom)[\/]/.test(id)) return 'vendor-react';
         }
       }
     }

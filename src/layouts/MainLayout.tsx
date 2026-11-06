@@ -16,7 +16,12 @@ let gatewayShown = false;
 
 export function MainLayout() {
     const [showGateway, setShowGateway] = useState(() => openedOnHome && !gatewayShown);
-    const closeGateway = () => { gatewayShown = true; setShowGateway(false); };
+    const closeGateway = () => {
+        gatewayShown = true;
+        setShowGateway(false);
+        // Versão estática da tela de escolha (vem no HTML da home, ver scripts/prerender.mjs)
+        document.getElementById('gw-estatico')?.remove();
+    };
     const { pathname } = useLocation();
     // A página da T3 Solution tem o próprio vídeo (casa com o telão); as demais, a cidade
     const background = pathname.startsWith('/solution') ? BACKGROUND_VIDEOS.solution : BACKGROUND_VIDEOS.cidade;
@@ -24,16 +29,21 @@ export function MainLayout() {
     return (
         <div className="relative isolate min-h-screen flex flex-col">
             <AnimatePresence>{showGateway && <Gateway onDone={closeGateway} />}</AnimatePresence>
-            {/* Vídeo de fundo; "key" reinicia o loop ao trocar de vídeo */}
-            <PhotoCity key={background.mp4} video={background} />
-            <Header />
-            <main className="flex-1 mt-20">
-                <Outlet />
-            </main>
+            {/* Vídeo de fundo; "key" reinicia o loop ao trocar de vídeo. Com a tela de escolha aberta
+                ele nem existe: a escolha cobre a tela e os dois disputariam a rede no celular. */}
+            {!showGateway && <PhotoCity key={background.mp4} video={background} />}
+            {/* Com a tela de escolha aberta, o site já fica montado (dados carregando) mas fora da tela:
+                assim as fotos "lazy" da home não baixam antes da pessoa entrar. */}
+            <div className={showGateway ? 'hidden' : 'contents'}>
+                <Header />
+                <main className="flex-1 mt-20">
+                    <Outlet />
+                </main>
 
-            <Footer />
+                <Footer />
 
-            <CookieConsent />
+                <CookieConsent />
+            </div>
         </div>
     );
 }

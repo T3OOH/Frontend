@@ -6,8 +6,6 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { CartProvider } from '@/contexts/CartContext'; 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { MainLayout } from '@/layouts/MainLayout';
-import { DashboardLayout } from '@/layouts/DashboardLayout';
-import { CrmLayout } from '@/layouts/CrmLayout'; 
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
@@ -18,6 +16,9 @@ import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 // ==========================================
 
 // Public Views
+// Gestão e CRM: o visitante do site nunca baixa esses layouts
+const DashboardLayout = lazy(() => import('@/layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const CrmLayout = lazy(() => import('@/layouts/CrmLayout').then(m => ({ default: m.CrmLayout })));
 const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
 const Contact = lazy(() => import('@/pages/Contact').then(m => ({ default: m.Contact })));
 const Services = lazy(() => import('@/pages/Services').then(m => ({ default: m.Services })));
@@ -154,7 +155,7 @@ export function AppRoutes() {
 
                                 {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
-                                    <Route path="/dashboard" element={<DashboardLayout />}>
+                                    <Route path="/dashboard" element={<Suspense fallback={<PageLoader />}><DashboardLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><Overview /></Suspense>} />
                                         <Route path="paineis" element={<Suspense fallback={<PageLoader />}><Panels /></Suspense>} />
                                         <Route path="paineis/novo" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
@@ -175,7 +176,7 @@ export function AppRoutes() {
 
                                 {/* ROTAS RESTRITAS (CRM / COMERCIAL) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER', 'COMERCIAL']} />}>
-                                    <Route path="/crm" element={<CrmLayout />}>
+                                    <Route path="/crm" element={<Suspense fallback={<PageLoader />}><CrmLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><CrmOverview /></Suspense>} />
                                         <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><CrmPipeline /></Suspense>} />
                                         <Route path="clientes" element={<Suspense fallback={<PageLoader />}><CrmClients /></Suspense>} />
@@ -193,7 +194,7 @@ export function AppRoutes() {
                                       * Captura eventuais links absolutos de modulos paralelos (/dashboard/crm/proposta/:id)
                                       * Montando apropriadamente com o contexto do CrmLayout
                                       */}
-                                    <Route path="/dashboard/crm/proposta/:id" element={<CrmLayout />}>
+                                    <Route path="/dashboard/crm/proposta/:id" element={<Suspense fallback={<PageLoader />}><CrmLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
                                     </Route>
                                 </Route>
