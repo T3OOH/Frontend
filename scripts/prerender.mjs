@@ -59,6 +59,11 @@ const legalNav = [
 const PAGES = [
     {
         path: '/', file: 'index.html',
+        // Quadros da tela de entrada (Gateway): maior elemento da primeira tela no celular
+        // (celular: versão de 960 px; computador: 1280 px). Só a de cima: a de baixo não disputa a rede com ela.
+        preloadImages: [
+            { src: '/video/t3-cidade-poster.webp', srcset: '/video/t3-cidade-poster-960.webp 960w, /video/t3-cidade-poster.webp 1280w', sizes: '(min-width: 768px) 50vw, 100vw' },
+        ],
         title: 'T3 LED | Painéis de LED e mídia exterior em Goiânia',
         description: 'Painéis de LED e mídia exterior (OOH/DOOH) em Goiânia e no interior de Goiás. Escolha os pontos no mapa, veja o investimento e receba o orçamento.',
         h1: 'Painéis de LED e mídia exterior em Goiânia',
@@ -200,6 +205,45 @@ function staticBody(page, panels) {
 </div>`;
 }
 
+/**
+ * Tela de escolha (Gateway) já no HTML da home: aparece na primeira pintura, antes do JavaScript.
+ * No celular ela é o maior elemento da tela (LCP); esperar o React baixar e montar custava ~2 s.
+ * Mesma aparência do src/components/Gateway.tsx (que toma o lugar dela ao carregar): mudar nos dois.
+ * Sem JavaScript, os dois lados são links comuns.
+ */
+function staticGateway() {
+    const lado = (href, poster, posterSet, pos, logo, srcset, sizes, w, h, logoW, eyebrow, title, cta, borda) => `
+<a class="gw-l${borda ? ' gw-b' : ''}" href="${href}">
+<img class="gw-bg" src="${poster}" srcset="${posterSet}" sizes="(min-width: 768px) 50vw, 100vw" alt="" width="1280" height="720" fetchpriority="${borda ? 'high' : 'auto'}" style="object-position:${pos}">
+<span class="gw-v"></span>
+<span class="gw-c"><img src="${logo}" srcset="${srcset}" sizes="${sizes}" width="${w}" height="${h}" alt="" style="width:${logoW}">
+<span class="gw-e">${eyebrow}</span><span class="gw-t">${title}</span><span class="gw-a"><span class="gw-m">${cta}</span><span class="gw-k">Tocar para ver</span> &rarr;</span></span>
+</a>`;
+    return `<div id="gw-estatico" class="gw" role="dialog" aria-label="Escolha a empresa da T3">${
+        lado('/mapa', '/video/t3-cidade-poster.webp', '/video/t3-cidade-poster-960.webp 960w, /video/t3-cidade-poster.webp 1280w', '30% 60%', '/t3-logo-160.webp', '/t3-logo-160.webp 160w, /t3-logo-224.webp 224w', '(min-width: 768px) 112px, 80px', 160, 160, 'var(--gw-l1)',
+            'Mídia OOH · Goiânia e região', 'Anuncie nos telões da cidade', 'Entrar na T3 OOH', true)}${
+        lado('/solution', '/video/t3-solution-casa-poster.webp', '/video/t3-solution-casa-poster-960.webp 960w, /video/t3-solution-casa-poster.webp 1280w', '64% 55%', '/t3-solution-3d-352.webp', '/t3-solution-3d-352.webp 352w, /t3-solution-3d-512.webp 512w', '(min-width: 768px) 256px, 176px', 352, 117, 'var(--gw-l2)',
+            'Painéis de LED sob medida', 'Uma tela de LED do seu tamanho', 'Entrar na T3 Solution', false)}
+<p class="gw-p">Escolha onde entrar</p></div>
+<script>if(location.pathname!=='/')document.currentScript.previousElementSibling.remove()</script>
+<style>
+.gw{--gw-l1:80px;--gw-l2:176px;position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:#0B0B0C;font-family:Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.gw-l{position:relative;isolation:isolate;flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;color:#ECECEE;text-decoration:none}
+.gw-b{border-bottom:1px solid rgba(255,255,255,.1)}
+.gw-bg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;transform:scale(1.02)}
+.gw-v{position:absolute;inset:0;z-index:-1;opacity:.9;background:linear-gradient(to top,rgba(11,11,12,.98) 0%,rgba(11,11,12,.7) 45%,rgba(11,11,12,.25) 100%)}
+.gw-c{display:flex;flex-direction:column;gap:16px;padding:24px 24px 32px}
+.gw-c img{height:auto;object-fit:contain;object-position:left}
+.gw-e{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#B4B4B9}
+.gw-t{max-width:14ch;font-size:1.875rem;font-weight:300;line-height:.95;letter-spacing:-.025em;text-transform:uppercase}
+.gw-a{margin-top:8px;width:fit-content;padding:12px 20px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,.25)}
+.gw-k{display:none}@media (hover:none){.gw-m{display:none}.gw-k{display:inline}}
+.gw-p{position:absolute;left:50%;top:20px;margin:0;transform:translateX(-50%);font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#8E8E93;white-space:nowrap;pointer-events:none}
+@media (min-width:768px){.gw{--gw-l1:112px;--gw-l2:256px;flex-direction:row}.gw-b{border-bottom:0;border-right:1px solid rgba(255,255,255,.1)}.gw-c{padding:48px 48px 56px}.gw-t{font-size:3rem}.gw-p{top:32px}}
+@media (min-width:1280px){.gw-t{font-size:3.75rem}}
+</style>`;
+}
+
 function render(template, page, panels) {
     const url = `${SITE}${page.path === '/' ? '/' : page.path}`;
     let html = template;
@@ -211,8 +255,10 @@ function render(template, page, panels) {
     set(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${esc(page.description)}" />`);
     set(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
     const md = page.file.replace(/\.html$/, '.md');
-    html = html.replace('</head>', `  <link rel="alternate" type="text/markdown" href="/${md}" />\n  <script type="application/ld+json">${jsonLd(page)}</script>\n</head>`);
-    set(/<div id="root"><\/div>/, `<div id="root">${staticBody(page, panels)}</div>`);
+    const preloads = (page.preloadImages ?? []).map((img) => `  <link rel="preload" as="image" href="${img.src}" imagesrcset="${img.srcset}" imagesizes="${img.sizes}" fetchpriority="high" />\n`).join('');
+    html = html.replace('</head>', `${preloads}  <link rel="alternate" type="text/markdown" href="/${md}" />\n  <script type="application/ld+json">${jsonLd(page)}</script>\n</head>`);
+    // Home: a tela de escolha fica antes do #root (o React monta a dele por cima e a estática sai na escolha)
+    set(/<div id="root"><\/div>/, `${page.path === '/' ? staticGateway() : ''}<div id="root">${staticBody(page, panels)}</div>`);
     return html;
 }
 
@@ -252,7 +298,41 @@ function render404(template) {
     return html.replace(/<div id="root"><\/div>/, `<div id="root"><div data-prerender style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"><main><h1>Página não encontrada</h1><p>O endereço acessado não existe. Veja as páginas do site:</p><ul>${links}</ul></main></div></div>`);
 }
 
-const template = await readFile(path.join(DIST, 'index.html'), 'utf8');
+/**
+ * Embute o CSS principal no HTML (<style> no lugar do <link>): no celular, a primeira pintura
+ * não espera mais um arquivo que divide a rede com o JavaScript e as imagens.
+ */
+async function inlineMainCss(html) {
+    const match = html.match(/<link rel="stylesheet" crossorigin href="(\/assets\/index-[^"]+\.css)">/);
+    if (!match) return html;
+    const css = (await readFile(path.join(DIST, match[1]), 'utf8')).replace(/<\/style/gi, '<\\/style');
+    return html.replace(match[0], `<style>${css}</style>`);
+}
+
+/**
+ * O app (script principal e os modulepreload) começa a baixar logo depois da primeira pintura.
+ * No celular, a tela pré-renderizada (e a de escolha na home) aparece sem disputar a rede com
+ * ~180 KB de JavaScript; o React começa a carregar um quadro depois.
+ */
+function deferAppScripts(html) {
+    const entry = html.match(/<script type="module" crossorigin src="([^"]+)"><\/script>\s*/);
+    if (!entry) return html;
+    const preloads = [...html.matchAll(/<link rel="modulepreload" crossorigin href="([^"]+)">\s*/g)];
+    let out = html.replace(entry[0], '');
+    for (const p of preloads) out = out.replace(p[0], '');
+    const list = JSON.stringify(preloads.map((p) => p[1]));
+    const loader = `<script>(function(){function go(){var h=document.head;${list}.forEach(function(u){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=u;h.appendChild(l)});`
+        + `var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=${JSON.stringify(entry[1])};h.appendChild(s)}`
+        // Home: a tela de escolha estática já funciona (os lados são links); o app espera as imagens dela.
+        // Demais páginas: um quadro depois da primeira pintura.
+        // (aba em segundo plano não roda requestAnimationFrame: o setTimeout garante o carregamento)
+        + `var started=false;function run(){if(!started){started=true;go()}}`
+        + `function soon(){requestAnimationFrame(function(){setTimeout(run,0)});setTimeout(run,200)}`
+        + `if(document.getElementById('gw-estatico')&&document.readyState!=='complete'){addEventListener('load',soon,{once:true})}else{soon()}})()</script>\n`;
+    return out.replace('</body>', `${loader}</body>`);
+}
+
+const template = deferAppScripts(await inlineMainCss(await readFile(path.join(DIST, 'index.html'), 'utf8')));
 const allPanels = await fetchPanels();
 const panels = allPanels.filter((p) => p?.name).slice(0, 200);
 // Cópia da lista servida pela CDN: o site mostra os painéis na hora enquanto a API responde

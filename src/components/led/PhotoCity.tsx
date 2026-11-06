@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -26,9 +26,31 @@ const CROSSFADE_S = 1.2;
 const deviceWantsStill = () => {
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        // Celular: o vídeo de 4 MB pesa nos dados móveis e na nota de velocidade; fica o quadro parado
+        window.matchMedia('(max-width: 767px)').matches ||
         Boolean(connection?.saveData) ||
         /(^|-)2g$/.test(connection?.effectiveType ?? '');
 };
+
+/** Libera o vídeo só depois que a página terminou de carregar e o navegador ficou livre. */
+function useAfterLoad() {
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        let idle = 0;
+        const start = () => {
+            const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+            idle = ric ? ric(() => setReady(true), { timeout: 2500 }) : window.setTimeout(() => setReady(true), 1500);
+        };
+        if (document.readyState === 'complete') start();
+        else window.addEventListener('load', start, { once: true });
+        return () => {
+            window.removeEventListener('load', start);
+            const cic = (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+            if (cic) cic(idle); else window.clearTimeout(idle);
+        };
+    }, []);
+    return ready;
+}
 
 interface PhotoCityProps {
     /** Opacidade do véu escuro (0 = imagem pura, 1 = preto). */
@@ -43,7 +65,8 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     // Perfil → Aparência: "imagem parada" ou "menos movimento" também desligam o vídeo
     const { preferences } = useTheme();
     const [deviceStill] = useState(deviceWantsStill);
-    const playVideo = !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
+    const afterLoad = useAfterLoad();
+    const playVideo = afterLoad && !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
     const [videoReady, setVideoReady] = useState(false);
     // Duas cópias do vídeo se revezam; "front" é a que está visível
     const videos = useRef<(HTMLVideoElement | null)[]>([null, null]);

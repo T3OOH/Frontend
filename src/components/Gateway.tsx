@@ -5,10 +5,14 @@ import { ArrowRight } from 'lucide-react';
 
 type Side = 'ooh' | 'solution';
 
-const SIDES: Record<Side, { to: string; logo: string; logoAlt: string; eyebrow: string; title: string; text: string; cta: string }> = {
+const SIDES: Record<Side, { to: string; logo: string; logoSrcSet: string; logoSizes: string; logoSize: [number, number]; logoAlt: string; eyebrow: string; title: string; text: string; cta: string }> = {
     ooh: {
         to: '/',
-        logo: '/t3-logo.webp',
+        // Logos no tamanho em que aparecem (80 px no celular, 112 px no computador), 2x para telas densas
+        logo: '/t3-logo-160.webp',
+        logoSrcSet: '/t3-logo-160.webp 160w, /t3-logo-224.webp 224w',
+        logoSizes: '(min-width: 768px) 112px, 80px',
+        logoSize: [160, 160],
         logoAlt: 'T3 OOH',
         eyebrow: 'Mídia OOH · Goiânia e região',
         title: 'Anuncie nos telões da cidade',
@@ -17,7 +21,10 @@ const SIDES: Record<Side, { to: string; logo: string; logoAlt: string; eyebrow: 
     },
     solution: {
         to: '/solution',
-        logo: '/t3-solution-3d.webp',
+        logo: '/t3-solution-3d-352.webp',
+        logoSrcSet: '/t3-solution-3d-352.webp 352w, /t3-solution-3d-512.webp 512w',
+        logoSizes: '(min-width: 768px) 256px, 176px',
+        logoSize: [352, 117],
         logoAlt: 'T3 Solution',
         eyebrow: 'Painéis de LED sob medida',
         title: 'Uma tela de LED do seu tamanho',
@@ -32,12 +39,12 @@ const spring = { type: 'spring', stiffness: 170, damping: 26 } as const;
  * Vídeo de fundo de cada lado. Parado no primeiro quadro (o pôster é esse quadro, então não há
  * salto) e toca enquanto o lado está ativo: mouse em cima, foco do teclado ou primeiro toque.
  */
-const MEDIA: Record<Side, { video: string; poster: string; position: string }> = {
+const MEDIA: Record<Side, { video: string; poster: string; posterSrcSet: string; priority: 'high' | 'auto'; position: string }> = {
     // Goiânia em golden hour com a logo da T3 nos telões (mesmo vídeo do fundo do site)
-    ooh: { video: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[30%_60%]' },
+    ooh: { video: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', posterSrcSet: '/video/t3-cidade-poster-960.webp 960w, /video/t3-cidade-poster.webp 1280w', priority: 'high', position: 'object-[30%_60%]' },
     // Casa com piscina e o telão de LED da T3 Solution no terraço: o telão fica um pouco à direita
     // do centro, e o enquadramento o mantém visível mesmo com o lado recolhido
-    solution: { video: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', position: 'object-[64%_55%]' },
+    solution: { video: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', posterSrcSet: '/video/t3-solution-casa-poster-960.webp 960w, /video/t3-solution-casa-poster.webp 1280w', priority: 'auto', position: 'object-[64%_55%]' },
 };
 
 /** Economia de dados, 2G ou "reduzir movimento": os vídeos não tocam (fica o quadro parado). */
@@ -49,6 +56,9 @@ const stillOnly = () => {
 function SideVideo({ media, active, preload }: { media: (typeof MEDIA)[Side]; active: boolean; preload: boolean }) {
     const ref = useRef<HTMLVideoElement>(null);
     const [still] = useState(stillOnly);
+    // O quadro parado é uma <img> com prioridade alta (aparece já na primeira pintura, inclusive no
+    // celular); o vídeo só aparece por cima quando começa a tocar, então não há tela preta.
+    const [playing, setPlaying] = useState(false);
 
     useEffect(() => {
         const v = ref.current;
@@ -58,21 +68,43 @@ function SideVideo({ media, active, preload }: { media: (typeof MEDIA)[Side]; ac
         else v.pause();
     }, [active, still]);
 
+    const transition = { duration: 1.6, ease: [0.22, 1, 0.36, 1] } as const;
     return (
-        <motion.video
-            ref={ref}
+        <motion.div
             aria-hidden="true"
-            muted
-            loop
-            playsInline
-            // No computador os dois vídeos carregam logo depois da tela abrir, para tocarem sem espera
-            preload={!still && preload ? 'auto' : 'none'}
-            poster={media.poster}
-            src={media.video}
-            className={`absolute inset-0 -z-10 h-full w-full object-cover ${media.position}`}
+            className="absolute inset-0 -z-10"
             animate={{ scale: active ? 1.08 : 1.02 }}
-            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-        />
+            initial={false}
+            transition={transition}
+        >
+            <img
+                src={media.poster}
+                // Celular: versão de 960 px (metade do peso); computador: 1280 px
+                srcSet={media.posterSrcSet}
+                sizes="(min-width: 768px) 50vw, 100vw"
+                alt=""
+                width={1280}
+                height={720}
+                // Só o lado de cima (o maior da primeira tela) tem prioridade alta
+                fetchPriority={media.priority}
+                decoding="async"
+                className={`absolute inset-0 h-full w-full object-cover ${media.position}`}
+            />
+            {!still && (
+                <video
+                    ref={ref}
+                    muted
+                    loop
+                    playsInline
+                    // No computador os dois vídeos carregam logo depois da tela abrir, para tocarem sem espera.
+                    // No celular só carrega o lado tocado (dados móveis).
+                    preload={preload ? 'auto' : 'none'}
+                    src={media.video}
+                    onPlaying={() => setPlaying(true)}
+                    className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${media.position} ${playing ? 'opacity-100' : 'opacity-0'}`}
+                />
+            )}
+        </motion.div>
     );
 }
 
@@ -94,6 +126,10 @@ export function Gateway({ onDone }: { onDone: () => void }) {
         const t = window.setTimeout(() => setPreloadVideos(true), 1000);
         return () => window.clearTimeout(t);
     }, [touch]);
+
+    // A versão estática (HTML da home, ver scripts/prerender.mjs) já foi pintada: esta, igual, assume.
+    // Ela precisa sair aqui: fica fora do #root e, por cima, receberia os toques.
+    useEffect(() => { document.getElementById('gw-estatico')?.remove(); }, []);
 
     useEffect(() => {
         const previous = document.body.style.overflow;
@@ -131,7 +167,8 @@ export function Gateway({ onDone }: { onDone: () => void }) {
             role="dialog"
             aria-modal="true"
             aria-label="Escolha a empresa da T3"
-            initial={{ opacity: 0 }}
+            // Já visível na primeira pintura (começar invisível atrasava o LCP no celular)
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.35 } }}
             onMouseLeave={() => !touch && setHovered(null)}
@@ -148,8 +185,9 @@ export function Gateway({ onDone }: { onDone: () => void }) {
                         onMouseEnter={() => !touch && setHovered(side)}
                         // No toque, o foco vem junto do toque: quem expande é o próprio toque (senão o primeiro já entrava)
                         onFocus={() => !touch && setHovered(side)}
-                        animate={{ flexGrow: grow(side), opacity: hidden ? 0 : 1, y: 0 }}
-                        initial={{ flexGrow: 0.5, y: i === 0 ? -40 : 40, opacity: 0 }}
+                        animate={{ flexGrow: grow(side), opacity: hidden ? 0 : 1 }}
+                        // Começa parado e visível: igual à versão estática do HTML (scripts/prerender.mjs), sem salto
+                        initial={false}
                         transition={spring}
                         style={{ flexBasis: 0 }}
                         aria-label={`${s.logoAlt}: ${s.title}`}
@@ -167,7 +205,8 @@ export function Gateway({ onDone }: { onDone: () => void }) {
 
                         {/* ============================ CONTEÚDO ============================ */}
                         <div className="relative flex w-full flex-col gap-4 p-6 pb-8 md:p-12 md:pb-14">
-                            <img src={s.logo} alt="" className={`h-auto object-contain object-left ${side === 'ooh' ? 'w-20 md:w-28' : 'w-44 md:w-64'}`} />
+                            <img src={s.logo} srcSet={s.logoSrcSet} sizes={s.logoSizes} width={s.logoSize[0]} height={s.logoSize[1]} alt="" decoding="async"
+                                className={`h-auto object-contain object-left ${side === 'ooh' ? 'w-20 md:w-28' : 'w-44 md:w-64'}`} />
                             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink-300">{s.eyebrow}</p>
                             <h2 className="max-w-[14ch] text-3xl font-light uppercase leading-[0.95] tracking-tight text-ink-100 md:text-5xl xl:text-6xl">{s.title}</h2>
                             <AnimatePresence initial={false}>
