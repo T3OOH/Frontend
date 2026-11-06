@@ -14,6 +14,19 @@ export interface ShellNavItem {
     short?: string;
     icon: ComponentType<{ className?: string; strokeWidth?: number; 'aria-hidden'?: boolean | 'true' }>;
     end?: boolean;
+    /** Grupo do menu lateral ("Visão geral", "Comercial"...). Itens seguidos do mesmo grupo ficam juntos. */
+    group?: string;
+}
+
+/** Itens do menu agrupados na ordem em que aparecem. */
+function agrupar(nav: ShellNavItem[]) {
+    const grupos: { nome: string | undefined; itens: ShellNavItem[] }[] = [];
+    for (const item of nav) {
+        const ultimo = grupos[grupos.length - 1];
+        if (ultimo && ultimo.nome === item.group) ultimo.itens.push(item);
+        else grupos.push({ nome: item.group, itens: [item] });
+    }
+    return grupos;
 }
 
 interface AppShellProps {
@@ -68,11 +81,12 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
     const tabs = nav.slice(0, 3);
 
     const linkClass = ({ isActive }: { isActive: boolean }) =>
-        `relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${isActive
+        `relative flex items-center gap-3 px-4 py-2 text-sm transition-colors ${isActive
             ? 'bg-brand-background font-medium text-brand-text before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-brand-neon'
             : 'text-brand-muted hover:bg-brand-background hover:text-brand-text'}`;
 
     const secondary = 'flex items-center gap-3 px-3 py-2 text-sm text-brand-muted hover:bg-brand-background hover:text-brand-text';
+    const compact = 'flex flex-col items-center gap-1 px-1 py-2 text-[11px] text-brand-muted hover:bg-brand-background hover:text-brand-text';
 
     // Página do app desktop (apresentação; o download abre no lançamento), dentro da área atual (o comercial não acessa /dashboard)
     const appLink = area === 'Comercial' ? '/crm/aplicativo' : '/dashboard/aplicativo';
@@ -83,7 +97,7 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
             {/* ============================ BARRA LATERAL (desktop) ============================ */}
             <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r border-brand-border bg-brand-surface lg:flex">
                 <div className="flex h-16 items-center gap-3 border-b border-brand-border px-5">
-                    <img src={logo} alt="T3 OOH" className="h-7 w-auto" />
+                    <img src={logo} alt="T3 LED" className="h-7 w-auto" />
                     <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-muted">{area}</span>
                 </div>
 
@@ -92,11 +106,16 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                     <kbd className="ml-auto font-mono text-[10px]">Ctrl K</kbd>
                 </button>
 
-                <nav aria-label={area} className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4">
-                    {nav.map(({ to, label, icon: Icon, end }) => (
-                        <NavLink key={to} to={to} end={end} className={linkClass}>
-                            <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" /> {label}
-                        </NavLink>
+                <nav aria-label={area} className="flex flex-1 flex-col gap-3 overflow-y-auto py-3">
+                    {agrupar(nav).map((grupo, gi) => (
+                        <div key={grupo.nome ?? gi} role="group" aria-label={grupo.nome} className="flex flex-col gap-0.5">
+                            {grupo.nome && <p className="px-4 pb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-brand-muted/80">{grupo.nome}</p>}
+                            {grupo.itens.map(({ to, label, icon: Icon, end }) => (
+                                <NavLink key={to} to={to} end={end} className={linkClass}>
+                                    <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" /> {label}
+                                </NavLink>
+                            ))}
+                        </div>
                     ))}
                 </nav>
 
@@ -109,15 +128,18 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                             <ArrowLeftRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}
                         </Link>
                     )}
-                    <Link to="/" className={secondary}>
-                        <Globe className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Site público
-                    </Link>
-                    <Link to="/perfil" className={secondary}>
-                        <UserRound className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Meu perfil
-                    </Link>
-                    <button type="button" onClick={toggleTheme} className={`${secondary} text-left`}>
-                        <ThemeIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> {themeLabel}
-                    </button>
+                    {/* Atalhos numa linha só: o menu em grupos cabe inteiro sem rolar em telas de 900 px */}
+                    <div className="grid grid-cols-3 gap-1">
+                        <Link to="/" className={compact} title="Site público">
+                            <Globe className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Site
+                        </Link>
+                        <Link to="/perfil" className={compact} title="Meu perfil">
+                            <UserRound className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Perfil
+                        </Link>
+                        <button type="button" onClick={toggleTheme} className={compact} title={themeLabel} aria-label={themeLabel}>
+                            <ThemeIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Tema
+                        </button>
+                    </div>
                     <div className="mt-2 flex items-center gap-3 border-t border-brand-border px-3 pt-3">
                         <span className={`flex h-8 w-8 shrink-0 items-center justify-center font-mono text-xs font-semibold ${avatarClass}`} aria-hidden="true">
                             {user?.name?.charAt(0).toUpperCase() || 'T'}
@@ -209,10 +231,15 @@ export function AppShell({ area, nav, switchTo }: AppShellProps) {
                             </div>
                         </div>
                         <nav className="flex flex-col py-2">
-                            {nav.map(({ to, label, icon: Icon, end }) => (
-                                <NavLink key={to} to={to} end={end} className={linkClass}>
-                                    <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {label}
-                                </NavLink>
+                            {agrupar(nav).map((grupo, gi) => (
+                                <div key={grupo.nome ?? gi} role="group" aria-label={grupo.nome} className="flex flex-col pb-2">
+                                    {grupo.nome && <p className="px-4 pb-1 pt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-brand-muted/80">{grupo.nome}</p>}
+                                    {grupo.itens.map(({ to, label, icon: Icon, end }) => (
+                                        <NavLink key={to} to={to} end={end} className={linkClass}>
+                                            <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {label}
+                                        </NavLink>
+                                    ))}
+                                </div>
                             ))}
                             <Link to={appLink} className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-brand-neon"><MonitorDown className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> App desktop · em breve</Link>
                             {switchTo && <Link to={switchTo.to} className="flex items-center gap-3 px-4 py-2.5 text-sm text-brand-muted"><ArrowLeftRight className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" /> {switchTo.label}</Link>}

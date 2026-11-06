@@ -13,6 +13,8 @@
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@react-pdf/renderer": "^4.5.1",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.21.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",

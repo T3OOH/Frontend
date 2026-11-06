@@ -13,6 +13,8 @@ import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
+import { FotoComFoco } from '@/components/app/FotoComFoco';
+import { detectarFoco, FocoFoto, MapaFocos } from '@/lib/focoFoto';
 import { CidadeInput } from '@/components/CidadeInput';
 
 const marker = brandMarker('brand', true);
@@ -28,8 +30,11 @@ const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
     { value: 'MAINTENANCE', label: 'Manutenção' },
 ];
 
-/** Foto já salva (url) ou escolhida agora (file + preview). */
-interface Photo { url?: string; file?: File; preview: string }
+/**
+ * Foto já salva (url) ou escolhida agora (file + preview). foco: undefined = ainda não analisada,
+ * null = nada reconhecido, objeto = ponto de foco do corte nos cards.
+ */
+interface Photo { url?: string; file?: File; preview: string; foco?: FocoFoto | null }
 
 const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', playback: '', price: '', description: '' };
 
@@ -82,7 +87,8 @@ export function PanelForm() {
                     setPosition([p.lat, p.lng]);
                     setCoordsText(`${p.lat}, ${p.lng}`);
                 }
-                setPhotos((p.images || []).map((url) => ({ url, preview: url })));
+                const focos = (p.imageFocus ?? {}) as MapaFocos;
+                setPhotos((p.images || []).map((url) => ({ url, preview: url, foco: focos[url] })));
             })
             .catch(() => { toast.error('Painel não encontrado.'); navigate('/dashboard/paineis'); })
             .finally(() => setLoading(false));
@@ -117,6 +123,20 @@ export function PanelForm() {
         setPhotos((prev) => [...prev, ...accepted]);
     };
 
+    // Reconhecimento automático: cada foto sem foco é analisada uma vez (telão, veículos e pessoas)
+    const [analisando, setAnalisando] = useState<string | null>(null);
+    useEffect(() => {
+        if (analisando) return;
+        const proxima = photos.find((p) => p.foco === undefined);
+        if (!proxima) return;
+        setAnalisando(proxima.preview);
+        detectarFoco(proxima.preview)
+            .catch(() => null)
+            .then((foco) => setPhotos((prev) => prev.map((p) => (p.preview === proxima.preview ? { ...p, foco } : p))))
+            .finally(() => setAnalisando(null));
+    }, [photos, analisando]);
+    const setFoco = (preview: string, foco: FocoFoto) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco } : p)));
+
     const makeCover = (i: number) => setPhotos((prev) => [prev[i], ...prev.filter((_, j) => j !== i)]);
     const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, j) => j !== i));
 
@@ -132,8 +152,11 @@ export function PanelForm() {
         try {
             const folder = `panels/${panelId || window.crypto.randomUUID()}`;
             const images: string[] = [];
+            const imageFocus: MapaFocos = {};
             for (const photo of photos) {
-                images.push(photo.url ?? await uploadImage(photo.file!, folder));
+                const url = photo.url ?? await uploadImage(photo.file!, folder);
+                images.push(url);
+                if (photo.foco) imageFocus[url] = photo.foco;
             }
             const payload = {
                 name: form.name.trim(),
@@ -150,6 +173,7 @@ export function PanelForm() {
                 ...(form.address.trim() && { address: form.address.trim() }),
                 ...(form.description.trim() && { description: form.description.trim() }),
                 images,
+                imageFocus: Object.keys(imageFocus).length ? imageFocus : null,
             };
             if (isEditing && panelId) await panelsService.updatePanel(panelId, payload);
             else await panelsService.createPanel(payload);
@@ -180,7 +204,7 @@ export function PanelForm() {
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {photos.map((photo, i) => (
                                 <figure key={photo.preview} className="group relative aspect-[4/3] overflow-hidden border border-brand-border bg-brand-background">
-                                    <img src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} className="h-full w-full object-cover" />
+                                    <FotoComFoco src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} foco={photo.foco} analisando={analisando === photo.preview} onFoco={(f) => setFoco(photo.preview, f)} />
                                     {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
                                     <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                                         {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
@@ -195,7 +219,7 @@ export function PanelForm() {
                             )}
                         </div>
                         <input ref={fileInput} type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} aria-label="Escolher fotos" />
-                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site.</p>
+                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site. O foco do corte (ponto laranja) é marcado sozinho no telão e no movimento da rua; clique na foto para ajustar.</p>
                     </Panel>
 
                     {/* ============================ IDENTIFICAÇÃO ============================ */}

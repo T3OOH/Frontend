@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { estiloFoco, FocosFotos } from '@/lib/imagens';
 
 interface PanelGalleryProps {
     images: string[];
+    /** Ponto de foco de cada foto (corte centrado no telão). */
+    focos?: FocosFotos;
     name: string;
 }
 
@@ -11,7 +14,7 @@ interface PanelGalleryProps {
  * Fotos do painel nos detalhes do catálogo: setas, miniaturas, contador, teclado (← →)
  * e arrastar para o lado no celular. Com uma foto só, mostra só a foto.
  */
-export function PanelGallery({ images, name }: PanelGalleryProps) {
+export function PanelGallery({ images, focos, name }: PanelGalleryProps) {
     const photos = images.filter(Boolean);
     const list = photos.length ? photos : ['/placeholder.svg'];
     const [index, setIndex] = useState(0);
@@ -42,6 +45,7 @@ export function PanelGallery({ images, name }: PanelGalleryProps) {
                     <motion.img
                         key={list[index]}
                         src={list[index]}
+                        style={estiloFoco(focos, list[index])}
                         alt={`${name}, foto ${index + 1} de ${list.length}`}
                         custom={direction}
                         initial={{ opacity: 0, x: direction * 40 }}
@@ -89,7 +93,7 @@ export function PanelGallery({ images, name }: PanelGalleryProps) {
                             onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}
                             className={`h-14 w-20 shrink-0 overflow-hidden border-2 transition-opacity ${i === index ? 'border-brand-neon opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}
                         >
-                            <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+                            <img src={src} style={estiloFoco(focos, src)} alt="" loading="lazy" className="h-full w-full object-cover" />
                         </button>
                     ))}
                 </div>
