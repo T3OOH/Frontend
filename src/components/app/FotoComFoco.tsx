@@ -6,10 +6,12 @@ import type { FocoFoto } from '@/lib/focoFoto';
  * Miniatura de foto do painel no cadastro: mostra a foto inteira (sem corte), o ponto de foco
  * (marcador laranja) e o que o reconhecimento achou. Clicar na foto move o foco (ajuste manual).
  */
-export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
+export function FotoComFoco({ src, alt, foco, corte, analisando, onFoco }: {
     src: string;
     alt: string;
     foco: FocoFoto | null | undefined;
+    /** Recorte da capa nos cards, desenhado como moldura. */
+    corte?: { x: number; y: number; w: number; h: number };
     analisando: boolean;
     onFoco: (foco: FocoFoto) => void;
 }) {
@@ -33,7 +35,7 @@ export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
         const x = ((e.clientX - a.left) / a.w) * 100;
         const y = ((e.clientY - a.top) / a.h) * 100;
         if (x < 0 || x > 100 || y < 0 || y > 100) return;
-        onFoco({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, fonte: 'manual', objetos: foco?.objetos, ...(foco?.pino ? { pino: foco.pino } : {}) });
+        onFoco({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, fonte: 'manual', objetos: foco?.objetos, ...(foco?.pino ? { pino: foco.pino } : {}), ...(foco?.corte ? { corte: foco.corte } : {}) });
     };
 
     // Posição dos marcadores em % da caixa (convertendo da foto para a caixa)
@@ -44,6 +46,13 @@ export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
     };
     const marcador = foco ? naCaixa(foco) : null;
     const marcadorPino = foco?.pino ? naCaixa(foco.pino) : null;
+    const aC = corte && natural ? area() : null;
+    const moldura = corte && aC ? {
+        left: `${((aC.left - aC.box.left + (corte.x / 100) * aC.w) / aC.box.width) * 100}%`,
+        top: `${((aC.top - aC.box.top + (corte.y / 100) * aC.h) / aC.box.height) * 100}%`,
+        width: `${((corte.w / 100) * aC.w / aC.box.width) * 100}%`,
+        height: `${((corte.h / 100) * aC.h / aC.box.height) * 100}%`,
+    } : null;
 
     const legenda = analisando ? 'Reconhecendo…'
         : foco?.fonte === 'manual' ? 'Foco ajustado à mão'
@@ -65,6 +74,7 @@ export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
             {marcador && (
                 <span aria-hidden="true" className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand-neon/80 shadow-[0_0_0_3px_rgba(0,0,0,0.45)]" style={marcador} />
             )}
+            {moldura && <span aria-hidden="true" className="pointer-events-none absolute border border-dashed border-brand-neon" style={moldura} />}
             {marcadorPino && (
                 <MapPin aria-hidden="true" className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-full fill-brand-neon text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" style={marcadorPino} />
             )}

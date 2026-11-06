@@ -67,26 +67,40 @@ export function Panels() {
         }
     };
 
-    // Foco das fotos: analisa de uma vez as fotos que ainda não têm (painéis antigos ou
-    // cadastrados pelo app). Foco ajustado à mão nunca é trocado.
-    const semFoco = useMemo(() => panels.reduce((n, p) => n + (p.images ?? []).filter((u) => !p.imageFocus?.[u]).length, 0), [panels]);
+    // Foco das fotos em lote. "Focar fotos": as que ainda não têm foco (painéis antigos ou cadastrados
+    // pelo app). "Refazer foco automático": todas as de foco automático, de novo (mantém pino e recorte).
+    // Foco ajustado à mão nunca é trocado.
+    const precisa = (p: PanelData, url: string, refazer: boolean) => {
+        const f = p.imageFocus?.[url];
+        return !f || (refazer && f.fonte === 'auto');
+    };
+    const contar = (refazer: boolean) => panels.reduce((n, p) => n + (p.images ?? []).filter((u) => precisa(p, u, refazer)).length, 0);
+    const semFoco = useMemo(() => contar(false), [panels]); // eslint-disable-line react-hooks/exhaustive-deps
+    const automaticas = useMemo(() => contar(true) - contar(false), [panels]); // eslint-disable-line react-hooks/exhaustive-deps
     const [focando, setFocando] = useState<{ feitas: number; total: number } | null>(null);
-    const focarFotos = async () => {
+    const focarFotos = async (refazer: boolean) => {
         const { detectarFoco } = await import('@/lib/focoFoto');
-        const total = semFoco;
+        const total = contar(refazer);
         let feitas = 0, achadas = 0, falhas = 0;
         setFocando({ feitas, total });
         for (const panel of panels) {
-            const faltam = (panel.images ?? []).filter((u) => !panel.imageFocus?.[u]);
+            const faltam = (panel.images ?? []).filter((u) => precisa(panel, u, refazer));
             if (!faltam.length) continue;
             const focos = { ...(panel.imageFocus ?? {}) };
+            let mudou = false;
             for (const url of faltam) {
-                const foco = await detectarFoco(url).catch(() => null);
-                if (foco) { focos[url] = foco; achadas++; }
+                const antes = panel.imageFocus?.[url];
+                const foco = await detectarFoco(url, antes?.pino).catch(() => null);
+                if (foco) {
+                    focos[url] = { ...foco, ...(antes?.corte ? { corte: antes.corte } : {}) };
+                    achadas++;
+                    mudou = true;
+                }
                 setFocando({ feitas: ++feitas, total });
             }
-            if (Object.keys(focos).length === Object.keys(panel.imageFocus ?? {}).length) continue;
+            if (!mudou) continue;
             try {
+                // Só imageFocus: a API mantém as fotos quando "images" não vem
                 await panelsService.updatePanel(panel.id, { imageFocus: focos });
                 setPanels((prev) => prev.map((p) => (p.id === panel.id ? { ...p, imageFocus: focos } : p)));
             } catch {
@@ -107,10 +121,17 @@ export function Panels() {
             description="Pontos da rede, situação de cada tela e o preço base mensal usado no site e nas propostas."
             actions={
                 <>
-                    {(semFoco > 0 || focando) && (
-                        <button type="button" onClick={focarFotos} disabled={!!focando} className={crmBtn.secondary} title="Reconhece o telão, os veículos e as pessoas e centraliza o corte das fotos nos cards do site">
-                            <Crosshair className={`h-4 w-4 ${focando ? 'animate-spin' : ''}`} aria-hidden="true" />
-                            {focando ? `Analisando ${focando.feitas} de ${focando.total}…` : `Focar fotos (${semFoco})`}
+                    {focando ? (
+                        <button type="button" disabled className={crmBtn.secondary}>
+                            <Crosshair className="h-4 w-4 animate-spin" aria-hidden="true" /> Analisando {focando.feitas} de {focando.total}…
+                        </button>
+                    ) : semFoco > 0 ? (
+                        <button type="button" onClick={() => focarFotos(false)} className={crmBtn.secondary} title="Reconhece o telão, os veículos e as pessoas e centraliza o corte das fotos nos cards do site">
+                            <Crosshair className="h-4 w-4" aria-hidden="true" /> Focar fotos ({semFoco})
+                        </button>
+                    ) : automaticas > 0 && (
+                        <button type="button" onClick={() => focarFotos(true)} className={crmBtn.ghost} title="Analisa de novo as fotos com foco automático (mantém pinos, recortes e focos ajustados à mão)">
+                            <Crosshair className="h-4 w-4" aria-hidden="true" /> Refazer foco automático ({automaticas})
                         </button>
                     )}
                     <Link to="/dashboard/paineis/novo" className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo painel</Link>

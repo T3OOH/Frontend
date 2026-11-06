@@ -365,7 +365,7 @@ export function Map() {
                 className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'w-[300px] shrink-0 snap-start' : ''}`}
             >
                 <button type="button" onClick={() => pick(panel.id)} className="relative w-24 shrink-0 overflow-hidden bg-ink-850 sm:w-28" aria-label={`Ver ${panel.name} no mapa`}>
-                    <img src={thumb(panel.images?.[0], 480)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
+                    <img src={thumb(panel.images?.[0], 480)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col p-3">
                     <button type="button" onClick={() => pick(panel.id)} className="min-w-0 text-left">
@@ -528,7 +528,7 @@ export function Map() {
                                     return (
                                         <li key={panel.id} className={`flex flex-col border bg-ink-900 ${inCart ? 'border-white/40' : 'border-white/[0.08]'}`}>
                                             <button type="button" onClick={() => showOnMap(panel.id)} className="relative aspect-[16/9] w-full overflow-hidden bg-ink-850" aria-label={`Ver ${panel.name} no mapa`}>
-                                                <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                                                <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                                                 {inCart && <span className="absolute left-2 top-2 bg-ink-950/90 px-2 py-1 text-[11px] text-ink-100">No orçamento</span>}
                                             </button>
                                             <div className="flex flex-1 flex-col gap-3 p-4">

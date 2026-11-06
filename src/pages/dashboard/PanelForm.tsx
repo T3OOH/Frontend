@@ -5,7 +5,7 @@ import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { BaseTiles } from '@/features/map/basemap';
 import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from '@/features/map/markers';
-import { ArrowLeft, ImagePlus, MapPin, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Crop, ImagePlus, MapPin, Star, Trash2 } from 'lucide-react';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,6 +15,8 @@ import { crmBtn, crmInput } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
 import { FotoComFoco } from '@/components/app/FotoComFoco';
 import { MarcarTelao } from '@/components/app/MarcarTelao';
+import { EnquadrarCapa } from '@/components/app/EnquadrarCapa';
+import type { Corte } from '@/lib/imagens';
 import { detectarFoco, FocoFoto, MapaFocos } from '@/lib/focoFoto';
 import { CidadeInput } from '@/components/CidadeInput';
 
@@ -35,7 +37,7 @@ const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
  * Foto já salva (url) ou escolhida agora (file + preview). foco: undefined = ainda não analisada,
  * null = nada reconhecido, objeto = ponto de foco do corte nos cards.
  */
-interface Photo { url?: string; file?: File; preview: string; foco?: FocoFoto | null }
+interface Photo { url?: string; file?: File; preview: string; foco?: FocoFoto | null; corte?: Corte }
 
 const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', playback: '', price: '', description: '' };
 
@@ -90,7 +92,7 @@ export function PanelForm() {
                     setCoordsText(`${p.lat}, ${p.lng}`);
                 }
                 const focos = (p.imageFocus ?? {}) as MapaFocos;
-                setPhotos((p.images || []).map((url) => ({ url, preview: url, foco: focos[url] })));
+                setPhotos((p.images || []).map((url) => ({ url, preview: url, foco: focos[url], corte: focos[url]?.corte })));
             })
             .catch(() => { toast.error('Painel não encontrado.'); navigate('/dashboard/paineis'); })
             .finally(() => setLoading(false));
@@ -163,6 +165,9 @@ export function PanelForm() {
             .finally(() => setAnalisando(null));
     }, [photos, analisando]);
     const setFoco = (preview: string, foco: FocoFoto) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco } : p)));
+    // Recorte da capa nos cards (Enquadrar capa): guardado à parte do foco, que pode ser refeito pela IA
+    const [enquadrando, setEnquadrando] = useState(false);
+    const setCorte = (preview: string, corte: Corte | undefined) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, corte } : p)));
     // Pino do telão (só na edição): foto aberta grande para marcar onde está o telão
     const [marcando, setMarcando] = useState<string | null>(null);
     const fotoMarcando = photos.find((p) => p.preview === marcando);
@@ -188,7 +193,14 @@ export function PanelForm() {
             for (const photo of photos) {
                 const url = photo.url ?? await uploadImage(photo.file!, folder);
                 images.push(url);
-                if (photo.foco) imageFocus[url] = photo.foco;
+                // O recorte fica na foto mesmo sem foco reconhecido (o centro dele vira o foco)
+                if (photo.foco || photo.corte) {
+                    const { corte: _antigo, ...foco } = photo.foco ?? { x: 50, y: 50, fonte: 'manual' as const };
+                    void _antigo;
+                    imageFocus[url] = photo.corte
+                        ? { ...foco, ...(photo.foco ? {} : { x: photo.corte.x + photo.corte.w / 2, y: photo.corte.y + photo.corte.h / 2 }), corte: photo.corte }
+                        : foco;
+                }
             }
             const payload = {
                 name: form.name.trim(),
@@ -236,10 +248,13 @@ export function PanelForm() {
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {photos.map((photo, i) => (
                                 <figure key={photo.preview} className="group relative aspect-[4/3] overflow-hidden border border-brand-border bg-brand-background">
-                                    <FotoComFoco src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} foco={photo.foco} analisando={analisando === photo.preview} onFoco={(f) => setFoco(photo.preview, f)} />
+                                    <FotoComFoco corte={photo.corte} src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} foco={photo.foco} analisando={analisando === photo.preview} onFoco={(f) => setFoco(photo.preview, f)} />
                                     {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
                                     <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                                        {isEditing && photo.url && <button type="button" onClick={() => setMarcando(photo.preview)} className="mr-auto p-2.5 text-white hover:text-brand-neon" aria-label="Marcar o telão com um pino" title="Marcar o telão com um pino"><MapPin className="h-4 w-4" /></button>}
+                                        <div className="mr-auto flex">
+                                            {isEditing && photo.url && <button type="button" onClick={() => setMarcando(photo.preview)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Marcar o telão com um pino" title="Marcar o telão com um pino"><MapPin className="h-4 w-4" /></button>}
+                                            {i === 0 && <button type="button" onClick={() => setEnquadrando(true)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Enquadrar a capa nos cards" title="Enquadrar a capa nos cards"><Crop className="h-4 w-4" /></button>}
+                                        </div>
                                         {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
                                         <button type="button" onClick={() => removePhoto(i)} className="p-2.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
                                     </div>
@@ -253,6 +268,9 @@ export function PanelForm() {
                         </div>
                         <input ref={fileInput} type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} aria-label="Escolher fotos" />
                         <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site. O foco do corte (ponto laranja) é marcado sozinho no telão e no movimento da rua; clique na foto para ajustar.{isEditing && ' Se a IA errar o telão, use o pino (ícone no canto da foto) para mostrar onde ele está.'}</p>
+                        {photos[0] && (
+                            <EnquadrarCapa src={photos[0].preview} corte={photos[0].corte} aberto={enquadrando} onFechar={() => setEnquadrando(false)} onAplicar={(corte) => setCorte(photos[0].preview, corte)} />
+                        )}
                         {fotoMarcando && (
                             <MarcarTelao src={fotoMarcando.preview} foco={fotoMarcando.foco} aberto={!!marcando} onFechar={() => setMarcando(null)} onAplicar={(f) => aplicarPino(fotoMarcando.preview, f)} />
                         )}
