@@ -5,7 +5,7 @@ import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { BaseTiles } from '@/features/map/basemap';
 import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from '@/features/map/markers';
-import { ArrowLeft, ImagePlus, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, ImagePlus, MapPin, Star, Trash2 } from 'lucide-react';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,6 +14,7 @@ import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
 import { FotoComFoco } from '@/components/app/FotoComFoco';
+import { MarcarTelao } from '@/components/app/MarcarTelao';
 import { detectarFoco, FocoFoto, MapaFocos } from '@/lib/focoFoto';
 import { CidadeInput } from '@/components/CidadeInput';
 
@@ -136,6 +137,11 @@ export function PanelForm() {
             .finally(() => setAnalisando(null));
     }, [photos, analisando]);
     const setFoco = (preview: string, foco: FocoFoto) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco } : p)));
+    // Pino do telão (só na edição): foto aberta grande para marcar onde está o telão
+    const [marcando, setMarcando] = useState<string | null>(null);
+    const fotoMarcando = photos.find((p) => p.preview === marcando);
+    // Sem pino de novo: a foto volta para a fila e é analisada sem ele
+    const aplicarPino = (preview: string, foco: FocoFoto | null) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco: foco ?? undefined } : p)));
 
     const makeCover = (i: number) => setPhotos((prev) => [prev[i], ...prev.filter((_, j) => j !== i)]);
     const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, j) => j !== i));
@@ -207,6 +213,7 @@ export function PanelForm() {
                                     <FotoComFoco src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} foco={photo.foco} analisando={analisando === photo.preview} onFoco={(f) => setFoco(photo.preview, f)} />
                                     {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
                                     <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                                        {isEditing && photo.url && <button type="button" onClick={() => setMarcando(photo.preview)} className="mr-auto p-2.5 text-white hover:text-brand-neon" aria-label="Marcar o telão com um pino" title="Marcar o telão com um pino"><MapPin className="h-4 w-4" /></button>}
                                         {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
                                         <button type="button" onClick={() => removePhoto(i)} className="p-2.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
                                     </div>
@@ -219,7 +226,10 @@ export function PanelForm() {
                             )}
                         </div>
                         <input ref={fileInput} type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} aria-label="Escolher fotos" />
-                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site. O foco do corte (ponto laranja) é marcado sozinho no telão e no movimento da rua; clique na foto para ajustar.</p>
+                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site. O foco do corte (ponto laranja) é marcado sozinho no telão e no movimento da rua; clique na foto para ajustar.{isEditing && ' Se a IA errar o telão, use o pino (ícone no canto da foto) para mostrar onde ele está.'}</p>
+                        {fotoMarcando && (
+                            <MarcarTelao src={fotoMarcando.preview} foco={fotoMarcando.foco} aberto={!!marcando} onFechar={() => setMarcando(null)} onAplicar={(f) => aplicarPino(fotoMarcando.preview, f)} />
+                        )}
                     </Panel>
 
                     {/* ============================ IDENTIFICAÇÃO ============================ */}

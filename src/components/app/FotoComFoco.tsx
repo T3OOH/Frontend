@@ -1,4 +1,5 @@
 import { MouseEvent, useRef, useState } from 'react';
+import { MapPin } from 'lucide-react';
 import type { FocoFoto } from '@/lib/focoFoto';
 
 /**
@@ -32,21 +33,21 @@ export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
         const x = ((e.clientX - a.left) / a.w) * 100;
         const y = ((e.clientY - a.top) / a.h) * 100;
         if (x < 0 || x > 100 || y < 0 || y > 100) return;
-        onFoco({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, fonte: 'manual', objetos: foco?.objetos });
+        onFoco({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, fonte: 'manual', objetos: foco?.objetos, ...(foco?.pino ? { pino: foco.pino } : {}) });
     };
 
-    // Posição do marcador em % da caixa (convertendo da foto para a caixa)
-    let marcador: { left: string; top: string } | null = null;
+    // Posição dos marcadores em % da caixa (convertendo da foto para a caixa)
     const a = foco && natural ? area() : null;
-    if (foco && a) {
-        marcador = {
-            left: `${((a.left - a.box.left + (foco.x / 100) * a.w) / a.box.width) * 100}%`,
-            top: `${((a.top - a.box.top + (foco.y / 100) * a.h) / a.box.height) * 100}%`,
-        };
-    }
+    const naCaixa = (p: { x: number; y: number }) => a && {
+        left: `${((a.left - a.box.left + (p.x / 100) * a.w) / a.box.width) * 100}%`,
+        top: `${((a.top - a.box.top + (p.y / 100) * a.h) / a.box.height) * 100}%`,
+    };
+    const marcador = foco ? naCaixa(foco) : null;
+    const marcadorPino = foco?.pino ? naCaixa(foco.pino) : null;
 
     const legenda = analisando ? 'Reconhecendo…'
         : foco?.fonte === 'manual' ? 'Foco ajustado à mão'
+        : foco?.pino ? 'Telão marcado com pino'
         : foco?.objetos?.length ? `Foco: ${foco.objetos.slice(0, 3).join(', ')}`
         : foco === null ? 'Nada reconhecido: clique para marcar' : '';
 
@@ -63,6 +64,9 @@ export function FotoComFoco({ src, alt, foco, analisando, onFoco }: {
             />
             {marcador && (
                 <span aria-hidden="true" className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-brand-neon/80 shadow-[0_0_0_3px_rgba(0,0,0,0.45)]" style={marcador} />
+            )}
+            {marcadorPino && (
+                <MapPin aria-hidden="true" className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-full fill-brand-neon text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" style={marcadorPino} />
             )}
             {legenda && (
                 <span className={`pointer-events-none absolute right-0 top-0 max-w-[75%] truncate px-2 py-0.5 text-[10px] font-medium ${analisando ? 'animate-pulse bg-black/70 text-white' : 'bg-black/70 text-white'}`}>{legenda}</span>
