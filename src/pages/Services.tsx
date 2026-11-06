@@ -363,7 +363,7 @@ export function Services() {
                                     className={`group flex flex-col bg-ink-900 outline outline-1 -outline-offset-1 ${inCart ? 'outline-brand-neon' : 'outline-transparent'}`}
                                 >
                                     <button type="button" onClick={() => setSelectedPanel(panel)} className="relative block aspect-[4/3] overflow-hidden bg-ink-850 text-left" aria-label={`Ver detalhes de ${panel.name}`}>
-                                        <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0" />
+                                        <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0" />
                                         <span className="absolute left-0 top-0 bg-ink-950 px-3 py-1.5 font-mono text-[11px] text-ink-300">{String(i + 1).padStart(2, '0')}</span>
                                         <span className="absolute bottom-0 right-0 flex items-center gap-1.5 bg-ink-950 px-3 py-1.5 text-xs text-ink-100 opacity-0 transition-opacity group-hover:opacity-100">
                                             <Maximize className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Detalhes

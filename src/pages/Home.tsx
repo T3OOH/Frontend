@@ -191,7 +191,7 @@ export function Home() {
                                         <Link to={`/servicos?panelId=${panel.id}`} className="group relative block h-full min-h-[280px] overflow-hidden bg-ink-900">
                                             <img
                                                 {...thumbProps(panel.images?.[0], 640)}
-                                                style={estiloFoco(panel.imageFocus, panel.images?.[0])}
+                                                style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')}
                                                 decoding="async"
                                                 alt={`Painel ${panel.name}`}
                                                 loading="lazy"

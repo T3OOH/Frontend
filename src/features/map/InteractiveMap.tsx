@@ -115,8 +115,8 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                     >
                         {!compact && <Popup closeButton>
                             <div className="flex flex-col">
-                                <div className="aspect-[16/9] w-full bg-ink-850">
-                                    <img {...thumbProps(panel.images?.[0], 300)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" decoding="async" className="h-full w-full object-cover" />
+                                <div className="aspect-[16/9] w-full overflow-hidden bg-ink-850">
+                                    <img {...thumbProps(panel.images?.[0], 300)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" decoding="async" className="h-full w-full object-cover" />
                                 </div>
                                 <div className="flex flex-col gap-3 p-4">
                                     <div>

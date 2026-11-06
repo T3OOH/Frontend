@@ -6,7 +6,7 @@
  * acha telas (o telão de LED aparece como "tv"), veículos e pessoas e põe o foco no telão,
  * puxado na direção do movimento da rua. Carregado só no cadastro de painéis (import dinâmico).
  */
-import { thumb } from '@/lib/imagens';
+import { thumb, type Corte } from '@/lib/imagens';
 
 export interface FocoFoto {
     x: number;
@@ -16,6 +16,8 @@ export interface FocoFoto {
     objetos?: string[];
     /** Pino marcado à mão em cima do telão (edição): a IA procura o telão em volta dele. */
     pino?: Ponto;
+    /** Recorte da capa nos cards (Enquadrar capa), em % da foto. */
+    corte?: Corte;
 }
 export interface Ponto { x: number; y: number }
 export type MapaFocos = Record<string, FocoFoto>;
