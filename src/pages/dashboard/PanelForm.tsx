@@ -13,10 +13,13 @@ import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
+import { CidadeInput } from '@/components/CidadeInput';
 
 const marker = brandMarker('brand', true);
 
 const MAX_IMAGES = 8;
+
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
     { value: 'AVAILABLE', label: 'Disponível' },
@@ -227,8 +230,14 @@ export function PanelForm() {
                 <div className="flex flex-col gap-6">
                     <Panel title="Localização" bodyClassName="flex flex-col gap-4 p-5">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_96px]">
-                            <Field label="Cidade" htmlFor="pn-city"><input id="pn-city" required maxLength={100} value={form.city} onChange={set('city')} className={crmInput} /></Field>
-                            <Field label="UF" htmlFor="pn-state"><input id="pn-state" required maxLength={2} value={form.state} onChange={set('state')} className={`${crmInput} uppercase`} /></Field>
+                            <Field label="Cidade" htmlFor="pn-city" hint="Escolha na lista: a UF vem junto (municípios do IBGE).">
+                                <CidadeInput id="pn-city" required city={form.city}
+                                    onChange={({ city, state }) => setForm((f) => ({ ...f, city, ...(state ? { state } : {}) }))} />
+                            </Field>
+                            <Field label="UF" htmlFor="pn-state">
+                                <CustomSelect id="pn-state" value={form.state} onChange={(v) => setForm((f) => ({ ...f, state: v }))}
+                                    options={UFS.map((uf) => ({ value: uf, label: uf }))} />
+                            </Field>
                         </div>
                         <Field label="Endereço" htmlFor="pn-address" hint="Opcional.">
                             <input id="pn-address" maxLength={250} value={form.address} onChange={set('address')} className={crmInput} placeholder="Av. T-63 esq. com Av. T-4" />
