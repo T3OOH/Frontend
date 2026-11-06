@@ -5,7 +5,8 @@ Options -Indexes -MultiViews
 DirectoryIndex index.html
 
 # Versões em Markdown das páginas públicas (geradas pelo scripts/prerender.mjs) para agentes de IA
-AddType "text/markdown; charset=utf-8" .md
+AddType text/markdown .md
+AddCharset utf-8 .md
 AddDefaultCharset utf-8
 
 # Endereço que não existe: 404 de verdade, com a página do site (o React mostra "Página não encontrada")
@@ -58,8 +59,8 @@ ErrorDocument 404 /404.html
     <FilesMatch "\.html$">
         Header set Cache-Control "no-cache"
         # Recursos para agentes e buscadores (RFC 8288)
-        Header add Link "</llms.txt>; rel=\"describedby\"; type=\"text/plain\""
-        Header add Link "</sitemap.xml>; rel=\"sitemap\"; type=\"application/xml\""
+        Header add Link '</llms.txt>; rel="describedby"; type="text/plain"'
+        Header add Link '</sitemap.xml>; rel="sitemap"; type="application/xml"'
     </FilesMatch>
     <FilesMatch "\.md$">
         Header set Cache-Control "private, no-cache"
