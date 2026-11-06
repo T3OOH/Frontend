@@ -365,7 +365,7 @@ export function Map() {
                 className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'w-[300px] shrink-0 snap-start' : ''}`}
             >
                 <button type="button" onClick={() => pick(panel.id)} className="relative w-24 shrink-0 overflow-hidden bg-ink-850 sm:w-28" aria-label={`Ver ${panel.name} no mapa`}>
-                    <img src={thumb(panel.images?.[0], 480)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
+                    <img src={thumb(panel.images?.[0], 480)} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col p-3">
                     <button type="button" onClick={() => pick(panel.id)} className="min-w-0 text-left">
