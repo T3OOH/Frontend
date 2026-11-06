@@ -1,7 +1,11 @@
-# T3 OOH: páginas públicas liberadas para buscadores e assistentes de IA.
+# T3 LED (T3 OOH): páginas públicas liberadas para buscadores e assistentes de IA.
 # Áreas internas (gestão, CRM e conta) ficam de fora.
+#
+# Content Signals (https://contentsignals.org): o conteúdo público pode aparecer em buscas (search),
+# ser usado para responder perguntas (ai-input) e para treinar modelos de IA (ai-train).
 
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Disallow: /dashboard
 Disallow: /crm
@@ -21,6 +25,7 @@ User-agent: Perplexity-User
 User-agent: Google-Extended
 User-agent: Applebot-Extended
 User-agent: Bingbot
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Disallow: /dashboard
 Disallow: /crm

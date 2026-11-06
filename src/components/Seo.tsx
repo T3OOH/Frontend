@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 
 const SITE_URL = 'https://t3led.com.br';
-const SITE_NAME = 'T3 OOH';
+const SITE_NAME = 'T3 LED';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
 interface SeoProps {
