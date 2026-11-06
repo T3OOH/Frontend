@@ -133,6 +133,12 @@ export const panelsService = {
         return response.data;
     },
 
+    /** Posição de um link do Google Maps (curto do "Compartilhar", longo ou "lat, lng"). Só gestão. */
+    async localDoGoogleMaps(url: string): Promise<{ lat: number; lng: number; fonte: 'pino' | 'busca' | 'centro' | 'texto'; nome?: string }> {
+        const response = await api.get('/localidades/google-maps', { params: { url } });
+        return response.data;
+    },
+
     async getPanelById(id: string): Promise<PanelData> {
         const response = await api.get(`/panels/${id}`);
         return response.data;

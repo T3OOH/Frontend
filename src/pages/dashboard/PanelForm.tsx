@@ -52,8 +52,9 @@ function FollowPosition({ position }: { position: [number, number] }) {
     return null;
 }
 
-/** Lê coordenadas de um link do Google Maps (@lat,lng ou ?q=lat,lng) ou de "lat, lng" colado. */
+/** Lê "lat, lng" digitado ou colado (links do Google Maps são resolvidos pela API). */
 function parseCoordinates(text: string): [number, number] | null {
+    if (/^https?:\/\//i.test(text.trim())) return null;
     const match = text.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
     if (!match) return null;
     const lat = Number(match[1]);
@@ -104,8 +105,33 @@ export function PanelForm() {
         setCoordsText(`${rounded[0]}, ${rounded[1]}`);
     };
 
+    // Link do Google Maps colado (curto do "Compartilhar" ou longo): a API segue o link e devolve
+    // o ponto exato do lugar, que vira o pino do mapa
+    const [link, setLink] = useState<{ tipo: 'buscando' | 'ok' | 'aviso' | 'erro'; texto: string } | null>(null);
+    const pedidoLink = useRef(0);
     const onCoordsChange = (value: string) => {
         setCoordsText(value);
+        const texto = value.trim();
+        if (/^https?:\/\//i.test(texto)) {
+            const meu = ++pedidoLink.current;
+            setLink({ tipo: 'buscando', texto: 'Procurando o local no Google Maps…' });
+            panelsService.localDoGoogleMaps(texto)
+                .then((l) => {
+                    if (meu !== pedidoLink.current) return;
+                    place([l.lat, l.lng]);
+                    const onde = l.nome ? `: ${l.nome}` : '';
+                    setLink(l.fonte === 'centro'
+                        ? { tipo: 'aviso', texto: `Posição do centro do mapa${onde}. Confira o pino e arraste se precisar.` }
+                        : { tipo: 'ok', texto: `Local do Google Maps${onde}.` });
+                })
+                .catch((error) => {
+                    if (meu !== pedidoLink.current) return;
+                    setLink({ tipo: 'erro', texto: apiErrorMessage(error, 'Não foi possível ler o link do Google Maps.') });
+                });
+            return;
+        }
+        pedidoLink.current++;
+        setLink(null);
         const parsed = parseCoordinates(value);
         if (parsed) setPosition(parsed);
     };
@@ -276,8 +302,11 @@ export function PanelForm() {
                         <Field label="Endereço" htmlFor="pn-address" hint="Opcional.">
                             <input id="pn-address" maxLength={250} value={form.address} onChange={set('address')} className={crmInput} placeholder="Av. T-63 esq. com Av. T-4" />
                         </Field>
-                        <Field label="Coordenadas" htmlFor="pn-coords" hint='Clique no mapa, ou cole "latitude, longitude" ou o link completo do Google Maps.'>
-                            <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} className={`${crmInput} font-mono ${parseCoordinates(coordsText) ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText)} />
+                        <Field label="Coordenadas" htmlFor="pn-coords" hint='Cole o link do Google Maps (Compartilhar → Copiar link), "latitude, longitude" ou clique no mapa.'>
+                            <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} placeholder="https://maps.app.goo.gl/…" className={`${crmInput} font-mono ${parseCoordinates(coordsText) || link?.tipo === 'buscando' ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText) && link?.tipo !== 'buscando'} aria-describedby={link ? 'pn-coords-link' : undefined} />
+                            {link && (
+                                <p id="pn-coords-link" role="status" className={`mt-1.5 text-xs ${link.tipo === 'erro' ? 'text-red-400' : link.tipo === 'aviso' ? 'text-amber-300' : link.tipo === 'ok' ? 'text-brand-neon' : 'animate-pulse text-brand-muted'}`}>{link.texto}</p>
+                            )}
                         </Field>
                         <div className={`relative h-[360px] border border-brand-border lg:h-[420px]`}>
                             <MapContainer center={position} zoom={15} minZoom={4} maxBounds={BRAZIL_BOUNDS} className="absolute inset-0 z-0">
