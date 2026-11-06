@@ -88,7 +88,7 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
     }, [selectedPanelId, compact]);
 
     return (
-        <MapContainer center={GOIANIA} zoom={13} minZoom={4} maxBounds={BRAZIL_BOUNDS} maxBoundsViscosity={0.8} zoomControl={false} className="h-full w-full outline-none">
+        <MapContainer center={GOIANIA} zoom={13} minZoom={4} maxBounds={BRAZIL_BOUNDS} maxBoundsViscosity={0.8} zoomControl={false} className="z-0 h-full w-full outline-none">
             {/* Estilo escolhido em Perfil → Aparência (key recria a camada ao trocar) */}
             <BaseTiles key={preferences.mapStyle} theme={preferences.mapStyle} />
             {!compact && <ZoomControl position="bottomright" />}

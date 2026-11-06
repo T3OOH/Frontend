@@ -23,7 +23,7 @@ const caixa = 'w-full border border-white/15 bg-ink-900 px-3 py-2 text-sm text-i
  * dúvida para a IA. Se a IA não resolver, oferece falar com o comercial, a gestão ou o suporte
  * técnico (formulário curto). A conversa fica na aba (sessionStorage) até fechar o navegador.
  */
-export default function PainelIaT3({ aberto, onFechar, noMapa }: { aberto: boolean; onFechar: () => void; noMapa: boolean }) {
+export default function PainelIaT3({ aberto, onFechar, right, bottom, topo }: { aberto: boolean; onFechar: () => void; right: number; bottom: number; topo: number }) {
     const [inicio, setInicio] = useState<InicioIa | null>(null);
     const [erroInicio, setErroInicio] = useState(false);
     const [estado, setEstado] = useState<Estado>(ler);
@@ -78,8 +78,11 @@ export default function PainelIaT3({ aberto, onFechar, noMapa }: { aberto: boole
         <section
             role="dialog"
             aria-label="Chat de dúvidas da IA T3"
-            hidden={!aberto}
-            className={`fixed right-4 z-[10000] flex w-[calc(100vw-2rem)] max-w-sm flex-col border border-white/15 bg-ink-950 text-ink-100 shadow-[0_24px_60px_rgba(0,0,0,0.6)] lg:bottom-28 lg:right-8 ${noMapa ? 'bottom-[15.5rem] h-[min(60vh,520px)]' : 'bottom-24 h-[min(72vh,600px)]'}`}
+            aria-hidden={!aberto}
+            // Altura: até 600 px, sem cobrir o cabeçalho nem os controles do alto (ver posicaoBalao)
+            style={{ right, bottom, height: `min(600px, calc(100dvh - ${bottom}px - ${topo}px))` }}
+            // Fechado com a classe (o atributo hidden perde para o "flex" do Tailwind)
+            className={`fixed z-[495] w-[calc(100vw-2rem)] max-w-sm flex-col border border-white/15 bg-ink-950 text-ink-100 shadow-[0_24px_60px_rgba(0,0,0,0.6)] ${aberto ? 'flex' : 'hidden'}`}
         >
             <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
                 {estado.tema && (
