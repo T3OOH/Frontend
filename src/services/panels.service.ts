@@ -21,7 +21,7 @@ export interface PanelData {
     playbackSeconds?: number | null;
     images: string[];
     /** Foco de cada foto para o corte dos cards (ver src/lib/focoFoto.ts). */
-    imageFocus?: Record<string, { x: number; y: number; fonte: 'auto' | 'manual'; objetos?: string[] }> | null;
+    imageFocus?: Record<string, { x: number; y: number; fonte: 'auto' | 'manual'; objetos?: string[]; pino?: { x: number; y: number } }> | null;
     price?: number | null;
     categoryId?: string | null; 
     city?: string | null;
