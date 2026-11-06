@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "br.com.t3led/paineis",
+  "version": "1.0.0",
+  "title": "T3 LED - painéis de LED em Goiânia",
+  "description": "Painéis de LED e mídia exterior (OOH/DOOH) da T3 LED em Goiânia e Goiás: pontos, valores e contato.",
+  "websiteUrl": "https://t3led.com.br/",
+  "icons": [
+    { "src": "https://t3led.com.br/apple-touch-icon.png", "mimeType": "image/png", "sizes": ["180x180"] }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.t3led.com.br/mcp",
+      "supportedProtocolVersions": ["2025-11-25", "2025-06-18", "2025-03-26"]
+    }
+  ]
+}
