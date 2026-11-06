@@ -20,6 +20,8 @@ export interface PanelData {
     /** Tempo de reprodução de cada inserção, em segundos. */
     playbackSeconds?: number | null;
     images: string[];
+    /** Foco de cada foto para o corte dos cards (ver src/lib/focoFoto.ts). */
+    imageFocus?: Record<string, { x: number; y: number; fonte: 'auto' | 'manual'; objetos?: string[] }> | null;
     price?: number | null;
     categoryId?: string | null; 
     city?: string | null;

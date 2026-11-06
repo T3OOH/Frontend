@@ -30,6 +30,7 @@ const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info })))
 const Solution = lazy(() => import('@/pages/Solution').then(m => ({ default: m.Solution })));
 
 // Dashboard Views (Admin & Manager)
+const Indicators = lazy(() => import('@/pages/dashboard/Indicators').then(m => ({ default: m.Indicators })));
 const Traffic = lazy(() => import('@/pages/dashboard/Traffic').then(m => ({ default: m.Traffic })));
 const Reports = lazy(() => import('@/pages/dashboard/Reports').then(m => ({ default: m.Reports })));
 const AuditLogPage = lazy(() => import('@/pages/dashboard/AuditLog').then(m => ({ default: m.AuditLogPage })));
@@ -168,6 +169,7 @@ export function AppRoutes() {
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
                                         <Route path="relatorios" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+                                        <Route path="indicadores" element={<Suspense fallback={<PageLoader />}><Indicators /></Suspense>} />
                                         <Route path="registros" element={<Suspense fallback={<PageLoader />}><AuditLogPage /></Suspense>} />
                                         <Route path="trafego" element={<Suspense fallback={<PageLoader />}><Traffic /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />

@@ -18,7 +18,7 @@ import { formatPlayback } from '@/lib/playback';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { thumb, thumbProps } from '@/lib/imagens';
+import { estiloFoco, thumb, thumbProps } from '@/lib/imagens';
 /** Desconto do plano anual exibido nos cards (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
 /** Prazos aceitos pelo checkout (1 a 36 meses no backend). */
@@ -365,7 +365,7 @@ export function Map() {
                 className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'w-[300px] shrink-0 snap-start' : ''}`}
             >
                 <button type="button" onClick={() => pick(panel.id)} className="relative w-24 shrink-0 overflow-hidden bg-ink-850 sm:w-28" aria-label={`Ver ${panel.name} no mapa`}>
-                    <img src={thumb(panel.images?.[0], 480)} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
+                    <img src={thumb(panel.images?.[0], 480)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col p-3">
                     <button type="button" onClick={() => pick(panel.id)} className="min-w-0 text-left">
@@ -528,7 +528,7 @@ export function Map() {
                                     return (
                                         <li key={panel.id} className={`flex flex-col border bg-ink-900 ${inCart ? 'border-white/40' : 'border-white/[0.08]'}`}>
                                             <button type="button" onClick={() => showOnMap(panel.id)} className="relative aspect-[16/9] w-full overflow-hidden bg-ink-850" aria-label={`Ver ${panel.name} no mapa`}>
-                                                <img {...thumbProps(panel.images?.[0], 400)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                                                <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                                                 {inCart && <span className="absolute left-2 top-2 bg-ink-950/90 px-2 py-1 text-[11px] text-ink-100">No orçamento</span>}
                                             </button>
                                             <div className="flex flex-1 flex-col gap-3 p-4">
@@ -580,7 +580,7 @@ export function Map() {
                         <div className="pointer-events-auto px-3">
                             <article className="border border-white/15 bg-ink-950/95 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur" aria-label={`Telão ${selectedPanel.name}`}>
                                 <div className="flex gap-3 p-3">
-                                    <img src={thumb(selectedPanel.images?.[0], 240)} alt="" width={112} height={96} className="h-24 w-28 shrink-0 bg-ink-850 object-cover" />
+                                    <img src={thumb(selectedPanel.images?.[0], 240)} style={estiloFoco(selectedPanel.imageFocus, selectedPanel.images?.[0])} alt="" width={112} height={96} className="h-24 w-28 shrink-0 bg-ink-850 object-cover" />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-start justify-between gap-2">
                                             <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}</p>
@@ -642,7 +642,7 @@ export function Map() {
                                         <ul className="divide-y divide-white/[0.08] border-y border-white/[0.08]">
                                             {cart.map((p) => (
                                                 <li key={p.id} className="flex gap-4 py-4">
-                                                    <img src={thumb(p.images?.[0], 160)} alt="" loading="lazy" className="h-16 w-20 shrink-0 bg-ink-900 object-cover" />
+                                                    <img src={thumb(p.images?.[0], 160)} style={estiloFoco(p.imageFocus, p.images?.[0])} alt="" loading="lazy" className="h-16 w-20 shrink-0 bg-ink-900 object-cover" />
                                                     <div className="flex min-w-0 flex-1 flex-col">
                                                         <p className="truncate text-sm font-medium text-ink-100">{p.name}</p>
                                                         <p className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-ink-400">{[p.city, p.state].filter(Boolean).join(' · ')}</p>
