@@ -7,6 +7,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { MainLayout } from '@/layouts/MainLayout';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { BalaoIaT3 } from '@/components/ia-t3/BalaoIaT3';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 
@@ -216,6 +217,8 @@ export function AppRoutes() {
 
                             {/* Global Action Component for Scroll Management */}
                             <ScrollToTopButton />
+                            {/* Balão de dúvidas (IA T3) em todas as páginas do site */}
+                            <BalaoIaT3 />
 
                         </BrowserRouter>
                     </CartProvider>
