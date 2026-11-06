@@ -16,7 +16,7 @@ import { Badge, CrmPage, EmptyState, Field, Panel, Sheet, Skeleton } from '@/com
 import { crmBtn, crmInput, formatBRL, whatsappUrl } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
 import { apiErrorMessage } from '@/lib/upload';
-
+import { thumb } from '@/lib/imagens';
 interface LoadedOrder {
     id: string;
     status: string;
@@ -393,7 +393,7 @@ export function CrmProposals() {
                                         <li key={panel.id} className={on ? 'bg-brand-neon/5' : ''}>
                                             <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
                                                 <input type="checkbox" checked={on} onChange={() => toggle(panel.id)} className="h-4 w-4 shrink-0 accent-brand-neon" />
-                                                <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
+                                                <img src={thumb(panel.images?.[0], 160)} alt="" loading="lazy" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
                                                 <span className="min-w-0 flex-1">
                                                     <span className="block truncate text-sm text-brand-text">{panel.name}</span>
                                                     <span className="block truncate text-xs text-brand-muted">{[panel.city, panel.state].filter(Boolean).join(' - ')}{panel.status !== 'AVAILABLE' ? ' · já ocupado' : ''}</span>

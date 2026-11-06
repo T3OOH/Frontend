@@ -11,7 +11,7 @@ import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { DealLine, SOLUTION_SERVICES, SolutionDetails, solutionSummary } from '@/lib/solution';
-
+import { thumb } from '@/lib/imagens';
 type Status = 'IN_REVIEW' | 'PROPOSAL_SENT' | 'APPROVED' | 'CANCELLED';
 
 interface MyOrder {
@@ -434,7 +434,7 @@ export function UserProfile() {
                         <ul className="divide-y divide-white/[0.08]">
                             {open.items.map((item) => (
                                 <li key={item.id} className="flex items-center gap-3 px-4 py-3 md:px-6">
-                                    <img src={item.panel?.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-ink-900 object-cover" />
+                                    <img src={thumb(item.panel?.images?.[0], 160)} alt="" loading="lazy" className="h-12 w-16 shrink-0 bg-ink-900 object-cover" />
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-sm text-ink-100">{item.panel?.name || 'Painel removido'}</span>
                                         <span className="block truncate text-xs text-ink-400">{[item.panel?.city, item.panel?.state].filter(Boolean).join(' - ')}</span>

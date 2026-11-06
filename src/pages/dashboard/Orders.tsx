@@ -10,7 +10,7 @@ import { apiErrorMessage } from '@/lib/upload';
 import { Badge, CrmPage, EmptyState, Field, Sheet, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL, formatDate } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
-
+import { thumb } from '@/lib/imagens';
 type OrderStatus = 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED';
 
 interface Order {
@@ -206,7 +206,7 @@ export function Orders() {
                             <ul className="divide-y divide-brand-border border border-brand-border">
                                 {(selected.items || []).map((item, i) => (
                                     <li key={item.id || i} className="flex items-center gap-3 px-4 py-2.5">
-                                        <img src={item.panel?.images?.[0] || '/placeholder.svg'} alt="" className="h-10 w-14 shrink-0 bg-brand-background object-cover" />
+                                        <img src={thumb(item.panel?.images?.[0], 160)} alt="" loading="lazy" className="h-10 w-14 shrink-0 bg-brand-background object-cover" />
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm text-brand-text">{item.panel?.name || 'Painel'}</span>
                                             <span className="block truncate text-xs text-brand-muted">{[item.panel?.city, item.panel?.state].filter(Boolean).join(' - ')}</span>

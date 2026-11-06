@@ -10,9 +10,9 @@ import { useTheme } from '@/contexts/ThemeContext';
  */
 export const BACKGROUND_VIDEOS = {
     /** Goiânia em golden hour, com a logo da T3 nos telões (site da T3 OOH). */
-    cidade: { mp4: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[80%_50%] md:object-center' },
+    cidade: { mp4: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', posterSrcSet: '/video/t3-cidade-poster-960.webp 960w, /video/t3-cidade-poster.webp 1280w', position: 'object-[80%_50%] md:object-center' },
     /** Casa com piscina e o telão de LED da T3 Solution no terraço (página da T3 Solution). */
-    solution: { mp4: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', position: 'object-[64%_55%]' },
+    solution: { mp4: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', posterSrcSet: '/video/t3-solution-casa-poster-960.webp 960w, /video/t3-solution-casa-poster.webp 1280w', position: 'object-[64%_55%]' },
 };
 export type BackgroundVideo = (typeof BACKGROUND_VIDEOS)[keyof typeof BACKGROUND_VIDEOS];
 
@@ -103,6 +103,9 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
             {/* Quadro do vídeo: base enquanto carrega e fundo fixo quando o vídeo não toca */}
             <motion.img
                 src={video.poster}
+                // Celular: quadro de 960 px (fundo atrás de um véu escuro); computador: 1280 px
+                srcSet={video.posterSrcSet}
+                sizes="100vw"
                 alt=""
                 style={{ scale, y }}
                 className={`${media} select-none`}

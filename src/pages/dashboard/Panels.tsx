@@ -7,7 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { Badge, ConfirmSheet, CrmPage, EmptyState, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
-
+import { thumb } from '@/lib/imagens';
 type Filter = 'ALL' | PanelStatus;
 
 const STATUS: Record<PanelStatus, { label: string; tone: 'accent' | 'neutral' | 'muted' | 'danger' }> = {
@@ -112,7 +112,7 @@ export function Panels() {
                             return (
                                 <li key={panel.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[2.4fr_1fr_1fr_1fr_1fr_auto]">
                                     <div className="col-span-2 flex min-w-0 items-center gap-3 md:col-span-1">
-                                        <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
+                                        <img src={thumb(panel.images?.[0], 160)} alt="" loading="lazy" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-medium text-brand-text">{panel.name}</p>
                                             <p className="truncate text-xs text-brand-muted">{[panel.city, panel.state].filter(Boolean).join(' - ') || 'Sem cidade'}</p>
