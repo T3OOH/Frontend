@@ -46,10 +46,13 @@ const nav = [
     ['/sobre', 'Sobre a T3'], ['/contato', 'Contato'],
 ];
 
-/** Rodapé: páginas institucionais e legais (com as relações de link registradas na IANA). */
+/**
+ * Rodapé: páginas institucionais e legais (com as relações de link registradas na IANA).
+ * O texto leva a tradução em inglês: verificadores de agentes de IA procuram "about", "contact" e "terms".
+ */
 const legalNav = [
-    ['/sobre', 'Sobre a T3 LED', ''], ['/contato', 'Contato', ''],
-    ['/privacidade', 'Política de Privacidade', 'privacy-policy'], ['/termos', 'Termos de Uso', 'terms-of-service'],
+    ['/sobre', 'Sobre a T3 LED (About us)', ''], ['/contato', 'Contato (Contact)', ''],
+    ['/privacidade', 'Política de Privacidade (Privacy Policy)', 'privacy-policy'], ['/termos', 'Termos de Uso (Terms of Service)', 'terms-of-service'],
 ];
 
 /** Páginas públicas. `body` é HTML semântico com o conteúdo principal da página. */

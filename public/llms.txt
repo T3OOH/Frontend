@@ -20,3 +20,8 @@ Atendimento comercial pelo WhatsApp: Victor Hugo (62) 9320-6010 e Lucas Dourado 
 ## Opcional
 - [Política de Privacidade](https://t3led.com.br/privacidade)
 - [Termos de Uso](https://t3led.com.br/termos)
+
+## Para agentes de IA
+- Servidor MCP (Streamable HTTP, só leitura): https://api.t3led.com.br/mcp — ferramentas `buscar_paineis` e `contato_comercial`.
+- Server Card: https://api.t3led.com.br/mcp/server-card · AI Catalog: https://t3led.com.br/.well-known/ai-catalog.json
+- Cada página pública também responde em Markdown com `Accept: text/markdown`.
