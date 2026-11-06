@@ -6,6 +6,7 @@ import { Footer } from '@/components/Footer';
 import { CookieConsent } from '@/components/CookieConsent';
 import { BACKGROUND_VIDEOS, PhotoCity } from '@/components/led/PhotoCity';
 import { Gateway } from '@/components/Gateway';
+import { BalaoIaT3 } from '@/components/ia-t3/BalaoIaT3';
 
 /**
  * A tela de escolha (T3 OOH x T3 Solution) aparece sempre que o site é aberto pelo
@@ -41,8 +42,13 @@ export function MainLayout() {
                 </main>
 
                 <Footer />
+                {/* Folga no fim da página: o rodapé sobe acima do balão de dúvidas */}
+                <div aria-hidden="true" className="h-24 bg-ink-950" />
 
                 <CookieConsent />
+                {/* Balão de dúvidas (IA T3): dentro do layout para ficar abaixo do cabeçalho e do
+                    menu do celular (o "isolate" acima prende o z-index deles nesta camada) */}
+                <BalaoIaT3 />
             </div>
         </div>
     );
