@@ -50,7 +50,7 @@ ErrorDocument 404 /404.html
     RewriteRule ^ - [L]
 
     # Rotas do React (SPA): telas de conta, área interna e reuniões.
-    RewriteRule ^(login|cadastro|recuperar-senha|atualizar-senha|perfil)/?$ index.html [L]
+    RewriteRule ^(login|cadastro|recuperar-senha|atualizar-senha|perfil|assinatura)/?$ index.html [L]
     RewriteRule ^(dashboard|crm|seguranca|reuniao)(/.*)?$ index.html [L]
 
     # Qualquer outro endereço não existe.

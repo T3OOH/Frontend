@@ -20,6 +20,7 @@ import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 const DashboardLayout = lazy(() => import('@/layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
 const CrmLayout = lazy(() => import('@/layouts/CrmLayout').then(m => ({ default: m.CrmLayout })));
 const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
+const EmailSignature = lazy(() => import('@/pages/EmailSignature').then(m => ({ default: m.EmailSignature })));
 const Contact = lazy(() => import('@/pages/Contact').then(m => ({ default: m.Contact })));
 const Services = lazy(() => import('@/pages/Services').then(m => ({ default: m.Services })));
 const Map = lazy(() => import('@/pages/Map').then(m => ({ default: m.Map })));
@@ -135,6 +136,8 @@ export function AppRoutes() {
                                 <Route path="/" element={<MainLayout />}>
                                     <Route index element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
                                     <Route path="contato" element={<Suspense fallback={<PageLoader />}><Contact /></Suspense>} />
+                                    {/* Assinatura de e-mail da equipe (sem índice no Google) */}
+                                    <Route path="assinatura" element={<Suspense fallback={<PageLoader />}><EmailSignature /></Suspense>} />
                                     <Route path="servicos" element={<Suspense fallback={<PageLoader />}><Services /></Suspense>} />
                                     <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
                                     <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} />
