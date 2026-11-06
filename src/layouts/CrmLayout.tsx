@@ -3,12 +3,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppShell, ShellNavItem } from './AppShell';
 
 const NAV: ShellNavItem[] = [
-    { to: '/crm', label: 'Início', icon: LayoutDashboard, end: true },
-    { to: '/crm/pipeline', label: 'Funil de vendas', short: 'Funil', icon: Filter },
-    { to: '/crm/clientes', label: 'Clientes', icon: Users },
-    { to: '/crm/propostas', label: 'Propostas', icon: FileText },
-    { to: '/crm/agenda', label: 'Agenda', icon: Calendar },
-    { to: '/crm/cupons', label: 'Cupons', icon: Ticket },
+    { group: 'Vendas', to: '/crm', label: 'Início', icon: LayoutDashboard, end: true },
+    { group: 'Vendas', to: '/crm/pipeline', label: 'Funil de vendas', short: 'Funil', icon: Filter },
+    { group: 'Vendas', to: '/crm/propostas', label: 'Propostas', icon: FileText },
+    { group: 'Relacionamento', to: '/crm/clientes', label: 'Clientes', icon: Users },
+    { group: 'Relacionamento', to: '/crm/agenda', label: 'Agenda', icon: Calendar },
+    { group: 'Ferramentas', to: '/crm/cupons', label: 'Cupons', icon: Ticket },
 ];
 
 export function CrmLayout() {

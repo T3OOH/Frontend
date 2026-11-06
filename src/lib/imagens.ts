@@ -25,3 +25,12 @@ export function thumbProps(url: string | null | undefined, larguraCss: number) {
     if (!url || !transformavel(url)) return { src: url || PLACEHOLDER };
     return { src: thumb(url, larguraCss), srcSet: `${thumb(url, larguraCss)} 1x, ${thumb(url, larguraCss * 2)} 2x` };
 }
+
+/** Focos das fotos de um painel (url da foto → ponto de foco em %), gravados no cadastro. */
+export type FocosFotos = Record<string, { x: number; y: number }> | null | undefined;
+
+/** Estilo do <img> com object-fit: cover para centralizar no foco da foto. */
+export function estiloFoco(focos: FocosFotos, url: string | undefined | null) {
+    const f = url ? focos?.[url] : undefined;
+    return f ? { objectPosition: `${f.x}% ${f.y}%` } : undefined;
+}
