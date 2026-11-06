@@ -1,0 +1,10 @@
+{
+  "specVersion": "1.0",
+  "entries": [
+    {
+      "identifier": "urn:air:t3led.com.br:mcp:paineis",
+      "type": "application/mcp-server-card+json",
+      "url": "https://api.t3led.com.br/mcp/server-card"
+    }
+  ]
+}

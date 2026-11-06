@@ -9,6 +9,15 @@ AddType text/markdown .md
 AddCharset utf-8 .md
 AddDefaultCharset utf-8
 
+# Descoberta por agentes de IA: Server Card do servidor MCP (https://api.t3led.com.br/mcp) e AI Catalog.
+# O card é o mesmo de GET /mcp/server-card no Backend (src/routes/mcp.routes.ts): mudar nos dois.
+<Files "server-card.json">
+    ForceType "application/mcp-server-card+json; charset=utf-8"
+</Files>
+<Files "ai-catalog.json">
+    ForceType "application/ai-catalog+json; charset=utf-8"
+</Files>
+
 # Endereço que não existe: 404 de verdade, com a página do site (o React mostra "Página não encontrada")
 ErrorDocument 404 /404.html
 
@@ -19,6 +28,12 @@ ErrorDocument 404 /404.html
     # (testar %{HTTPS} aqui atrás da CDN pode causar loop de redirecionamento).
     RewriteCond %{HTTP_HOST} ^www\. [NC]
     RewriteRule ^ https://t3led.com.br%{REQUEST_URI} [R=301,L]
+
+    # Endereços em inglês que agentes e visitantes costumam tentar: levam à página em português
+    RewriteRule ^(about|about-us)/?$ /sobre [R=301,L]
+    RewriteRule ^(contact|contact-us)/?$ /contato [R=301,L]
+    RewriteRule ^(terms|terms-of-service|terms-of-use|legal)/?$ /termos [R=301,L]
+    RewriteRule ^(privacy|privacy-policy)/?$ /privacidade [R=301,L]
 
     # Agente que pede Markdown (Accept: text/markdown) recebe a versão .md da página pública
     RewriteCond %{HTTP:Accept} text/markdown [NC]
@@ -61,6 +76,10 @@ ErrorDocument 404 /404.html
         # Recursos para agentes e buscadores (RFC 8288)
         Header add Link '</llms.txt>; rel="describedby"; type="text/plain"'
         Header add Link '</sitemap.xml>; rel="sitemap"; type="application/xml"'
+    </FilesMatch>
+    <FilesMatch "^(server-card|ai-catalog)\.json$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Cache-Control "public, max-age=3600"
     </FilesMatch>
     <FilesMatch "\.md$">
         Header set Cache-Control "private, no-cache"
