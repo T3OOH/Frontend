@@ -6,7 +6,7 @@ import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { formatPlayback } from '@/lib/playback';
 import { useTheme } from '@/contexts/ThemeContext';
-import { estiloFoco, thumbProps } from '@/lib/imagens';
+import { estiloFoco, FocosFotos, thumbProps } from '@/lib/imagens';
 export interface MapPanel {
     id: string;
     name: string;
@@ -19,6 +19,8 @@ export interface MapPanel {
     playbackSeconds?: number | null;
     price?: number | string | null;
     images?: string[];
+    /** Foco de cada foto (corte centrado no telão). */
+    imageFocus?: FocosFotos;
 }
 
 interface InteractiveMapProps {
