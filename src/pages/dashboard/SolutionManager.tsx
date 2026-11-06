@@ -6,7 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { ConfirmSheet, CrmPage, EmptyState, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
-
+import { thumb } from '@/lib/imagens';
 interface PortfolioImage { id: string; url: string; alt: string }
 
 export function SolutionManager() {
@@ -119,7 +119,7 @@ export function SolutionManager() {
                         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                             {images.map((img) => (
                                 <li key={img.id} className="group relative aspect-[4/3] overflow-hidden border border-brand-border bg-brand-background">
-                                    <img src={img.url} alt={img.alt} loading="lazy" className="h-full w-full object-cover" />
+                                    <img src={thumb(img.url, 480)} alt={img.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                                     <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/70 px-3 py-2">
                                         <span className="truncate text-xs text-white">{img.alt}</span>
                                         <button type="button" onClick={() => setToDelete(img)} className="-m-2.5 shrink-0 p-2.5 text-white/80 hover:text-red-400" aria-label={`Remover ${img.alt}`}><Trash2 className="h-4 w-4" /></button>

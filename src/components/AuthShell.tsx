@@ -33,7 +33,7 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, wide }: 
                 >
                     <div className="flex items-center justify-between">
                         <Link to="/" aria-label="T3 OOH, página inicial" className="-m-1.5 p-1.5">
-                            <img src="/t3-logo.webp" alt="" className="h-9 w-auto" />
+                            <img src="/t3-logo-160.webp" alt="" width={160} height={160} className="h-9 w-auto" />
                         </Link>
                         <Link to="/" className="inline-flex min-h-[44px] items-center gap-1.5 text-sm text-ink-400 hover:text-ink-100">
                             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Voltar ao site

@@ -74,8 +74,9 @@ const PageLoader = () => (
     </div>
 );
 
+// Mesma altura da página do mapa: o rodapé não aparece e depois é empurrado (deslocamento de layout)
 const MapLoader = () => (
-    <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center bg-[#0A0A0B] gap-4">
+    <div className="w-full h-[calc(100dvh-5rem)] min-h-[560px] flex flex-col items-center justify-center bg-[#0A0A0B] gap-4">
         <div className="w-8 h-8 border-4 border-[#FF5E00] border-t-transparent rounded-full animate-spin"></div>
         <span className="text-[#8F8F91] text-sm font-medium tracking-widest uppercase">Carregando Mapa...</span>
     </div>

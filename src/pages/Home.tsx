@@ -8,7 +8,7 @@ import { CtaBand, btnOnOrange } from '@/components/CtaBand';
 import { btnDark } from '@/lib/ui';
 import { panelsService, PanelData } from '@/services/panels.service';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
-
+import { thumbProps } from '@/lib/imagens';
 /** Desconto do plano de 12 meses (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
 
@@ -190,7 +190,8 @@ export function Home() {
                                     >
                                         <Link to={`/servicos?panelId=${panel.id}`} className="group relative block h-full min-h-[280px] overflow-hidden bg-ink-900">
                                             <img
-                                                src={panel.images?.[0] || '/placeholder.svg'}
+                                                {...thumbProps(panel.images?.[0], 640)}
+                                                decoding="async"
                                                 alt={`Painel ${panel.name}`}
                                                 loading="lazy"
                                                 className="absolute inset-0 h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0"

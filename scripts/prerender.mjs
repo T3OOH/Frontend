@@ -74,6 +74,8 @@ const PAGES = [
     },
     {
         path: '/mapa', file: 'mapa.html',
+        // Tiles do mapa estático (staticMap) e do Leaflet: conexão aberta já no <head>
+        preconnect: ['https://a.tile.openstreetmap.org', 'https://b.tile.openstreetmap.org', 'https://c.tile.openstreetmap.org'],
         title: 'Mapa de painéis de LED em Goiânia e Goiás | T3 LED',
         description: 'Veja no mapa os painéis de LED e pontos de mídia OOH da T3 em Goiânia e no interior de Goiás, com formato, localização e investimento. Monte seu orçamento.',
         h1: 'Mapa de painéis de LED',
@@ -244,6 +246,33 @@ function staticGateway() {
 </style>`;
 }
 
+/**
+ * /mapa no celular: os tiles do OpenStreetMap já no HTML, na mesma posição em que o Leaflet vai
+ * desenhá-los (mesmo fitBounds dos painéis: padding 60, maxZoom 14, minZoom 4, mesma projeção e mesmos
+ * subdomínios, então o Leaflet reaproveita o cache). Aparecem antes do JavaScript; o mapa de verdade
+ * fica por baixo e src/features/map/basemap.tsx remove este quando os tiles dele terminam de carregar.
+ * Mudou o enquadramento em src/features/map/InteractiveMap.tsx? Mude aqui também.
+ */
+function staticMap(panels) {
+    const num = (v) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) && n !== 0 ? n : null; };
+    const pts = panels.map((p) => [num(p.lat), num(p.lng)]).filter(([a, b]) => a !== null && b !== null);
+    if (!pts.length) return '';
+    return `<div id="mapa-estatico" aria-hidden="true" style="position:fixed;left:0;top:80px;width:100%;overflow:hidden;z-index:450;background:#0B0B0C;pointer-events:none"></div>
+<script>(function(){var el=document.getElementById('mapa-estatico');
+if(location.pathname.replace(/\\/$/,'')!=='/mapa'||!matchMedia('(max-width: 767px)').matches){el.remove();return}
+var P=${JSON.stringify(pts)},W=innerWidth,H=Math.max(innerHeight-80,560),PAD=60;
+function px(la,ln,z){var s=256*Math.pow(2,z),r=Math.sin(la*Math.PI/180);return[(ln+180)/360*s,(.5-Math.log((1+r)/(1-r))/(4*Math.PI))*s]}
+var a=90,b=-90,c=180,d=-180;P.forEach(function(p){a=Math.min(a,p[0]);b=Math.max(b,p[0]);c=Math.min(c,p[1]);d=Math.max(d,p[1])});
+var z=14;for(;z>4;z--){var q=px(b,c,z),w=px(a,d,z);if(w[0]-q[0]<=W-2*PAD&&w[1]-q[1]<=H-2*PAD)break}
+var q=px(b,c,z),w=px(a,d,z),cx=(q[0]+w[0])/2,cy=(q[1]+w[1])/2,ox=cx-W/2,oy=cy-H/2,n=Math.pow(2,z);
+var light=false;try{light=(JSON.parse(localStorage.getItem('@t3:preferences')||'{}').mapStyle==='light')}catch(e){}
+var f=light?'saturate(0.55) contrast(0.95)':'invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.35)',h='';
+for(var x=Math.floor(ox/256);x<=Math.floor((ox+W)/256);x++)for(var y=Math.floor(oy/256);y<=Math.floor((oy+H)/256);y++){if(y<0||y>=n)continue;
+h+='<img alt="" width="256" height="256" src="https://'+'abc'[Math.abs(x+y)%3]+'.tile.openstreetmap.org/'+z+'/'+((x%n+n)%n)+'/'+y+'.png" style="position:absolute;left:'+Math.round(x*256-ox)+'px;top:'+Math.round(y*256-oy)+'px;width:256px;height:256px;filter:'+f+'" fetchpriority="high">'}
+el.style.height=H+'px';el.innerHTML=h+'<span style="position:absolute;right:4px;bottom:2px;font:10px sans-serif;color:#8E8E93">&copy; OpenStreetMap</span>';
+setTimeout(function(){el.remove()},8000)})()</script>`;
+}
+
 function render(template, page, panels) {
     const url = `${SITE}${page.path === '/' ? '/' : page.path}`;
     let html = template;
@@ -255,10 +284,12 @@ function render(template, page, panels) {
     set(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${esc(page.description)}" />`);
     set(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
     const md = page.file.replace(/\.html$/, '.md');
+    const preconnects = (page.preconnect ?? []).map((origin) => `  <link rel="preconnect" href="${origin}" />
+`).join('');
     const preloads = (page.preloadImages ?? []).map((img) => `  <link rel="preload" as="image" href="${img.src}" imagesrcset="${img.srcset}" imagesizes="${img.sizes}" fetchpriority="high" />\n`).join('');
-    html = html.replace('</head>', `${preloads}  <link rel="alternate" type="text/markdown" href="/${md}" />\n  <script type="application/ld+json">${jsonLd(page)}</script>\n</head>`);
+    html = html.replace('</head>', `${preconnects}${preloads}  <link rel="alternate" type="text/markdown" href="/${md}" />\n  <script type="application/ld+json">${jsonLd(page)}</script>\n</head>`);
     // Home: a tela de escolha fica antes do #root (o React monta a dele por cima e a estática sai na escolha)
-    set(/<div id="root"><\/div>/, `${page.path === '/' ? staticGateway() : ''}<div id="root">${staticBody(page, panels)}</div>`);
+    set(/<div id="root"><\/div>/, `${page.path === '/' ? staticGateway() : ''}${page.path === '/mapa' ? staticMap(panels) : ''}<div id="root">${staticBody(page, panels)}</div>`);
     return html;
 }
 
@@ -323,12 +354,12 @@ function deferAppScripts(html) {
     const list = JSON.stringify(preloads.map((p) => p[1]));
     const loader = `<script>(function(){function go(){var h=document.head;${list}.forEach(function(u){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=u;h.appendChild(l)});`
         + `var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=${JSON.stringify(entry[1])};h.appendChild(s)}`
-        // Home: a tela de escolha estática já funciona (os lados são links); o app espera as imagens dela.
+        // Home e /mapa no celular: a tela estática (escolha ou tiles do mapa) aparece primeiro; o app espera as imagens dela.
         // Demais páginas: um quadro depois da primeira pintura.
         // (aba em segundo plano não roda requestAnimationFrame: o setTimeout garante o carregamento)
         + `var started=false;function run(){if(!started){started=true;go()}}`
         + `function soon(){requestAnimationFrame(function(){setTimeout(run,0)});setTimeout(run,200)}`
-        + `if(document.getElementById('gw-estatico')&&document.readyState!=='complete'){addEventListener('load',soon,{once:true})}else{soon()}})()</script>\n`;
+        + `if((document.getElementById('gw-estatico')||document.getElementById('mapa-estatico'))&&document.readyState!=='complete'){addEventListener('load',soon,{once:true})}else{soon()}})()</script>\n`;
     return out.replace('</body>', `${loader}</body>`);
 }
 

@@ -6,7 +6,7 @@ import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { formatPlayback } from '@/lib/playback';
 import { useTheme } from '@/contexts/ThemeContext';
-
+import { thumbProps } from '@/lib/imagens';
 export interface MapPanel {
     id: string;
     name: string;
@@ -114,7 +114,7 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                         {!compact && <Popup closeButton>
                             <div className="flex flex-col">
                                 <div className="aspect-[16/9] w-full bg-ink-850">
-                                    <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-full w-full object-cover" />
+                                    <img {...thumbProps(panel.images?.[0], 300)} alt="" decoding="async" className="h-full w-full object-cover" />
                                 </div>
                                 <div className="flex flex-col gap-3 p-4">
                                     <div>
