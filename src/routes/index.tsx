@@ -6,9 +6,8 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { CartProvider } from '@/contexts/CartContext'; 
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { MainLayout } from '@/layouts/MainLayout';
-import { DashboardLayout } from '@/layouts/DashboardLayout';
-import { CrmLayout } from '@/layouts/CrmLayout'; 
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { BalaoIaT3 } from '@/components/ia-t3/BalaoIaT3';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 
@@ -18,7 +17,11 @@ import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 // ==========================================
 
 // Public Views
+// Gestão e CRM: o visitante do site nunca baixa esses layouts
+const DashboardLayout = lazy(() => import('@/layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const CrmLayout = lazy(() => import('@/layouts/CrmLayout').then(m => ({ default: m.CrmLayout })));
 const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
+const EmailSignature = lazy(() => import('@/pages/EmailSignature').then(m => ({ default: m.EmailSignature })));
 const Contact = lazy(() => import('@/pages/Contact').then(m => ({ default: m.Contact })));
 const Services = lazy(() => import('@/pages/Services').then(m => ({ default: m.Services })));
 const Map = lazy(() => import('@/pages/Map').then(m => ({ default: m.Map })));
@@ -28,6 +31,7 @@ const Info = lazy(() => import('@/pages/Info').then(m => ({ default: m.Info })))
 const Solution = lazy(() => import('@/pages/Solution').then(m => ({ default: m.Solution })));
 
 // Dashboard Views (Admin & Manager)
+const Indicators = lazy(() => import('@/pages/dashboard/Indicators').then(m => ({ default: m.Indicators })));
 const Traffic = lazy(() => import('@/pages/dashboard/Traffic').then(m => ({ default: m.Traffic })));
 const Reports = lazy(() => import('@/pages/dashboard/Reports').then(m => ({ default: m.Reports })));
 const AuditLogPage = lazy(() => import('@/pages/dashboard/AuditLog').then(m => ({ default: m.AuditLogPage })));
@@ -73,8 +77,9 @@ const PageLoader = () => (
     </div>
 );
 
+// Mesma altura da página do mapa: o rodapé não aparece e depois é empurrado (deslocamento de layout)
 const MapLoader = () => (
-    <div className="w-full h-full min-h-[500px] flex flex-col items-center justify-center bg-[#0A0A0B] gap-4">
+    <div className="w-full h-[calc(100dvh-5rem)] min-h-[560px] flex flex-col items-center justify-center bg-[#0A0A0B] gap-4">
         <div className="w-8 h-8 border-4 border-[#FF5E00] border-t-transparent rounded-full animate-spin"></div>
         <span className="text-[#8F8F91] text-sm font-medium tracking-widest uppercase">Carregando Mapa...</span>
     </div>
@@ -133,6 +138,8 @@ export function AppRoutes() {
                                 <Route path="/" element={<MainLayout />}>
                                     <Route index element={<Suspense fallback={<PageLoader />}><Home /></Suspense>} />
                                     <Route path="contato" element={<Suspense fallback={<PageLoader />}><Contact /></Suspense>} />
+                                    {/* Assinatura de e-mail da equipe (sem índice no Google) */}
+                                    <Route path="assinatura" element={<Suspense fallback={<PageLoader />}><EmailSignature /></Suspense>} />
                                     <Route path="servicos" element={<Suspense fallback={<PageLoader />}><Services /></Suspense>} />
                                     <Route path="mapa" element={<Suspense fallback={<MapLoader />}><Map /></Suspense>} />
                                     <Route path="sobre" element={<Suspense fallback={<PageLoader />}><Info /></Suspense>} />
@@ -154,7 +161,7 @@ export function AppRoutes() {
 
                                 {/* ROTAS RESTRITAS (GESTOR / ADMIN) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
-                                    <Route path="/dashboard" element={<DashboardLayout />}>
+                                    <Route path="/dashboard" element={<Suspense fallback={<PageLoader />}><DashboardLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><Overview /></Suspense>} />
                                         <Route path="paineis" element={<Suspense fallback={<PageLoader />}><Panels /></Suspense>} />
                                         <Route path="paineis/novo" element={<Suspense fallback={<PageLoader />}><PanelForm /></Suspense>} />
@@ -163,6 +170,7 @@ export function AppRoutes() {
                                         <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><UsersList /></Suspense>} />
                                         <Route path="pedidos" element={<Suspense fallback={<PageLoader />}><OrdersList /></Suspense>} />
                                         <Route path="relatorios" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+                                        <Route path="indicadores" element={<Suspense fallback={<PageLoader />}><Indicators /></Suspense>} />
                                         <Route path="registros" element={<Suspense fallback={<PageLoader />}><AuditLogPage /></Suspense>} />
                                         <Route path="trafego" element={<Suspense fallback={<PageLoader />}><Traffic /></Suspense>} />
                                         <Route path="solution" element={<Suspense fallback={<PageLoader />}><SolutionManager /></Suspense>} />
@@ -175,7 +183,7 @@ export function AppRoutes() {
 
                                 {/* ROTAS RESTRITAS (CRM / COMERCIAL) */}
                                 <Route element={<PrivateRoute allowedRoles={['ADMIN', 'MANAGER', 'COMERCIAL']} />}>
-                                    <Route path="/crm" element={<CrmLayout />}>
+                                    <Route path="/crm" element={<Suspense fallback={<PageLoader />}><CrmLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><CrmOverview /></Suspense>} />
                                         <Route path="pipeline" element={<Suspense fallback={<PageLoader />}><CrmPipeline /></Suspense>} />
                                         <Route path="clientes" element={<Suspense fallback={<PageLoader />}><CrmClients /></Suspense>} />
@@ -193,7 +201,7 @@ export function AppRoutes() {
                                       * Captura eventuais links absolutos de modulos paralelos (/dashboard/crm/proposta/:id)
                                       * Montando apropriadamente com o contexto do CrmLayout
                                       */}
-                                    <Route path="/dashboard/crm/proposta/:id" element={<CrmLayout />}>
+                                    <Route path="/dashboard/crm/proposta/:id" element={<Suspense fallback={<PageLoader />}><CrmLayout /></Suspense>}>
                                         <Route index element={<Suspense fallback={<PageLoader />}><CrmProposals /></Suspense>} />
                                     </Route>
                                 </Route>
@@ -209,6 +217,8 @@ export function AppRoutes() {
 
                             {/* Global Action Component for Scroll Management */}
                             <ScrollToTopButton />
+                            {/* Balão de dúvidas (IA T3) em todas as páginas do site */}
+                            <BalaoIaT3 />
 
                         </BrowserRouter>
                     </CartProvider>

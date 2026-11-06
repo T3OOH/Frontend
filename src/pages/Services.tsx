@@ -17,7 +17,7 @@ import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
 import { CustomSelect } from '@/components/CustomSelect';
 import { PanelGallery } from '@/components/PanelGallery';
-
+import { estiloFoco, thumb, thumbProps } from '@/lib/imagens';
 /** Desconto do plano de 12 meses, usado nos preços de vitrine (mesma regra do backend). */
 const ANNUAL_DISCOUNT = 0.3;
 const spring = { type: 'spring', stiffness: 100, damping: 20 } as const;
@@ -363,7 +363,7 @@ export function Services() {
                                     className={`group flex flex-col bg-ink-900 outline outline-1 -outline-offset-1 ${inCart ? 'outline-brand-neon' : 'outline-transparent'}`}
                                 >
                                     <button type="button" onClick={() => setSelectedPanel(panel)} className="relative block aspect-[4/3] overflow-hidden bg-ink-850 text-left" aria-label={`Ver detalhes de ${panel.name}`}>
-                                        <img src={panel.images?.[0] || '/placeholder.svg'} alt="" loading="lazy" className="h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0" />
+                                        <img {...thumbProps(panel.images?.[0], 400)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale-[35%] transition duration-700 group-hover:scale-[1.03] group-hover:grayscale-0" />
                                         <span className="absolute left-0 top-0 bg-ink-950 px-3 py-1.5 font-mono text-[11px] text-ink-300">{String(i + 1).padStart(2, '0')}</span>
                                         <span className="absolute bottom-0 right-0 flex items-center gap-1.5 bg-ink-950 px-3 py-1.5 text-xs text-ink-100 opacity-0 transition-opacity group-hover:opacity-100">
                                             <Maximize className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Detalhes
@@ -417,7 +417,7 @@ export function Services() {
 
                         {/* Fotos: setas, miniaturas e arrastar no celular quando o painel tem mais de uma */}
                         <div className="h-[300px] shrink-0 sm:h-[360px] md:h-auto md:w-[58%]">
-                            <PanelGallery key={selectedPanel.id} images={selectedPanel.images ?? []} name={selectedPanel.name} />
+                            <PanelGallery key={selectedPanel.id} images={selectedPanel.images ?? []} focos={selectedPanel.imageFocus} name={selectedPanel.name} />
                         </div>
 
                         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 md:p-8 [&>*]:shrink-0">
@@ -495,7 +495,7 @@ export function Services() {
                                             const itemBasePrice = Number(p.price) || 0;
                                             return (
                                                 <li key={p.id} className="flex gap-4 py-4">
-                                                    <img src={p.images?.[0] || '/placeholder.svg'} alt="" className="h-20 w-24 shrink-0 bg-ink-900 object-cover" />
+                                                    <img src={thumb(p.images?.[0], 200)} style={estiloFoco(p.imageFocus, p.images?.[0])} alt="" loading="lazy" className="h-20 w-24 shrink-0 bg-ink-900 object-cover" />
                                                     <div className="flex min-w-0 flex-1 flex-col">
                                                         <h4 className="truncate text-sm font-medium text-ink-100">{p.name}</h4>
                                                         <p className="mt-1 truncate text-xs uppercase tracking-[0.1em] text-ink-400">{[p.city, p.state].filter(Boolean).join(' · ')}</p>

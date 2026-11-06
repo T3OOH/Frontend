@@ -4,6 +4,23 @@
 Options -Indexes -MultiViews
 DirectoryIndex index.html
 
+# Versões em Markdown das páginas públicas (geradas pelo scripts/prerender.mjs) para agentes de IA
+AddType text/markdown .md
+AddCharset utf-8 .md
+AddDefaultCharset utf-8
+
+# Descoberta por agentes de IA: Server Card do servidor MCP (https://api.t3led.com.br/mcp) e AI Catalog.
+# O card é o mesmo de GET /mcp/server-card no Backend (src/routes/mcp.routes.ts): mudar nos dois.
+<Files "server-card.json">
+    ForceType "application/mcp-server-card+json; charset=utf-8"
+</Files>
+<Files "ai-catalog.json">
+    ForceType "application/ai-catalog+json; charset=utf-8"
+</Files>
+
+# Endereço que não existe: 404 de verdade, com a página do site (o React mostra "Página não encontrada")
+ErrorDocument 404 /404.html
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
@@ -11,6 +28,18 @@ DirectoryIndex index.html
     # (testar %{HTTPS} aqui atrás da CDN pode causar loop de redirecionamento).
     RewriteCond %{HTTP_HOST} ^www\. [NC]
     RewriteRule ^ https://t3led.com.br%{REQUEST_URI} [R=301,L]
+
+    # Endereços em inglês que agentes e visitantes costumam tentar: levam à página em português
+    RewriteRule ^(about|about-us)/?$ /sobre [R=301,L]
+    RewriteRule ^(contact|contact-us)/?$ /contato [R=301,L]
+    RewriteRule ^(terms|terms-of-service|terms-of-use|legal)/?$ /termos [R=301,L]
+    RewriteRule ^(privacy|privacy-policy)/?$ /privacidade [R=301,L]
+
+    # Agente que pede Markdown (Accept: text/markdown) recebe a versão .md da página pública
+    RewriteCond %{HTTP:Accept} text/markdown [NC]
+    RewriteRule ^$ index.md [L]
+    RewriteCond %{HTTP:Accept} text/markdown [NC]
+    RewriteRule ^(mapa|servicos|solution|sobre|contato|privacidade|termos)/?$ $1.md [L]
 
     # Páginas pré-renderizadas (scripts/prerender.mjs): /sobre -> sobre.html
     RewriteRule ^(mapa|servicos|solution|sobre|contato|privacidade|termos)/?$ $1.html [L]
@@ -20,8 +49,12 @@ DirectoryIndex index.html
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # O resto é rota do React (SPA).
-    RewriteRule ^ index.html [L]
+    # Rotas do React (SPA): telas de conta, área interna e reuniões.
+    RewriteRule ^(login|cadastro|recuperar-senha|atualizar-senha|perfil|assinatura)/?$ index.html [L]
+    RewriteRule ^(dashboard|crm|seguranca|reuniao)(/.*)?$ index.html [L]
+
+    # Qualquer outro endereço não existe.
+    RewriteRule ^ - [R=404,L]
 </IfModule>
 
 <IfModule mod_headers.c>
@@ -31,11 +64,25 @@ DirectoryIndex index.html
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "camera=(self), microphone=(self), display-capture=(self), geolocation=(self), payment=()"
 
+    # A mesma URL responde HTML ou Markdown conforme o Accept: o cache precisa separar os dois
+    Header merge Vary Accept
+
     # Arquivos com hash do Vite podem ficar em cache por 1 ano; o HTML nunca.
     <FilesMatch "\.(js|css|woff2?)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
     <FilesMatch "\.html$">
         Header set Cache-Control "no-cache"
+        # Recursos para agentes e buscadores (RFC 8288)
+        Header add Link '</llms.txt>; rel="describedby"; type="text/plain"'
+        Header add Link '</sitemap.xml>; rel="sitemap"; type="application/xml"'
+    </FilesMatch>
+    <FilesMatch "^(server-card|ai-catalog)\.json$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+    <FilesMatch "\.md$">
+        Header set Cache-Control "private, no-cache"
+        Header set X-Robots-Tag "noindex"
     </FilesMatch>
 </IfModule>

@@ -1,4 +1,28 @@
 {
+    "redirects": [
+        {
+            "source": "/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "t3ooh.com"
+                }
+            ],
+            "destination": "https://t3led.com.br/:path*",
+            "permanent": true
+        },
+        {
+            "source": "/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "www.t3ooh.com"
+                }
+            ],
+            "destination": "https://t3led.com.br/:path*",
+            "permanent": true
+        }
+    ],
     "rewrites": [
         {
             "source": "/mapa",

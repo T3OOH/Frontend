@@ -1,6 +1,6 @@
-# T3 OOH
+# T3 LED (T3 OOH)
 
-> Rede de painéis de LED e mídia exterior (OOH/DOOH) em Goiânia e no interior de Goiás. No site, o anunciante escolhe os pontos no mapa ou no catálogo, vê formato, localização e investimento mensal de cada painel e envia o orçamento. A T3 Solution vende e instala painéis de LED sob medida.
+> A T3 LED, também chamada de T3LED e T3 OOH, é uma rede de painéis de LED e mídia exterior (OOH/DOOH) em Goiânia e no interior de Goiás. No site, o anunciante escolhe os pontos no mapa ou no catálogo, vê formato, localização e investimento mensal de cada painel e envia o orçamento. A T3 Solution vende e instala painéis de LED sob medida.
 
 Empresa: T3 LED Mídia e Tecnologia (CNPJ 43.773.494/0001-50), Goiânia - GO, Brasil.
 Atendimento comercial pelo WhatsApp: Victor Hugo (62) 9320-6010 e Lucas Dourado (64) 9283-2807. E-mail: contato@t3comunicacao.com.
@@ -20,3 +20,8 @@ Atendimento comercial pelo WhatsApp: Victor Hugo (62) 9320-6010 e Lucas Dourado 
 ## Opcional
 - [Política de Privacidade](https://t3led.com.br/privacidade)
 - [Termos de Uso](https://t3led.com.br/termos)
+
+## Para agentes de IA
+- Servidor MCP (Streamable HTTP, só leitura): https://api.t3led.com.br/mcp — ferramentas `buscar_paineis` e `contato_comercial`.
+- Server Card: https://api.t3led.com.br/mcp/server-card · AI Catalog: https://t3led.com.br/.well-known/ai-catalog.json
+- Cada página pública também responde em Markdown com `Accept: text/markdown`.

@@ -20,6 +20,8 @@ export interface PanelData {
     /** Tempo de reprodução de cada inserção, em segundos. */
     playbackSeconds?: number | null;
     images: string[];
+    /** Foco de cada foto para o corte dos cards (ver src/lib/focoFoto.ts). */
+    imageFocus?: Record<string, { x: number; y: number; fonte: 'auto' | 'manual'; objetos?: string[]; pino?: { x: number; y: number }; corte?: { x: number; y: number; w: number; h: number } }> | null;
     price?: number | null;
     categoryId?: string | null; 
     city?: string | null;
@@ -128,6 +130,12 @@ export const panelsService = {
     // ==========================================
     async getMapMarkers(): Promise<Partial<PanelData>[]> {
         const response = await api.get('/panels/markers');
+        return response.data;
+    },
+
+    /** Posição de um link do Google Maps (curto do "Compartilhar", longo ou "lat, lng"). Só gestão. */
+    async localDoGoogleMaps(url: string): Promise<{ lat: number; lng: number; fonte: 'pino' | 'busca' | 'centro' | 'texto'; nome?: string }> {
+        const response = await api.get('/localidades/google-maps', { params: { url } });
         return response.data;
     },
 

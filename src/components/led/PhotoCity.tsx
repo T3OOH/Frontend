@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -10,9 +10,9 @@ import { useTheme } from '@/contexts/ThemeContext';
  */
 export const BACKGROUND_VIDEOS = {
     /** Goiânia em golden hour, com a logo da T3 nos telões (site da T3 OOH). */
-    cidade: { mp4: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', position: 'object-[80%_50%] md:object-center' },
+    cidade: { mp4: '/video/t3-cidade.mp4', poster: '/video/t3-cidade-poster.webp', posterSrcSet: '/video/t3-cidade-poster-960.webp 960w, /video/t3-cidade-poster.webp 1280w', position: 'object-[80%_50%] md:object-center' },
     /** Casa com piscina e o telão de LED da T3 Solution no terraço (página da T3 Solution). */
-    solution: { mp4: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', position: 'object-[64%_55%]' },
+    solution: { mp4: '/video/t3-solution-casa.mp4', poster: '/video/t3-solution-casa-poster.webp', posterSrcSet: '/video/t3-solution-casa-poster-960.webp 960w, /video/t3-solution-casa-poster.webp 1280w', position: 'object-[64%_55%]' },
 };
 export type BackgroundVideo = (typeof BACKGROUND_VIDEOS)[keyof typeof BACKGROUND_VIDEOS];
 
@@ -26,9 +26,31 @@ const CROSSFADE_S = 1.2;
 const deviceWantsStill = () => {
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        // Celular: o vídeo de 4 MB pesa nos dados móveis e na nota de velocidade; fica o quadro parado
+        window.matchMedia('(max-width: 767px)').matches ||
         Boolean(connection?.saveData) ||
         /(^|-)2g$/.test(connection?.effectiveType ?? '');
 };
+
+/** Libera o vídeo só depois que a página terminou de carregar e o navegador ficou livre. */
+function useAfterLoad() {
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        let idle = 0;
+        const start = () => {
+            const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+            idle = ric ? ric(() => setReady(true), { timeout: 2500 }) : window.setTimeout(() => setReady(true), 1500);
+        };
+        if (document.readyState === 'complete') start();
+        else window.addEventListener('load', start, { once: true });
+        return () => {
+            window.removeEventListener('load', start);
+            const cic = (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+            if (cic) cic(idle); else window.clearTimeout(idle);
+        };
+    }, []);
+    return ready;
+}
 
 interface PhotoCityProps {
     /** Opacidade do véu escuro (0 = imagem pura, 1 = preto). */
@@ -43,7 +65,8 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
     // Perfil → Aparência: "imagem parada" ou "menos movimento" também desligam o vídeo
     const { preferences } = useTheme();
     const [deviceStill] = useState(deviceWantsStill);
-    const playVideo = !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
+    const afterLoad = useAfterLoad();
+    const playVideo = afterLoad && !deviceStill && preferences.background === 'video' && preferences.motion === 'full';
     const [videoReady, setVideoReady] = useState(false);
     // Duas cópias do vídeo se revezam; "front" é a que está visível
     const videos = useRef<(HTMLVideoElement | null)[]>([null, null]);
@@ -80,6 +103,9 @@ export const PhotoCity = memo(function PhotoCity({ veil = 0.55, position = 'fixe
             {/* Quadro do vídeo: base enquanto carrega e fundo fixo quando o vídeo não toca */}
             <motion.img
                 src={video.poster}
+                // Celular: quadro de 960 px (fundo atrás de um véu escuro); computador: 1280 px
+                srcSet={video.posterSrcSet}
+                sizes="100vw"
                 alt=""
                 style={{ scale, y }}
                 className={`${media} select-none`}

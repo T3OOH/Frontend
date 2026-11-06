@@ -22,10 +22,13 @@ const CUSTOM_ATTRIBUTION = env.VITE_MAP_TILES_ATTRIBUTION?.trim()
 const OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
+/** Tiles do HTML de /mapa (scripts/prerender.mjs): saem quando os do Leaflet terminam de carregar. */
+const removeStaticMap = () => document.getElementById('mapa-estatico')?.remove();
+
 export function BaseTiles({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
     const custom = CUSTOM[theme];
     if (custom) {
-        return <TileLayer key={`custom-${theme}`} url={custom} attribution={CUSTOM_ATTRIBUTION} maxZoom={20} keepBuffer={4} noWrap />;
+        return <TileLayer key={`custom-${theme}`} url={custom} attribution={CUSTOM_ATTRIBUTION} maxZoom={20} keepBuffer={4} noWrap eventHandlers={{ load: removeStaticMap }} />;
     }
     return (
         <TileLayer
@@ -36,6 +39,7 @@ export function BaseTiles({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
             keepBuffer={4}
             noWrap
             className={theme === 'dark' ? 't3-tiles-dark' : 't3-tiles-light'}
+            eventHandlers={{ load: removeStaticMap }}
         />
     );
 }

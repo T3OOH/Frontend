@@ -5,7 +5,7 @@ import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { BaseTiles } from '@/features/map/basemap';
 import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from '@/features/map/markers';
-import { ArrowLeft, ImagePlus, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Crop, ImagePlus, MapPin, Star, Trash2 } from 'lucide-react';
 import { panelsService, uploadImage, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -13,10 +13,18 @@ import { IMAGE_ACCEPT, apiErrorMessage, validateImageFile } from '@/lib/upload';
 import { CrmPage, Field, Panel, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput } from '@/components/app/tokens';
 import { CustomSelect } from '@/components/CustomSelect';
+import { FotoComFoco } from '@/components/app/FotoComFoco';
+import { MarcarTelao } from '@/components/app/MarcarTelao';
+import { EnquadrarCapa } from '@/components/app/EnquadrarCapa';
+import type { Corte } from '@/lib/imagens';
+import { detectarFoco, FocoFoto, MapaFocos } from '@/lib/focoFoto';
+import { CidadeInput } from '@/components/CidadeInput';
 
 const marker = brandMarker('brand', true);
 
 const MAX_IMAGES = 8;
+
+const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
     { value: 'AVAILABLE', label: 'Disponível' },
@@ -25,8 +33,11 @@ const STATUS_OPTIONS: { value: PanelStatus; label: string }[] = [
     { value: 'MAINTENANCE', label: 'Manutenção' },
 ];
 
-/** Foto já salva (url) ou escolhida agora (file + preview). */
-interface Photo { url?: string; file?: File; preview: string }
+/**
+ * Foto já salva (url) ou escolhida agora (file + preview). foco: undefined = ainda não analisada,
+ * null = nada reconhecido, objeto = ponto de foco do corte nos cards.
+ */
+interface Photo { url?: string; file?: File; preview: string; foco?: FocoFoto | null; corte?: Corte }
 
 const EMPTY = { name: '', status: 'AVAILABLE' as PanelStatus, address: '', city: 'Goiânia', state: 'GO', size: '', px: '', impacts: '', playback: '', price: '', description: '' };
 
@@ -43,8 +54,9 @@ function FollowPosition({ position }: { position: [number, number] }) {
     return null;
 }
 
-/** Lê coordenadas de um link do Google Maps (@lat,lng ou ?q=lat,lng) ou de "lat, lng" colado. */
+/** Lê "lat, lng" digitado ou colado (links do Google Maps são resolvidos pela API). */
 function parseCoordinates(text: string): [number, number] | null {
+    if (/^https?:\/\//i.test(text.trim())) return null;
     const match = text.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
     if (!match) return null;
     const lat = Number(match[1]);
@@ -79,7 +91,8 @@ export function PanelForm() {
                     setPosition([p.lat, p.lng]);
                     setCoordsText(`${p.lat}, ${p.lng}`);
                 }
-                setPhotos((p.images || []).map((url) => ({ url, preview: url })));
+                const focos = (p.imageFocus ?? {}) as MapaFocos;
+                setPhotos((p.images || []).map((url) => ({ url, preview: url, foco: focos[url], corte: focos[url]?.corte })));
             })
             .catch(() => { toast.error('Painel não encontrado.'); navigate('/dashboard/paineis'); })
             .finally(() => setLoading(false));
@@ -94,8 +107,33 @@ export function PanelForm() {
         setCoordsText(`${rounded[0]}, ${rounded[1]}`);
     };
 
+    // Link do Google Maps colado (curto do "Compartilhar" ou longo): a API segue o link e devolve
+    // o ponto exato do lugar, que vira o pino do mapa
+    const [link, setLink] = useState<{ tipo: 'buscando' | 'ok' | 'aviso' | 'erro'; texto: string } | null>(null);
+    const pedidoLink = useRef(0);
     const onCoordsChange = (value: string) => {
         setCoordsText(value);
+        const texto = value.trim();
+        if (/^https?:\/\//i.test(texto)) {
+            const meu = ++pedidoLink.current;
+            setLink({ tipo: 'buscando', texto: 'Procurando o local no Google Maps…' });
+            panelsService.localDoGoogleMaps(texto)
+                .then((l) => {
+                    if (meu !== pedidoLink.current) return;
+                    place([l.lat, l.lng]);
+                    const onde = l.nome ? `: ${l.nome}` : '';
+                    setLink(l.fonte === 'centro'
+                        ? { tipo: 'aviso', texto: `Posição do centro do mapa${onde}. Confira o pino e arraste se precisar.` }
+                        : { tipo: 'ok', texto: `Local do Google Maps${onde}.` });
+                })
+                .catch((error) => {
+                    if (meu !== pedidoLink.current) return;
+                    setLink({ tipo: 'erro', texto: apiErrorMessage(error, 'Não foi possível ler o link do Google Maps.') });
+                });
+            return;
+        }
+        pedidoLink.current++;
+        setLink(null);
         const parsed = parseCoordinates(value);
         if (parsed) setPosition(parsed);
     };
@@ -114,6 +152,28 @@ export function PanelForm() {
         setPhotos((prev) => [...prev, ...accepted]);
     };
 
+    // Reconhecimento automático: cada foto sem foco é analisada uma vez (telão, veículos e pessoas)
+    const [analisando, setAnalisando] = useState<string | null>(null);
+    useEffect(() => {
+        if (analisando) return;
+        const proxima = photos.find((p) => p.foco === undefined);
+        if (!proxima) return;
+        setAnalisando(proxima.preview);
+        detectarFoco(proxima.preview)
+            .catch(() => null)
+            .then((foco) => setPhotos((prev) => prev.map((p) => (p.preview === proxima.preview ? { ...p, foco } : p))))
+            .finally(() => setAnalisando(null));
+    }, [photos, analisando]);
+    const setFoco = (preview: string, foco: FocoFoto) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco } : p)));
+    // Recorte da capa nos cards (Enquadrar capa): guardado à parte do foco, que pode ser refeito pela IA
+    const [enquadrando, setEnquadrando] = useState(false);
+    const setCorte = (preview: string, corte: Corte | undefined) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, corte } : p)));
+    // Pino do telão (só na edição): foto aberta grande para marcar onde está o telão
+    const [marcando, setMarcando] = useState<string | null>(null);
+    const fotoMarcando = photos.find((p) => p.preview === marcando);
+    // Sem pino de novo: a foto volta para a fila e é analisada sem ele
+    const aplicarPino = (preview: string, foco: FocoFoto | null) => setPhotos((prev) => prev.map((p) => (p.preview === preview ? { ...p, foco: foco ?? undefined } : p)));
+
     const makeCover = (i: number) => setPhotos((prev) => [prev[i], ...prev.filter((_, j) => j !== i)]);
     const removePhoto = (i: number) => setPhotos((prev) => prev.filter((_, j) => j !== i));
 
@@ -129,8 +189,18 @@ export function PanelForm() {
         try {
             const folder = `panels/${panelId || window.crypto.randomUUID()}`;
             const images: string[] = [];
+            const imageFocus: MapaFocos = {};
             for (const photo of photos) {
-                images.push(photo.url ?? await uploadImage(photo.file!, folder));
+                const url = photo.url ?? await uploadImage(photo.file!, folder);
+                images.push(url);
+                // O recorte fica na foto mesmo sem foco reconhecido (o centro dele vira o foco)
+                if (photo.foco || photo.corte) {
+                    const { corte: _antigo, ...foco } = photo.foco ?? { x: 50, y: 50, fonte: 'manual' as const };
+                    void _antigo;
+                    imageFocus[url] = photo.corte
+                        ? { ...foco, ...(photo.foco ? {} : { x: photo.corte.x + photo.corte.w / 2, y: photo.corte.y + photo.corte.h / 2 }), corte: photo.corte }
+                        : foco;
+                }
             }
             const payload = {
                 name: form.name.trim(),
@@ -147,6 +217,7 @@ export function PanelForm() {
                 ...(form.address.trim() && { address: form.address.trim() }),
                 ...(form.description.trim() && { description: form.description.trim() }),
                 images,
+                imageFocus: Object.keys(imageFocus).length ? imageFocus : null,
             };
             if (isEditing && panelId) await panelsService.updatePanel(panelId, payload);
             else await panelsService.createPanel(payload);
@@ -177,9 +248,13 @@ export function PanelForm() {
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {photos.map((photo, i) => (
                                 <figure key={photo.preview} className="group relative aspect-[4/3] overflow-hidden border border-brand-border bg-brand-background">
-                                    <img src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} className="h-full w-full object-cover" />
+                                    <FotoComFoco corte={photo.corte} src={photo.preview} alt={i === 0 ? 'Capa do painel' : `Foto ${i + 1}`} foco={photo.foco} analisando={analisando === photo.preview} onFoco={(f) => setFoco(photo.preview, f)} />
                                     {i === 0 && <span className="absolute left-0 top-0 bg-brand-neon px-2 py-0.5 text-[11px] font-semibold text-ink-950">Capa</span>}
                                     <div className="absolute inset-x-0 bottom-0 flex justify-end gap-px bg-black/60 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                                        <div className="mr-auto flex">
+                                            {isEditing && photo.url && <button type="button" onClick={() => setMarcando(photo.preview)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Marcar o telão com um pino" title="Marcar o telão com um pino"><MapPin className="h-4 w-4" /></button>}
+                                            {i === 0 && <button type="button" onClick={() => setEnquadrando(true)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Enquadrar a capa nos cards" title="Enquadrar a capa nos cards"><Crop className="h-4 w-4" /></button>}
+                                        </div>
                                         {i > 0 && <button type="button" onClick={() => makeCover(i)} className="p-2.5 text-white hover:text-brand-neon" aria-label="Usar como capa" title="Usar como capa"><Star className="h-4 w-4" /></button>}
                                         <button type="button" onClick={() => removePhoto(i)} className="p-2.5 text-white hover:text-red-400" aria-label="Remover foto" title="Remover"><Trash2 className="h-4 w-4" /></button>
                                     </div>
@@ -192,7 +267,13 @@ export function PanelForm() {
                             )}
                         </div>
                         <input ref={fileInput} type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} aria-label="Escolher fotos" />
-                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site.</p>
+                        <p className="mt-3 text-xs text-brand-muted">JPG, PNG ou WebP até 5 MB. A primeira foto é a capa no site. O foco do corte (ponto laranja) é marcado sozinho no telão e no movimento da rua; clique na foto para ajustar.{isEditing && ' Se a IA errar o telão, use o pino (ícone no canto da foto) para mostrar onde ele está.'}</p>
+                        {photos[0] && (
+                            <EnquadrarCapa src={photos[0].preview} corte={photos[0].corte} aberto={enquadrando} onFechar={() => setEnquadrando(false)} onAplicar={(corte) => setCorte(photos[0].preview, corte)} />
+                        )}
+                        {fotoMarcando && (
+                            <MarcarTelao src={fotoMarcando.preview} foco={fotoMarcando.foco} aberto={!!marcando} onFechar={() => setMarcando(null)} onAplicar={(f) => aplicarPino(fotoMarcando.preview, f)} />
+                        )}
                     </Panel>
 
                     {/* ============================ IDENTIFICAÇÃO ============================ */}
@@ -227,14 +308,23 @@ export function PanelForm() {
                 <div className="flex flex-col gap-6">
                     <Panel title="Localização" bodyClassName="flex flex-col gap-4 p-5">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_96px]">
-                            <Field label="Cidade" htmlFor="pn-city"><input id="pn-city" required maxLength={100} value={form.city} onChange={set('city')} className={crmInput} /></Field>
-                            <Field label="UF" htmlFor="pn-state"><input id="pn-state" required maxLength={2} value={form.state} onChange={set('state')} className={`${crmInput} uppercase`} /></Field>
+                            <Field label="Cidade" htmlFor="pn-city" hint="Escolha na lista: a UF vem junto (municípios do IBGE).">
+                                <CidadeInput id="pn-city" required city={form.city}
+                                    onChange={({ city, state }) => setForm((f) => ({ ...f, city, ...(state ? { state } : {}) }))} />
+                            </Field>
+                            <Field label="UF" htmlFor="pn-state">
+                                <CustomSelect id="pn-state" value={form.state} onChange={(v) => setForm((f) => ({ ...f, state: v }))}
+                                    options={UFS.map((uf) => ({ value: uf, label: uf }))} />
+                            </Field>
                         </div>
                         <Field label="Endereço" htmlFor="pn-address" hint="Opcional.">
                             <input id="pn-address" maxLength={250} value={form.address} onChange={set('address')} className={crmInput} placeholder="Av. T-63 esq. com Av. T-4" />
                         </Field>
-                        <Field label="Coordenadas" htmlFor="pn-coords" hint='Clique no mapa, ou cole "latitude, longitude" ou o link completo do Google Maps.'>
-                            <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} className={`${crmInput} font-mono ${parseCoordinates(coordsText) ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText)} />
+                        <Field label="Coordenadas" htmlFor="pn-coords" hint='Cole o link do Google Maps (Compartilhar → Copiar link), "latitude, longitude" ou clique no mapa.'>
+                            <input id="pn-coords" value={coordsText} onChange={(e) => onCoordsChange(e.target.value)} placeholder="https://maps.app.goo.gl/…" className={`${crmInput} font-mono ${parseCoordinates(coordsText) || link?.tipo === 'buscando' ? '' : 'border-red-500'}`} aria-invalid={!parseCoordinates(coordsText) && link?.tipo !== 'buscando'} aria-describedby={link ? 'pn-coords-link' : undefined} />
+                            {link && (
+                                <p id="pn-coords-link" role="status" className={`mt-1.5 text-xs ${link.tipo === 'erro' ? 'text-red-400' : link.tipo === 'aviso' ? 'text-amber-300' : link.tipo === 'ok' ? 'text-brand-neon' : 'animate-pulse text-brand-muted'}`}>{link.texto}</p>
+                            )}
                         </Field>
                         <div className={`relative h-[360px] border border-brand-border lg:h-[420px]`}>
                             <MapContainer center={position} zoom={15} minZoom={4} maxBounds={BRAZIL_BOUNDS} className="absolute inset-0 z-0">

@@ -6,7 +6,7 @@ import { BRAZIL_BOUNDS, GOIANIA, brandMarker } from './markers';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { formatPlayback } from '@/lib/playback';
 import { useTheme } from '@/contexts/ThemeContext';
-
+import { estiloFoco, FocosFotos, thumbProps } from '@/lib/imagens';
 export interface MapPanel {
     id: string;
     name: string;
@@ -19,6 +19,8 @@ export interface MapPanel {
     playbackSeconds?: number | null;
     price?: number | string | null;
     images?: string[];
+    /** Foco de cada foto (corte centrado no telão). */
+    imageFocus?: FocosFotos;
 }
 
 interface InteractiveMapProps {
@@ -113,8 +115,8 @@ export function InteractiveMap({ panels, selectedPanelId, onSelect, onToggle, is
                     >
                         {!compact && <Popup closeButton>
                             <div className="flex flex-col">
-                                <div className="aspect-[16/9] w-full bg-ink-850">
-                                    <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-full w-full object-cover" />
+                                <div className="aspect-[16/9] w-full overflow-hidden bg-ink-850">
+                                    <img {...thumbProps(panel.images?.[0], 300)} style={estiloFoco(panel.imageFocus, panel.images?.[0], 'recorte')} alt="" decoding="async" className="h-full w-full object-cover" />
                                 </div>
                                 <div className="flex flex-col gap-3 p-4">
                                     <div>

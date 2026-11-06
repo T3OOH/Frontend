@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPlayback } from '@/lib/playback';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Crosshair, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { panelsService, PanelData, PanelStatus } from '@/services/panels.service';
 import { useToast } from '@/contexts/ToastContext';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { Badge, ConfirmSheet, CrmPage, EmptyState, Skeleton } from '@/components/app/ui';
 import { crmBtn, crmInput, formatBRL } from '@/components/app/tokens';
-
+import { estiloFoco, thumb } from '@/lib/imagens';
 type Filter = 'ALL' | PanelStatus;
 
 const STATUS: Record<PanelStatus, { label: string; tone: 'accent' | 'neutral' | 'muted' | 'danger' }> = {
@@ -67,6 +67,51 @@ export function Panels() {
         }
     };
 
+    // Foco das fotos em lote. "Focar fotos": as que ainda não têm foco (painéis antigos ou cadastrados
+    // pelo app). "Refazer foco automático": todas as de foco automático, de novo (mantém pino e recorte).
+    // Foco ajustado à mão nunca é trocado.
+    const precisa = (p: PanelData, url: string, refazer: boolean) => {
+        const f = p.imageFocus?.[url];
+        return !f || (refazer && f.fonte === 'auto');
+    };
+    const contar = (refazer: boolean) => panels.reduce((n, p) => n + (p.images ?? []).filter((u) => precisa(p, u, refazer)).length, 0);
+    const semFoco = useMemo(() => contar(false), [panels]); // eslint-disable-line react-hooks/exhaustive-deps
+    const automaticas = useMemo(() => contar(true) - contar(false), [panels]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [focando, setFocando] = useState<{ feitas: number; total: number } | null>(null);
+    const focarFotos = async (refazer: boolean) => {
+        const { detectarFoco } = await import('@/lib/focoFoto');
+        const total = contar(refazer);
+        let feitas = 0, achadas = 0, falhas = 0;
+        setFocando({ feitas, total });
+        for (const panel of panels) {
+            const faltam = (panel.images ?? []).filter((u) => precisa(panel, u, refazer));
+            if (!faltam.length) continue;
+            const focos = { ...(panel.imageFocus ?? {}) };
+            let mudou = false;
+            for (const url of faltam) {
+                const antes = panel.imageFocus?.[url];
+                const foco = await detectarFoco(url, antes?.pino).catch(() => null);
+                if (foco) {
+                    focos[url] = { ...foco, ...(antes?.corte ? { corte: antes.corte } : {}) };
+                    achadas++;
+                    mudou = true;
+                }
+                setFocando({ feitas: ++feitas, total });
+            }
+            if (!mudou) continue;
+            try {
+                // Só imageFocus: a API mantém as fotos quando "images" não vem
+                await panelsService.updatePanel(panel.id, { imageFocus: focos });
+                setPanels((prev) => prev.map((p) => (p.id === panel.id ? { ...p, imageFocus: focos } : p)));
+            } catch {
+                falhas++;
+            }
+        }
+        setFocando(null);
+        if (falhas) toast.error(`Foco salvo em parte: ${falhas} painel(is) não puderam ser atualizados.`);
+        else toast.success(achadas ? `Foco ajustado em ${achadas} de ${total} foto(s). Confira no cadastro e clique na foto para corrigir.` : 'Nenhum telão reconhecido nas fotos. Marque o foco no cadastro de cada painel.');
+    };
+
     const tabs: Filter[] = ['ALL', 'AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE'];
 
     return (
@@ -74,7 +119,24 @@ export function Panels() {
             eyebrow="Inventário"
             title="Painéis"
             description="Pontos da rede, situação de cada tela e o preço base mensal usado no site e nas propostas."
-            actions={<Link to="/dashboard/paineis/novo" className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo painel</Link>}
+            actions={
+                <>
+                    {focando ? (
+                        <button type="button" disabled className={crmBtn.secondary}>
+                            <Crosshair className="h-4 w-4 animate-spin" aria-hidden="true" /> Analisando {focando.feitas} de {focando.total}…
+                        </button>
+                    ) : semFoco > 0 ? (
+                        <button type="button" onClick={() => focarFotos(false)} className={crmBtn.secondary} title="Reconhece o telão, os veículos e as pessoas e centraliza o corte das fotos nos cards do site">
+                            <Crosshair className="h-4 w-4" aria-hidden="true" /> Focar fotos ({semFoco})
+                        </button>
+                    ) : automaticas > 0 && (
+                        <button type="button" onClick={() => focarFotos(true)} className={crmBtn.ghost} title="Analisa de novo as fotos com foco automático (mantém pinos, recortes e focos ajustados à mão)">
+                            <Crosshair className="h-4 w-4" aria-hidden="true" /> Refazer foco automático ({automaticas})
+                        </button>
+                    )}
+                    <Link to="/dashboard/paineis/novo" className={crmBtn.primary}><Plus className="h-4 w-4" aria-hidden="true" /> Novo painel</Link>
+                </>
+            }
         >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="relative flex-1 lg:max-w-md">
@@ -112,7 +174,7 @@ export function Panels() {
                             return (
                                 <li key={panel.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[2.4fr_1fr_1fr_1fr_1fr_auto]">
                                     <div className="col-span-2 flex min-w-0 items-center gap-3 md:col-span-1">
-                                        <img src={panel.images?.[0] || '/placeholder.svg'} alt="" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
+                                        <img src={thumb(panel.images?.[0], 160)} style={estiloFoco(panel.imageFocus, panel.images?.[0])} alt="" loading="lazy" className="h-12 w-16 shrink-0 bg-brand-background object-cover" />
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-medium text-brand-text">{panel.name}</p>
                                             <p className="truncate text-xs text-brand-muted">{[panel.city, panel.state].filter(Boolean).join(' - ') || 'Sem cidade'}</p>

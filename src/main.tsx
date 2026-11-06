@@ -4,10 +4,13 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { installGlobalErrorHandlers } from './lib/errorReporting';
+import { registrarFerramentasWebMcp } from './lib/webmcp';
 import './index.css';
 
 // Erros não tratados vão para Gestão > Registros
 installGlobalErrorHandlers();
+// Ferramentas para assistentes de IA no navegador (WebMCP), quando houver suporte
+registrarFerramentasWebMcp();
 // Página carregou: libera a recarga automática para a próxima atualização do site
 setTimeout(() => { try { sessionStorage.removeItem('t3:chunk-reload'); } catch { /* sem storage */ } }, 10_000);
 

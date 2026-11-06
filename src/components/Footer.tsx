@@ -36,7 +36,7 @@ export function Footer() {
         <footer className="mt-auto border-t border-white/[0.06] bg-ink-950">
             <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-12 px-4 py-16 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:px-8 md:py-20">
                 <div className="max-w-sm">
-                    <img src="/t3-logo.webp" alt="T3 OOH" className="h-10 w-auto" />
+                    <img src="/t3-logo-160.webp" alt="T3 OOH" width={160} height={160} loading="lazy" className="h-10 w-auto" />
                     <p className="mt-5 text-sm leading-relaxed text-ink-400">
                         Painéis de LED e mídia exterior em Goiânia e no interior de Goiás. Escolha os pontos no mapa e receba o orçamento com os valores do plano.
                     </p>
