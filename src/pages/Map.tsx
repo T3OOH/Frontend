@@ -362,7 +362,7 @@ export function Map() {
         const impacts = parseImpacts(panel.impacts);
         return (
             <article
-                className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'w-[300px] shrink-0 snap-start' : ''}`}
+                className={`group flex border bg-ink-900 transition-colors ${active ? 'border-brand-neon' : inCart ? 'border-white/40' : 'border-white/[0.08] hover:border-white/25'} ${compact ? 'h-[136px] w-[300px] shrink-0 snap-start' : ''}`}
             >
                 <button type="button" onClick={() => pick(panel.id)} className="relative w-24 shrink-0 overflow-hidden bg-ink-850 sm:w-28" aria-label={`Ver ${panel.name} no mapa`}>
                     <img src={thumb(panel.images?.[0], 480)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover grayscale-[30%] transition duration-500 group-hover:grayscale-0" />
@@ -370,7 +370,7 @@ export function Map() {
                 <div className="flex min-w-0 flex-1 flex-col p-3">
                     <button type="button" onClick={() => pick(panel.id)} className="min-w-0 text-left">
                         <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[panel.city, panel.state].filter(Boolean).join(' · ')}</p>
-                        <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-ink-100">{panel.name}</p>
+                        <p className="mt-1 line-clamp-2 h-[2.75em] text-sm font-medium leading-snug text-ink-100">{panel.name}</p>
                     </button>
                     <div className="mt-auto flex items-end justify-between gap-2 pt-2">
                         <p className="font-mono text-xs leading-tight">
@@ -580,17 +580,17 @@ export function Map() {
                         <div className="pointer-events-auto px-3">
                             <article className="border border-white/15 bg-ink-950/95 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur" aria-label={`Telão ${selectedPanel.name}`}>
                                 <div className="flex gap-3 p-3">
-                                    <img src={thumb(selectedPanel.images?.[0], 240)} alt="" className="h-24 w-28 shrink-0 bg-ink-850 object-cover" />
+                                    <img src={thumb(selectedPanel.images?.[0], 240)} alt="" width={112} height={96} className="h-24 w-28 shrink-0 bg-ink-850 object-cover" />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-start justify-between gap-2">
                                             <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">{[selectedPanel.city, selectedPanel.state].filter(Boolean).join(' · ')}</p>
                                             <button type="button" onClick={() => setSelectedPanelId(null)} className="-m-2 p-2 text-ink-400" aria-label="Fechar"><X className="h-4 w-4" /></button>
                                         </div>
-                                        <p className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-ink-100">{selectedPanel.name}</p>
-                                        <p className="mt-1.5 font-mono text-xs text-ink-300">
+                                        <p className="mt-0.5 line-clamp-2 h-[2.75em] text-sm font-medium leading-snug text-ink-100">{selectedPanel.name}</p>
+                                        <p className="mt-1.5 truncate font-mono text-xs text-ink-300">
                                             {parseImpacts(selectedPanel.impacts) ? `${formatImpacts(parseImpacts(selectedPanel.impacts))}/dia` : '—'}{selectedPanel.size ? ` · ${selectedPanel.size}` : ''}{formatPlayback(selectedPanel.playbackSeconds) ? ` · ${formatPlayback(selectedPanel.playbackSeconds)} por inserção` : ''}
                                         </p>
-                                        {Number(selectedPanel.price) > 0 && <p className="font-mono text-xs text-brand-neon">{formatCurrency(Number(selectedPanel.price) * (1 - ANNUAL_DISCOUNT))}/mês no plano anual</p>}
+                                        <p className="h-4 truncate font-mono text-xs leading-4 text-brand-neon">{Number(selectedPanel.price) > 0 ? `${formatCurrency(Number(selectedPanel.price) * (1 - ANNUAL_DISCOUNT))}/mês no plano anual` : ''}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-stretch border-t border-white/10">
@@ -605,7 +605,8 @@ export function Map() {
                             </article>
                         </div>
                     ) : (
-                        <div className="pointer-events-auto flex snap-x gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="pointer-events-auto flex min-h-[136px] snap-x items-end gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {/* Altura reservada desde o início (min-h): a faixa não cresce quando os painéis chegam */}
                             {filteredPanels.map((panel) => <PanelCard key={panel.id} panel={panel} compact />)}
                             {!isLoading && filteredPanels.length === 0 && <p className="border border-white/15 bg-ink-950/95 px-4 py-3 text-sm text-ink-300">Nenhum ponto com essa busca.</p>}
                         </div>
