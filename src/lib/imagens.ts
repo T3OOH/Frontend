@@ -1,14 +1,16 @@
 import type { CSSProperties } from 'react';
 /**
- * Miniaturas das fotos dos painéis pelo Supabase (Image Transformation): a foto original
+ * Miniaturas das fotos dos painéis pelo Storage (Image Transformation): a foto original
  * (até ~700 KB em JPG) vira um WebP na largura pedida (~15 KB para 480 px). Só vale para
- * arquivos públicos do Storage do Supabase; qualquer outra URL volta como veio.
+ * arquivos públicos do Storage (Supabase cloud ou o próprio, em api.t3led.com.br/storage/v1);
+ * qualquer outra URL volta como veio.
  */
 const OBJECT_PUBLIC = '/storage/v1/object/public/';
 const RENDER_PUBLIC = '/storage/v1/render/image/public/';
 export const PLACEHOLDER = '/placeholder.svg';
 
-const transformavel = (url: string) => /^https:\/\/[a-z0-9]+\.supabase\.co\//.test(url) && url.includes(OBJECT_PUBLIC);
+const transformavel = (url: string) =>
+    /^https:\/\/([a-z0-9]+\.supabase\.co|api\.t3led\.com\.br)\//.test(url) && url.includes(OBJECT_PUBLIC);
 
 /**
  * URL da foto com no máximo `largura` px de largura (proporção mantida). `resize=contain` é
