@@ -1,6 +1,7 @@
 name: Produção
 
-# Depois do merge na main a Hostinger compila e publica sozinha (deploy do GitHub); aqui conferimos o site no ar.
+# Depois do merge na main o workflow Espelho GitLab envia o codigo para o GitLab e a Hostinger compila e publica
+# a partir de la; aqui conferimos o site no ar.
 on:
   push:
     branches: [main]

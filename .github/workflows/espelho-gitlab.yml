@@ -1,0 +1,42 @@
+name: Espelho GitLab
+
+# A Hostinger publica o t3led.com.br a partir do espelho no GitLab (fbr-dev-group/T3Led):
+# a conexao GitHub da conta Hostinger e unica e ficou com outra organizacao.
+# Cada push na main daqui e enviado para la; o GitHub continua sendo a origem do codigo.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: espelho-gitlab
+  cancel-in-progress: false
+
+jobs:
+  espelho:
+    # So a main vai para o GitLab (o disparo manual em outra branch publicaria codigo nao revisado).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Secret no environment, liberado apenas para a main.
+    environment: espelho-gitlab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enviar main para o GitLab
+        env:
+          GITLAB_DEPLOY_KEY: ${{ secrets.GITLAB_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$GITLAB_DEPLOY_KEY" > ~/.ssh/gitlab
+          chmod 600 ~/.ssh/gitlab
+          # Chave de host publicada pelo GitLab (SHA256:eUXGGm1YGsMAS7vkcx6JOJdOGHPem5gQp4taiCfCLB8).
+          echo 'gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf' > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/gitlab -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          git push git@gitlab.com:fbr-dev-group/T3Led.git HEAD:refs/heads/main
