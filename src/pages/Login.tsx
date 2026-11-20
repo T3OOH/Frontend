@@ -63,12 +63,12 @@ export function Login() {
             <Seo title="Entrar" description="Acesse sua conta na plataforma T3 OOH." path="/login" noIndex />
             <AuthShell
                 eyebrow="Área do cliente"
-                title={<>Entrar na<br />sua conta</>}
+                title={<>Entrar na <br />sua conta</>}
                 subtitle="Acompanhe seus orçamentos, pedidos e campanhas nos telões da T3."
                 footer={<>Ainda não tem conta? <Link to="/cadastro" className="text-ink-100 underline underline-offset-4 hover:text-brand-neon">Criar conta</Link></>}
             >
                 <GoogleSignIn mode="signin" remember={remember} />
-                <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+                <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5 short:gap-3" noValidate>
                     <Input
                         id="login-email"
                         label="E-mail"
@@ -97,12 +97,12 @@ export function Login() {
                             </label>
                             <Link to="/recuperar-senha" className="py-3 text-sm text-ink-400 hover:text-ink-100">Esqueci minha senha</Link>
                         </div>
-                        {!remember && <p className="text-xs text-ink-500">Você sai ao fechar esta aba. Use em computadores compartilhados.</p>}
+                        {!remember && <p className="text-xs text-ink-500 tight:hidden">Você sai ao fechar esta aba. Use em computadores compartilhados.</p>}
                     </div>
 
                     <Captcha ref={captchaRef} onChange={(token) => setCaptchaToken(token)} />
 
-                    <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} mt-2 h-12 w-full`}>
+                    <button type="submit" disabled={isSubmitting || !RECAPTCHA_SITE_KEY} className={`${btnPrimary} mt-2 h-12 w-full short:mt-0 short:h-11`}>
                         {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Entrando…</> : <>Entrar <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
                     </button>
                 </form>

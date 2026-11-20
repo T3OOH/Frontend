@@ -106,11 +106,11 @@ export function UpdatePassword() {
     };
 
     const titles: Record<Step, { title: ReactNode; subtitle: string }> = {
-        request: { title: <>Recuperar<br />senha</>, subtitle: 'Informe o e-mail da sua conta. Enviamos um link para criar uma nova senha, válido por 15 minutos.' },
-        sent: { title: <>Confira seu<br />e-mail</>, subtitle: 'Se houver uma conta com esse e-mail, o link chega em instantes.' },
-        reset: { title: <>Criar nova<br />senha</>, subtitle: 'Escolha a nova senha da sua conta.' },
-        expired: { title: <>Link<br />expirado</>, subtitle: 'O link de recuperação vale por 15 minutos e só pode ser usado uma vez.' },
-        done: { title: <>Senha<br />atualizada</>, subtitle: 'Pronto. Entre com a nova senha.' },
+        request: { title: <>Recuperar <br />senha</>, subtitle: 'Informe o e-mail da sua conta. Enviamos um link para criar uma nova senha, válido por 15 minutos.' },
+        sent: { title: <>Confira seu <br />e-mail</>, subtitle: 'Se houver uma conta com esse e-mail, o link chega em instantes.' },
+        reset: { title: <>Criar nova <br />senha</>, subtitle: 'Escolha a nova senha da sua conta.' },
+        expired: { title: <>Link <br />expirado</>, subtitle: 'O link de recuperação vale por 15 minutos e só pode ser usado uma vez.' },
+        done: { title: <>Senha <br />atualizada</>, subtitle: 'Pronto. Entre com a nova senha.' },
     };
 
     const whatsapp = `https://wa.me/${DEFAULT_SALES_PHONE}?text=${encodeURIComponent('Olá! Preciso de ajuda para recuperar o acesso à minha conta na T3 OOH.')}`;
