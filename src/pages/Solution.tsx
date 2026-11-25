@@ -8,6 +8,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileService } from '@/services/profile.service';
 import { Seo } from '@/components/Seo';
+import { AvisoPrivacidade } from '@/components/AvisoPrivacidade';
 import type { LedScene } from '@/components/led/LedScreen';
 import { CtaBand, btnOnOrange } from '@/components/CtaBand';
 import { SOLUTION_APPLICATIONS, SOLUTION_ENVIRONMENTS, SOLUTION_SERVICES } from '@/lib/solution';
@@ -363,6 +364,7 @@ export function Solution() {
                                 <textarea id="sol-msg" rows={4} value={form.message} onChange={set('message')} placeholder="Endereço ou bairro, uso da tela, prazo desejado" className={`${field} resize-none`} />
                             </div>
                             <div className="md:col-span-2">
+                                <AvisoPrivacidade className="mb-4" />
                                 <button type="submit" disabled={sending} className={`${btnPrimary} w-full md:w-auto`}>
                                     {sending ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : <>Enviar pedido <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /></>}
                                 </button>

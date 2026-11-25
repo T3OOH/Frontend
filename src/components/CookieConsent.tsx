@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { consentGranted } from '@/lib/analytics';
 
 const STORAGE_KEY = 't3-cookie-consent';
+export const ABRIR_PREFERENCIAS = 't3:preferencias-cookies';
 
 const readConsent = () => {
     try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
@@ -21,12 +23,17 @@ export function CookieConsent() {
     useEffect(() => {
         // Espera a página aparecer antes de mostrar o aviso
         const t = setTimeout(() => { if (!readConsent()) setVisible(true); }, 1200);
-        return () => clearTimeout(t);
+        // "Preferências de cookies" no rodapé reabre o aviso para mudar a escolha
+        const reabrir = () => setVisible(true);
+        window.addEventListener(ABRIR_PREFERENCIAS, reabrir);
+        return () => { clearTimeout(t); window.removeEventListener(ABRIR_PREFERENCIAS, reabrir); };
     }, []);
 
     // "Entendi": essencial + estatísticas anônimas próprias. "Só o essencial": sem estatísticas.
     const accept = () => {
+        const primeiraVez = readConsent() !== 'acknowledged';
         saveConsent('acknowledged');
+        if (primeiraVez) consentGranted();
         setVisible(false);
     };
     const essentialOnly = () => {

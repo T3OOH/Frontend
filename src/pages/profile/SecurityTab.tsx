@@ -47,7 +47,8 @@ const DeviceIcon = ({ type }: { type: string | null }) => {
  * Ver docs/SEGURANCA.md no backend.
  */
 export function SecurityTab() {
-    const { signOut } = useAuth();
+    const { signOut, user } = useAuth();
+    const [excluir, setExcluir] = useState<{ aberto: boolean; texto: string; senha: string }>({ aberto: false, texto: '', senha: '' });
     const { addToast } = useToast();
     const [data, setData] = useState<Security | null>(null);
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -92,6 +93,34 @@ export function SecurityTab() {
         } catch (error) {
             addToast(apiErrorMessage(error, 'Não foi possível desconectar os outros aparelhos.'), 'error');
         } finally {
+            setBusy(null);
+        }
+    };
+
+    // LGPD: cópia dos dados (arquivo JSON) e exclusão da conta
+    const baixarDados = async () => {
+        setBusy('export');
+        try {
+            const { data } = await api.get('/profile/export');
+            const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+            const a = Object.assign(document.createElement('a'), { href: url, download: 'meus-dados-t3led.json' });
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            addToast(apiErrorMessage(error, 'Não foi possível gerar a cópia dos dados.'), 'error');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const excluirConta = async () => {
+        setBusy('delete');
+        try {
+            await api.delete('/profile', { data: { confirmacao: excluir.texto.trim().toUpperCase(), password: excluir.senha } });
+            addToast('Conta excluída. Seus dados pessoais foram apagados.', 'success');
+            signOut();
+        } catch (error) {
+            addToast(apiErrorMessage(error, 'Não foi possível excluir a conta.'), 'error');
             setBusy(null);
         }
     };
@@ -245,6 +274,47 @@ export function SecurityTab() {
                 <p className="border-t border-white/[0.08] p-5 text-xs text-ink-500 md:px-8">
                     Viu algo que não reconhece? Desconecte os outros aparelhos e troque a senha. Se precisar, fale com o comercial da T3.
                 </p>
+            </section>
+
+            {/* ============================ SEUS DADOS (LGPD) ============================ */}
+            <section className="border border-white/[0.08] bg-ink-950/90">
+                <div className="border-b border-white/[0.08] p-5 md:px-8">
+                    <h2 className="text-sm font-semibold text-ink-100">Seus dados</h2>
+                    <p className="mt-1 text-xs text-ink-500">
+                        Direitos da LGPD (art. 18). Detalhes na <Link to="/privacidade" className="text-ink-300 underline underline-offset-4 hover:text-ink-100">Política de Privacidade</Link>.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-4 p-5 md:px-8">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-ink-300">Baixe uma cópia do cadastro, pedidos, propostas, aparelhos e atividade da conta.</p>
+                        <button type="button" onClick={baixarDados} disabled={busy === 'export'} className={`${btnGhost} shrink-0 px-4 py-2.5`}>{busy === 'export' ? 'Gerando…' : 'Baixar meus dados'}</button>
+                    </div>
+                    {(user?.role === 'USER' || user?.role === 'COMPANY') && (
+                        <div className="border-t border-white/[0.08] pt-4">
+                            {!excluir.aberto ? (
+                                <button type="button" onClick={() => setExcluir({ ...excluir, aberto: true })} className="min-h-11 text-sm text-red-400 underline underline-offset-4 hover:text-red-300">
+                                    Excluir minha conta
+                                </button>
+                            ) : (
+                                <div className="flex flex-col gap-3" role="alert">
+                                    <p className="text-sm text-ink-100">
+                                        A conta é encerrada e seu nome, e-mail, telefone e documento são apagados. Pedidos e propostas ficam sem identificação, porque a lei exige guardá-los. Não dá para desfazer.
+                                    </p>
+                                    {!data.googleLinked && (
+                                        <input type="password" autoComplete="current-password" placeholder="Sua senha" aria-label="Sua senha" value={excluir.senha} onChange={(e) => setExcluir({ ...excluir, senha: e.target.value })} className={field} />
+                                    )}
+                                    <input placeholder="Digite EXCLUIR para confirmar" aria-label="Digite EXCLUIR para confirmar" value={excluir.texto} onChange={(e) => setExcluir({ ...excluir, texto: e.target.value })} className={field} />
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setExcluir({ aberto: false, texto: '', senha: '' })} className={`${btnGhost} px-4 py-2.5`}>Cancelar</button>
+                                        <button type="button" onClick={excluirConta} disabled={busy === 'delete' || excluir.texto.trim().toUpperCase() !== 'EXCLUIR'} className="min-h-11 bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-50">
+                                            {busy === 'delete' ? 'Excluindo…' : 'Excluir conta'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </section>
         </div>
     );

@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { nextSellerPhone } from '@/lib/contacts';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 import { Seo } from '@/components/Seo';
+import { AvisoPrivacidade } from '@/components/AvisoPrivacidade';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { formatPlayback } from '@/lib/playback';
@@ -717,7 +718,8 @@ export function Map() {
                                 </div>
                             ) : (
                                 <div className="shrink-0 border-t border-white/[0.08] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-                                    <p className="mb-4 text-xs text-ink-400">Ao enviar, o pedido chega ao comercial da T3 e abrimos o WhatsApp de um atendente com o resumo.</p>
+                                    <p className="mb-1 text-xs text-ink-400">Ao enviar, o pedido chega ao comercial da T3 e abrimos o WhatsApp de um atendente com o resumo.</p>
+                                    <AvisoPrivacidade className="mb-4" />
                                     <button type="submit" form="crm-checkout-form" disabled={isSubmitting || !checkoutForm.name || !checkoutForm.email || !checkoutForm.phone} className={`${btnPrimary} w-full`}>
                                         {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : <><Send className="h-4 w-4" aria-hidden="true" /> Enviar pelo WhatsApp</>}
                                     </button>

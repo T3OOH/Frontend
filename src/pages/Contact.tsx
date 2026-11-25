@@ -150,7 +150,7 @@ export function Contact() {
                             </div>
 
                             <div className="flex flex-col gap-4 md:col-span-2 md:flex-row md:items-center md:justify-between">
-                                <p className="text-xs text-ink-500">Seus dados vão só na mensagem do WhatsApp. Nada é publicado.</p>
+                                <p className="text-xs text-ink-500">Seus dados vão só na mensagem do WhatsApp. Nada é publicado. <Link to="/privacidade" className="text-ink-300 underline underline-offset-2 hover:text-ink-100">Privacidade</Link></p>
                                 <button type="submit" disabled={isSubmitting} className={btnPrimary}>
                                     <Send className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" /> Enviar para {attendant.name}
                                 </button>

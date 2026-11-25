@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LegalPage } from './LegalPage';
+import { COMPANY_CNPJ, COMPANY_NAME } from '@/lib/company';
 
 const CONTACT_EMAIL = 'contato@t3comunicacao.com';
 
@@ -10,11 +11,15 @@ export function Privacy() {
             title="Política de Privacidade"
             description="Como a T3 OOH coleta, usa e protege seus dados pessoais, de acordo com a LGPD."
             path="/privacidade"
-            updatedAt="27 de outubro de 2026"
+            updatedAt="19 de novembro de 2026"
         >
             <p>
                 Esta política explica como a T3 OOH trata os dados pessoais de quem usa o site, o mapa de painéis,
                 a área do cliente e os canais de atendimento, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
+            </p>
+            <p>
+                <strong>Controlador:</strong> {COMPANY_NAME}{COMPANY_CNPJ ? `, CNPJ ${COMPANY_CNPJ}` : ''}, Goiânia, GO.{' '}
+                <strong>Canal de privacidade (encarregado):</strong> <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
             </p>
 
             <h2>1. Dados que coletamos</h2>
@@ -26,6 +31,7 @@ export function Privacy() {
                 <li><strong>Segurança da conta:</strong> para manter você conectado e proteger a conta, registramos cada aparelho que entra (navegador, sistema, endereço IP e datas de entrada e último uso) e um histórico de segurança (entradas, tentativas com senha errada, trocas de senha e aparelhos desconectados). Quando a conta entra em um aparelho novo, enviamos um aviso por e-mail. Você vê e encerra esses aparelhos em Meu perfil → Segurança.</li>
                 <li><strong>Estatísticas de visita:</strong> páginas vistas, tipo de aparelho, navegador e a origem da visita (por exemplo, Google, Instagram ou link de campanha). São anônimas: usamos um código aleatório que vale só enquanto a aba está aberta e não guardamos o IP. A origem também acompanha os formulários de orçamento, contato e cadastro.</li>
                 <li><strong>Localização:</strong> somente quando você autoriza no navegador, para mostrar painéis próximos. Ela não é armazenada.</li>
+                <li><strong>Chat IA T3:</strong> as perguntas digitadas no balão de dúvidas são respondidas por inteligência artificial (Claude, da Anthropic). Se você pedir para falar com uma pessoa, guardamos nome, WhatsApp, e-mail e empresa informados, junto da conversa, para o atendimento.</li>
             </ul>
 
             <h2>2. Para que usamos</h2>
@@ -47,12 +53,19 @@ export function Privacy() {
             <h2>4. Compartilhamento</h2>
             <p>Não vendemos dados pessoais. Compartilhamos apenas com fornecedores necessários à operação:</p>
             <ul>
-                <li>hospedagem e banco de dados (Supabase e provedores de nuvem);</li>
+                <li>banco de dados e arquivos (Supabase);</li>
+                <li>servidor da plataforma (Render) e hospedagem do site e dos e-mails (Hostinger);</li>
                 <li>envio de e-mails transacionais (Resend);</li>
-                <li>proteção contra robôs (Google reCAPTCHA);</li>
+                <li>login com Google e proteção contra robôs (Google reCAPTCHA);</li>
+                <li>respostas do chat IA T3 (Anthropic): recebe só o texto da conversa;</li>
                 <li>mapas (OpenStreetMap);</li>
                 <li>autoridades públicas, quando houver obrigação legal.</li>
             </ul>
+            <p>
+                <strong>Transferência internacional:</strong> parte desses fornecedores (Render, Resend, Anthropic e Google) processa dados
+                nos Estados Unidos. A transferência é feita para executar o serviço que você pediu e com as garantias contratuais
+                oferecidas por eles (LGPD, art. 33).
+            </p>
 
             <h2>5. Cookies e armazenamento no navegador</h2>
             <p>
@@ -66,16 +79,20 @@ export function Privacy() {
             </p>
             <p>
                 Para as estatísticas de visita, guardamos no navegador um código da visita (apagado ao fechar a aba) e, por até 90 dias,
-                a origem da primeira visita. Ao escolher <strong>"Só o essencial"</strong> no aviso de privacidade, nada disso é registrado.
-                Para mudar a escolha, limpe os dados do site no navegador.
+                a origem da primeira visita. As estatísticas só começam depois que você clica em <strong>"Entendi"</strong>; com
+                <strong> "Só o essencial"</strong> nada disso é registrado. Para mudar a escolha, use <strong>Preferências de cookies</strong> no rodapé.
             </p>
 
             <h2>6. Por quanto tempo guardamos</h2>
-            <p>
-                Mantemos os dados enquanto sua conta estiver ativa ou enquanto forem necessários para atender à finalidade
-                informada, e pelos prazos exigidos em lei (por exemplo, fiscais e contratuais). Depois disso, eles são
-                excluídos ou anonimizados.
-            </p>
+            <ul>
+                <li><strong>Conta:</strong> enquanto estiver ativa. Ao excluir a conta, nome, e-mail, telefone e documento são apagados na hora.</li>
+                <li><strong>Pedidos, propostas e contratos:</strong> pelos prazos fiscais e contratuais da lei; após a exclusão da conta ficam sem identificação pessoal.</li>
+                <li><strong>Aparelhos conectados:</strong> até 30 dias depois de a sessão terminar.</li>
+                <li><strong>Histórico de segurança da conta:</strong> 1 ano.</li>
+                <li><strong>IP e navegador do envio de formulários:</strong> 6 meses.</li>
+                <li><strong>Estatísticas de visita:</strong> 25 meses, sem IP.</li>
+                <li><strong>Registro interno de alterações do sistema:</strong> 6 meses (alertas e erros, 1 ano).</li>
+            </ul>
 
             <h2>7. Seus direitos</h2>
             <p>Você pode, a qualquer momento:</p>
@@ -87,7 +104,9 @@ export function Privacy() {
                 <li>revogar o consentimento e saber com quem compartilhamos seus dados.</li>
             </ul>
             <p>
-                Para exercer esses direitos, escreva para <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+                Quem tem conta faz isso sozinho em <Link to="/perfil">Meu Perfil</Link> → Segurança → Seus dados: <strong>baixar meus dados</strong>
+                (cópia em arquivo) e <strong>excluir minha conta</strong>. Para os demais pedidos, escreva para <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>;
+                respondemos em até 15 dias.
                 Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
             </p>
 
