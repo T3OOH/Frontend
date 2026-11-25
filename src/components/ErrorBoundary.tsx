@@ -1,10 +1,8 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { isChunkError, reportError } from '@/lib/errorReporting';
+import { isChunkError, reloadForNewVersion, reportError } from '@/lib/errorReporting';
 import { supportUrl } from '@/lib/support';
 
 interface State { error: Error | null; code: string | null }
-
-const RELOAD_KEY = 't3:chunk-reload';
 
 /**
  * Erro inesperado numa tela: em vez de página em branco, mostra o aviso com "Recarregar"
@@ -18,16 +16,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     }
 
     componentDidCatch(error: Error, info: ErrorInfo) {
-        // Site atualizado enquanto a página estava aberta: recarrega uma vez sozinho
-        if (isChunkError(error)) {
-            try {
-                if (!sessionStorage.getItem(RELOAD_KEY)) {
-                    sessionStorage.setItem(RELOAD_KEY, '1');
-                    window.location.reload();
-                    return;
-                }
-            } catch { /* sem storage */ }
-        }
+        // Site atualizado enquanto a página estava aberta: recarrega sozinho com o HTML novo
+        if (isChunkError(error) && reloadForNewVersion()) return;
         const withStack = new Error(error.message);
         withStack.stack = `${error.stack ?? ''}\n\nComponente:${info.componentStack ?? ''}`.slice(0, 4000);
         void reportError(withStack, isChunkError(error) ? 'chunk' : 'render').then((code) => this.setState({ code }));
