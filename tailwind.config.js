@@ -41,6 +41,14 @@ export default {
                 'ios': '0 8px 32px rgba(0, 0, 0, 0.4)',
                 'panel': '0 24px 48px -24px rgba(11, 11, 12, 0.9)',
             },
+            // Telas baixas (notebook com o navegador aberto, celular deitado): as telas de acesso
+            // encolhem espaços e textos para o formulário inteiro caber sem rolar
+            screens: {
+                short: { raw: '(max-height: 1100px)' },
+                tight: { raw: '(max-height: 760px)' },
+                // Celular em pé (o max-sm do Tailwind some quando há telas raw)
+                narrow: { raw: '(max-width: 639px)' },
+            },
             perspective: {
                 '1000': '1000px',
             },

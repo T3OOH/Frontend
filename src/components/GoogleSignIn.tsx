@@ -94,7 +94,7 @@ export function GoogleSignIn({ mode = 'signin', remember = true }: GoogleSignInP
     if (!GOOGLE_CLIENT_ID) return null;
 
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 short:gap-3 narrow:gap-2 tight:mb-3">
             <div className="relative min-h-[44px]">
                 {/* O Google desenha o botão aqui (iframe próprio, com a marca dele) */}
                 <div ref={box} className={`flex w-full justify-center ${state === 'busy' ? 'pointer-events-none opacity-40' : ''}`} />
@@ -107,7 +107,7 @@ export function GoogleSignIn({ mode = 'signin', remember = true }: GoogleSignInP
                     <p className="border border-white/10 px-4 py-3 text-center text-sm text-ink-400">O login com Google não carregou. Use e-mail e senha.</p>
                 )}
             </div>
-            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-ink-500" aria-hidden="true">
+            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-ink-500 tight:hidden" aria-hidden="true">
                 <span className="h-px flex-1 bg-white/10" /> ou com e-mail <span className="h-px flex-1 bg-white/10" />
             </div>
         </div>
