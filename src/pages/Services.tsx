@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams, Link } from 'react-router-dom';
 import { pricingService, describeCoupon, Quote } from '@/services/pricing.service';
 import { Seo } from '@/components/Seo';
+import { AvisoPrivacidade } from '@/components/AvisoPrivacidade';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { parseImpacts, formatImpacts } from '@/lib/impacts';
 import { btnGhost, btnPrimary, eyebrow } from '@/lib/ui';
@@ -561,6 +562,7 @@ export function Services() {
                                         Para enviar o pedido, <Link to="/login" className="text-ink-100 underline underline-offset-4">entre na sua conta</Link> ou <Link to="/cadastro" className="text-ink-100 underline underline-offset-4">cadastre-se</Link>.
                                     </p>
                                 )}
+                                <AvisoPrivacidade />
                                 <button type="submit" form="crm-form" disabled={isSubmitting || !user?.id} className={`${btnPrimary} w-full`}>
                                     {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Enviando</> : 'Enviar pedido'}
                                 </button>

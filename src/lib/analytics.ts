@@ -47,7 +47,8 @@ const REFERRERS: [RegExp, string, string][] = [
 const safe = <T,>(fn: () => T, fallback: T): T => { try { return fn(); } catch { return fallback; } };
 const clip = (v: string | null | undefined, max = 150) => (v ? v.trim().slice(0, max) : null);
 
-export const trackingAllowed = () => safe(() => localStorage.getItem(CONSENT_KEY) !== 'essential', true);
+// LGPD: estatística só depois do "Entendi" (antes contava até a pessoa escolher)
+export const trackingAllowed = () => safe(() => localStorage.getItem(CONSENT_KEY) === 'acknowledged', false);
 
 /** Origem desta chegada ao site (sem UTM e sem referência externa = "direto"). */
 function currentTouch(): Touch {
@@ -129,6 +130,9 @@ function send(type: 'pageview' | 'whatsapp_click', path: string) {
         device: device(), browser: browser(), os: os(),
     }).catch(() => { /* estatística nunca atrapalha a navegação */ });
 }
+
+/** Chamado no "Entendi": conta a página em que a pessoa aceitou (antes do aceite nada é enviado). */
+export const consentGranted = () => send('pageview', window.location.pathname);
 
 let lastPath = '';
 export function trackPageview(path: string) {

@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Send, UserRound } from 'lucide-react';
 import { assistenteService, Destino, InicioIa, MensagemIa, Tema } from '@/services/assistente.service';
 import { apiErrorMessage } from '@/lib/upload';
+import { Link } from 'react-router-dom';
+import { AvisoPrivacidade } from '@/components/AvisoPrivacidade';
 
 /** Item da conversa na tela: mensagem, sugestão de encaminhar ou confirmação. */
 type Item =
@@ -174,6 +176,11 @@ export default function PainelIaT3({ aberto, onFechar, right, bottom, topo }: { 
                     <button type="button" onClick={() => setForm({ destino: tema.destino, motivo: 'Pediu para falar com uma pessoa' })} className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-100">
                         <UserRound className="h-3.5 w-3.5" /> Falar com uma pessoa
                     </button>
+                    {/* LGPD: o texto livre vai para a IA (Anthropic, nos EUA) */}
+                    <p className="mt-2 text-[11px] leading-snug text-ink-500">
+                        Respostas geradas por IA (Claude, da Anthropic, EUA). Não escreva CPF, senhas ou dados de saúde.{' '}
+                        <Link to="/privacidade" className="underline underline-offset-2 hover:text-ink-300">Privacidade</Link>
+                    </p>
                 </footer>
             )}
         </section>
@@ -217,6 +224,7 @@ function FormEncaminhar({ destino, titulo, texto, onCancelar, onEnviar }: {
         <form onSubmit={enviar} className="space-y-2 border border-white/15 bg-ink-900 p-3">
             <p className="text-sm font-semibold">{titulo}</p>
             <p className="text-xs text-ink-400">{texto} A conversa vai junto.</p>
+            <AvisoPrivacidade />
             <input aria-label="Seu nome" required maxLength={120} value={d.nome} onChange={set('nome')} placeholder="Seu nome" className={caixa} autoComplete="name" />
             <input aria-label="WhatsApp" required minLength={8} maxLength={30} value={d.telefone} onChange={set('telefone')} placeholder="WhatsApp com DDD" className={caixa} inputMode="tel" autoComplete="tel" />
             <input aria-label="E-mail (opcional)" type="email" maxLength={160} value={d.email} onChange={set('email')} placeholder="E-mail (opcional)" className={caixa} autoComplete="email" />

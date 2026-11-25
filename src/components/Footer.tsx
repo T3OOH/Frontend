@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { COMPANY_CNPJ, COMPANY_NAME } from '@/lib/company';
 import { ATTENDANTS } from '@/lib/contacts';
+import { ABRIR_PREFERENCIAS } from '@/components/CookieConsent';
 
 const formatPhone = (digits: string) => {
     const local = digits.replace(/^55/, '');
@@ -84,7 +85,10 @@ export function Footer() {
 
             <div className="border-t border-white/[0.06]">
                 <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-6 text-xs text-ink-500 md:flex-row md:items-center md:justify-between md:px-8">
-                    <p>© {year} {COMPANY_NAME}. Todos os direitos reservados.</p>
+                    <p>
+                        © {year} {COMPANY_NAME}. Todos os direitos reservados.{' '}
+                        <button type="button" onClick={() => window.dispatchEvent(new Event(ABRIR_PREFERENCIAS))} className="underline underline-offset-2 hover:text-ink-300">Preferências de cookies</button>
+                    </p>
                     {COMPANY_CNPJ && <p className="font-mono">CNPJ {COMPANY_CNPJ} · Goiânia, GO</p>}
                 </div>
             </div>
