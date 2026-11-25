@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, SyntheticEvent } from 'react';
 /**
  * Miniaturas das fotos dos painéis pelo Storage (Image Transformation): a foto original
  * (até ~700 KB em JPG) vira um WebP na largura pedida (~15 KB para 480 px). Só vale para
@@ -29,8 +29,17 @@ export function thumb(url: string | null | undefined, largura: number, qualidade
  * (telas de celular). Use junto de `sizes` quando a largura varia com a tela.
  */
 export function thumbProps(url: string | null | undefined, larguraCss: number) {
-    if (!url || !transformavel(url)) return { src: url || PLACEHOLDER };
-    return { src: thumb(url, larguraCss), srcSet: `${thumb(url, larguraCss)} 1x, ${thumb(url, larguraCss * 2)} 2x` };
+    if (!url || !transformavel(url)) return { src: url || PLACEHOLDER, onError: semFoto };
+    return { src: thumb(url, larguraCss), srcSet: `${thumb(url, larguraCss)} 1x, ${thumb(url, larguraCss * 2)} 2x`, onError: semFoto };
+}
+
+/** Foto que não carrega (link quebrado, arquivo apagado): mostra a imagem "ainda não adicionada", sem o zoom do recorte. */
+function semFoto(e: SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (img.src.endsWith(PLACEHOLDER)) return;
+    img.removeAttribute('srcset');
+    img.style.scale = img.style.translate = img.style.objectPosition = '';
+    img.src = PLACEHOLDER;
 }
 
 /** Recorte da capa (retângulo em % da foto), desenhado no cadastro em "Enquadrar capa". */
